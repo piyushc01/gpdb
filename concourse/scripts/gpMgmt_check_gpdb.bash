@@ -42,6 +42,7 @@ function _main() {
     setup_gpadmin_user
     (make_cluster)
 
+    pip3 install --upgrade pip
     install_python_requirements_on_single_host ./gpdb_src/gpMgmt/requirements-dev.txt
 
     gen_env

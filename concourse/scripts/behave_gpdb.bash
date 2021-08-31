@@ -41,6 +41,7 @@ function _main() {
     # sourcing greenplum_path
     time (make_cluster)
 
+    pip3 install --upgrade pip
     time install_python_requirements_on_single_host ./gpdb_src/gpMgmt/requirements-dev.txt
 
     time gen_env
