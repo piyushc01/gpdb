@@ -1324,6 +1324,7 @@ def impl(context, seg):
 
 
 @given('the cluster configuration has no segments where "{filter}"')
+@then('the cluster configuration has no segments where "{filter}"')
 def impl(context, filter):
     SLEEP_PERIOD = 5
     MAX_DURATION = 300
