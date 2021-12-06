@@ -274,12 +274,46 @@ class RecoveryTripletsNewHosts(RecoveryTriplets):
                     return port
             raise Exception("Unable to assign port on %s" % address)
 
+def is_host_reachable(host):
+    import subprocess
+    result = subprocess.run("ssh %s 'echo %s'" % (host, host), stdout=subprocess.PIPE, shell=True)
+    if(result.returncode ==0):
+        # Host can be reached"
+        return True
+    else:
+        return False
 
 class RecoveryTripletsUserConfigFile(RecoveryTriplets):
     def __init__(self, gpArray, config_file):
         super().__init__(gpArray)
         self.config_file = config_file
         self.rows = self._parseConfigFile(self.config_file)
+
+
+
+    @staticmethod
+    def _validate_host_reachable(rows):
+        """
+        Checks if the hosts specified in the config list can be reached.
+        1. If no new host specified and failed host is not reachable, raise exception
+        2. If new recovery host specified but not in reach, raise exception
+        3. If new recovery host specified and failed host not in reach, continue with recovery
+        """
+        for row in rows:
+            address, newAddress, port, lineno = \
+                row['failedAddress'], row['newAddress'], row['failedPort'], row['lineno']
+
+            if 'newAddress' not in row and not is_host_reachable(address):
+                msg = 'Host %s cannot be reached' \
+                      'Failed host and recovery host are the same and cannot be reached. Config file line no:%d ' \
+                    .format(address, lineno)
+                raise ExceptionNoStackTraceNeeded(msg)
+
+            if 'newAddress' in row and not is_host_reachable(newAddress):
+                msg = 'Recovery Host %s cannot be reached' \
+                      'Cannot continue with the recovery. Config file line no:%d ' \
+                    .format(newAddress, lineno)
+                raise ExceptionNoStackTraceNeeded(msg)
 
     def getTriplets(self):
         def _find_failed_from_row():
@@ -355,6 +389,7 @@ class RecoveryTripletsUserConfigFile(RecoveryTriplets):
                 rows.append(row)
 
         RecoveryTripletsUserConfigFile._validate(rows)
+        RecoveryTripletsUserConfigFile._validate_host_reachable(rows)
 
         return rows
 
