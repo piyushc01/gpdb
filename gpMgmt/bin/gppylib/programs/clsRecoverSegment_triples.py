@@ -6,6 +6,7 @@ from gppylib.operations.detect_unreachable_hosts import get_unreachable_segment_
 from gppylib.parseutils import line_reader, check_values, canonicalize_address
 from gppylib.utils import checkNotNone, normalizeAndValidateInputPath
 from gppylib.gparray import GpArray, Segment
+from gppylib.operations.detect_unreachable_hosts import get_unreachable_segment_hosts
 
 
 class RecoveryTriplet:
@@ -274,25 +275,16 @@ class RecoveryTripletsNewHosts(RecoveryTriplets):
                     return port
             raise Exception("Unable to assign port on %s" % address)
 
-def is_host_reachable(host):
-    import subprocess
-    result = subprocess.run("ssh %s 'echo %s'" % (host, host), stdout=subprocess.PIPE, shell=True)
-    if(result.returncode ==0):
-        # Host can be reached"
-        return True
-    else:
-        return False
-
 class RecoveryTripletsUserConfigFile(RecoveryTriplets):
     def __init__(self, gpArray, config_file):
         super().__init__(gpArray)
         self.config_file = config_file
-        self.rows = self._parseConfigFile(self.config_file)
+        self.rows = self._parseConfigFile(gpArray, self.config_file)
 
 
 
     @staticmethod
-    def _validate_host_reachable(rows):
+    def _validate_host_reachable(gpArray, rows):
         """
         Checks if the hosts specified in the config list can be reached.
         1. If no new host specified and failed host is not reachable, raise exception
@@ -300,19 +292,19 @@ class RecoveryTripletsUserConfigFile(RecoveryTriplets):
         3. If new recovery host specified and failed host not in reach, continue with recovery
         """
         for row in rows:
-            address, newAddress, port, lineno = \
+            address, newaddress, port, lineno = \
                 row['failedAddress'], row['newAddress'], row['failedPort'], row['lineno']
 
-            if 'newAddress' not in row and not is_host_reachable(address):
+            if 'newAddress' not in row and not address not in gpArray.gpArray.unreachable_hosts:
                 msg = 'Host %s cannot be reached' \
                       'Failed host and recovery host are the same and cannot be reached. Config file line no:%d ' \
-                    .format(address, lineno)
+                    %(address, lineno)
                 raise ExceptionNoStackTraceNeeded(msg)
 
-            if 'newAddress' in row and not is_host_reachable(newAddress):
-                msg = 'Recovery Host %s cannot be reached' \
+            if 'newAddress' in row and newaddress in get_unreachable_segment_hosts([newaddress], 1):
+                msg = 'Recovery Host %s cannot be reached. ' \
                       'Cannot continue with the recovery. Config file line no:%d ' \
-                    .format(newAddress, lineno)
+                    %(newaddress, lineno)
                 raise ExceptionNoStackTraceNeeded(msg)
 
     def getTriplets(self):
@@ -341,7 +333,7 @@ class RecoveryTripletsUserConfigFile(RecoveryTriplets):
 
 
     @staticmethod
-    def _parseConfigFile(config_file):
+    def _parseConfigFile(gpArray, config_file):
         """
         Parse the config file
         :param config_file:
@@ -389,7 +381,7 @@ class RecoveryTripletsUserConfigFile(RecoveryTriplets):
                 rows.append(row)
 
         RecoveryTripletsUserConfigFile._validate(rows)
-        RecoveryTripletsUserConfigFile._validate_host_reachable(rows)
+        RecoveryTripletsUserConfigFile._validate_host_reachable(gpArray, rows)
 
         return rows
 

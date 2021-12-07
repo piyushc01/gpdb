@@ -273,8 +273,9 @@ class GpRecoverSegmentProgram:
 
         num_workers = min(len(gpArray.get_hostlist()), self.__options.parallelDegree)
         hosts = set(gpArray.get_hostlist(includeCoordinator=False))
+        unreachable_hosts = get_unreachable_segment_hosts(hosts, num_workers)
+        gpArray.unreachable_hosts = unreachable_hosts
         # We have phys-rep/filerep mirrors.
-
         if self.__options.newRecoverHosts is not None:
             try:
                 uniqueHosts = []
