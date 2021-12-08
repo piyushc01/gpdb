@@ -16,7 +16,7 @@ def impl(context, disconnected, spare):
 
     add_or_remove_blackhole_route(disconnected_hosts, spare_hosts, disconnect=True)
 
-@when('the user creates config file with failed host "{down}" and failover to "{spare}" and runs gprecoverseg -i "{config_file}')
+@when('the user creates config file with failed host "{down}" and failover to "{spare}" and runs gprecoverseg -i "{config_file}"')
 def impl(context, down, spare, config_file):
     f_name = '/tmp/test-gprecoverseg01-scheraio-config-file'
     command = "echo '%s|20000|/data/gpdata/primary/gpseg0 %s|20000|/data/gpdata/primary/gpseg0' > %s" %(down, spare, config_file)
