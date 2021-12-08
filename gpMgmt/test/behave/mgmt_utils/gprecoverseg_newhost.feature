@@ -44,4 +44,4 @@ Feature: gprecoverseg tests involving migrating to a new host
       And database "gptest" exists
      Examples:
       | test_case      |  down        | spare       | unused | config_file                                    | down_sql                          |
-      | one_host_down  |  "sdw1"      | "sdw5"      | sdw6   | "tmp/test-gprecoverseg01-scheraio-config-file" | "hostname='sdw1' and status='u'"  |
+      | one_host_down  |  "sdw1"      | "sdw5"      | sdw6   | "/tmp/test-gprecoverseg01-scheraio-config-file" | "hostname='sdw1' and status='u'"  |
