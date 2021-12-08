@@ -20,11 +20,11 @@ def impl(context, disconnected, spare):
 def impl(context, down, spare, config_file):
     f_name = '/tmp/test-gprecoverseg01-scheraio-config-file'
     command = "echo '%s|20000|/data/gpdata/primary/gpseg0 %s|20000|/data/gpdata/primary/gpseg0' > %s" %(down, spare, config_file)
-    rc, error, output = run_gpcommand(command)
+    rc, error, output = run_gpcommand(context, command)
     if rc:
         raise Exception("Error while creating config file:%s, Command:%s\nReturn Code:%d Error:%s" %(config_file, command, rc, error))
     command = "gprecoverseg -i " + config_file
-    rc, error, output = run_gpcommand(command)
+    rc, error, output = run_gpcommand(context, command)
     if rc:
         raise Exception("Error while running the recovery command:%s\nReturn code:%d, Error:%s" %(command, rc, error))
 
