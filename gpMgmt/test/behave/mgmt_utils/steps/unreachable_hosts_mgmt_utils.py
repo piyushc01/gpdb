@@ -23,10 +23,10 @@ def impl(context, down, spare, config_file):
     rc, error, output = run_cmd(command)
     if rc:
         raise Exception("Error while creating config file:%s, Command:%s\nReturn Code:%d Error:%s" %(config_file, command, rc, error))
-    command = "gprecoverseg -i " + config_file
+    command = "gprecoverseg -a -i " + config_file
     rc, error, output = run_gpcommand(context, command)
     if rc:
-        raise Exception("Error while running the recovery command:%s\nReturn code:%d, Error:%s" %(command, rc, error))
+        raise Exception("Error while running the recovery command:%s\nReturn code:%d, Error:%s %s" %(command, rc, error, output))
 
 
 
