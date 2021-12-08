@@ -1,7 +1,7 @@
 import subprocess
 
 from behave import given, when, then
-from test.behave_utils.utils import run_gpcommand
+from test.behave_utils.utils import run_gpcommand, run_cmd
 from gppylib.gparray import GpArray
 from gppylib.db import dbconn
 
@@ -20,7 +20,7 @@ def impl(context, disconnected, spare):
 def impl(context, down, spare, config_file):
     f_name = '/tmp/test-gprecoverseg01-scheraio-config-file'
     command = "echo '%s|20000|/data/gpdata/primary/gpseg0 %s|20000|/data/gpdata/primary/gpseg0' > %s" %(down, spare, config_file)
-    rc, error, output = run_gpcommand(context, command)
+    rc, error, output = run_cmd(context, command)
     if rc:
         raise Exception("Error while creating config file:%s, Command:%s\nReturn Code:%d Error:%s" %(config_file, command, rc, error))
     command = "gprecoverseg -i " + config_file
