@@ -276,17 +276,16 @@ class GpRecoverSegmentProgram:
         unreachable_hosts = get_unreachable_segment_hosts(hosts, num_workers)
         for i, segmentPair in enumerate(gpArray.segmentPairs):
             if segmentPair.primaryDB.getSegmentHostName() in unreachable_hosts:
-                logger.warning("Not recovering segment %d because %s is unreachable" % (
-                segmentPair.primaryDB.dbid, segmentPair.primaryDB.getSegmentHostName()))
+                logger.warning("Not recovering segment %d because %s is unreachable" % (segmentPair.primaryDB.dbid, segmentPair.primaryDB.getSegmentHostName()))
                 gpArray.segmentPairs[i].primaryDB.unreachable = True
 
             if segmentPair.mirrorDB.getSegmentHostName() in unreachable_hosts:
-                logger.warning("Not recovering segment %d because %s is unreachable" % (
-                segmentPair.mirrorDB.dbid, segmentPair.mirrorDB.getSegmentHostName()))
+                logger.warning("Not recovering segment %d because %s is unreachable" % (segmentPair.mirrorDB.dbid, segmentPair.mirrorDB.getSegmentHostName()))
                 gpArray.segmentPairs[i].mirrorDB.unreachable = True
 
         gpArray.unreachable_hosts = unreachable_hosts
         # We have phys-rep/filerep mirrors.
+
         if self.__options.newRecoverHosts is not None:
             try:
                 uniqueHosts = []
