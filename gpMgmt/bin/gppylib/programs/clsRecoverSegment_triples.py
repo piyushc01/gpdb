@@ -7,8 +7,9 @@ from gppylib.parseutils import line_reader, check_values, canonicalize_address
 from gppylib.utils import checkNotNone, normalizeAndValidateInputPath
 from gppylib.gparray import GpArray, Segment
 from gppylib.operations.detect_unreachable_hosts import get_unreachable_segment_hosts
+from gppylib import gplog
 
-
+logger = gplog.get_default_logger()
 class RecoveryTriplet:
     """
     Represents the segments needed to perform a recovery on a given segment.
@@ -164,10 +165,21 @@ class RecoveryTriplets(abc.ABC):
 
             # this must come AFTER the if check above because failedSegment can be adjusted to
             #   point to a different object
-            if req.failed.unreachable and not req.failover_to_new_host:
-                continue
-
             peer = dbIdToPeerMap.get(req.failed.getSegmentDbId())
+            # self._validate_is_reachable(req, peer)
+            # Validate if reachable
+            failover_host = req.failover_host
+            if req.failover_host:
+                # This means, request to to failover to another node (could be existing one)
+                # Check if failover host can be reached, raise exception if not reachable
+                if(failover_host in self.gpArray.unreachable_hosts or failover_host in get_unreachable_segment_hosts([failover_host], 1)):
+                    raise ExceptionNoStackTraceNeeded("[ERROR]: Failover host: %s cannot be reached. Can't proceed with recovery." % failover_host)
+                if peer.hostname in self.gpArray.unreachable_hosts or peer.hostname in get_unreachable_segment_hosts([peer.hostname], 1):
+                    raise ExceptionNoStackTraceNeeded("[ERROR]: Live host: %s cannot be reached." % peer)
+            else:
+                # This is in place recovery
+                if( req.failed.unreachable or req.failed.hostname in self.gpArray.unreachable_hosts or req.failed.hostname in get_unreachable_segment_hosts([req.failed.hostname], 1)):
+                    logger.warning("Failover host: %s cannot be reached. Still continuing with recovery." % failover_host)
 
             triplets.append(RecoveryTriplet(req.failed, peer, failover))
 
@@ -279,33 +291,7 @@ class RecoveryTripletsUserConfigFile(RecoveryTriplets):
     def __init__(self, gpArray, config_file):
         super().__init__(gpArray)
         self.config_file = config_file
-        self.rows = self._parseConfigFile(gpArray, self.config_file)
-
-
-
-    @staticmethod
-    def _validate_host_reachable(gpArray, rows):
-        """
-        Checks if the hosts specified in the config list can be reached.
-        1. If no new host specified and failed host is not reachable, raise exception
-        2. If new recovery host specified but not in reach, raise exception
-        3. If new recovery host specified and failed host not in reach, continue with recovery
-        """
-        for row in rows:
-            address, newaddress, port, lineno = \
-                row['failedAddress'], row['newAddress'], row['failedPort'], row['lineno']
-
-            if 'newAddress' not in row and not address not in gpArray.gpArray.unreachable_hosts:
-                msg = 'Host %s cannot be reached' \
-                      'Failed host and recovery host are the same and cannot be reached. Config file line no:%d ' \
-                    %(address, lineno)
-                raise ExceptionNoStackTraceNeeded(msg)
-
-            if 'newAddress' in row and newaddress in get_unreachable_segment_hosts([newaddress], 1):
-                msg = 'Recovery Host %s cannot be reached. ' \
-                      'Cannot continue with the recovery. Config file line no:%d ' \
-                    %(newaddress, lineno)
-                raise ExceptionNoStackTraceNeeded(msg)
+        self.rows = self._parseConfigFile(self.config_file)
 
     def getTriplets(self):
         def _find_failed_from_row():
@@ -333,7 +319,7 @@ class RecoveryTripletsUserConfigFile(RecoveryTriplets):
 
 
     @staticmethod
-    def _parseConfigFile(gpArray, config_file):
+    def _parseConfigFile(config_file):
         """
         Parse the config file
         :param config_file:
@@ -381,7 +367,6 @@ class RecoveryTripletsUserConfigFile(RecoveryTriplets):
                 rows.append(row)
 
         RecoveryTripletsUserConfigFile._validate(rows)
-        RecoveryTripletsUserConfigFile._validate_host_reachable(gpArray, rows)
 
         return rows
 
