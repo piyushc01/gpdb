@@ -168,18 +168,23 @@ class RecoveryTriplets(abc.ABC):
             peer = dbIdToPeerMap.get(req.failed.getSegmentDbId())
             # self._validate_is_reachable(req, peer)
             # Validate if reachable
-            failover_host = req.failover_host
             if req.failover_host:
                 # This means, request to to failover to another node (could be existing one)
                 # Check if failover host can be reached, raise exception if not reachable
-                if(failover_host in self.gpArray.unreachable_hosts or failover_host in get_unreachable_segment_hosts([failover_host], 1)):
+                failover_host = req.failover_host
+                if(failover_host in get_unreachable_segment_hosts([failover_host], 1)):
+                    failover.unreachable = True
                     raise ExceptionNoStackTraceNeeded("[ERROR]: Failover host: %s cannot be reached. Can't proceed with recovery." % failover_host)
-                if peer.hostname in self.gpArray.unreachable_hosts or peer.hostname in get_unreachable_segment_hosts([peer.hostname], 1):
+                else:
+                    failover.unreachable = False
+
+                if peer.unreachable:
                     raise ExceptionNoStackTraceNeeded("[ERROR]: Live host: %s cannot be reached." % peer)
             else:
                 # This is in place recovery
-                if( req.failed.unreachable or req.failed.hostname in self.gpArray.unreachable_hosts or req.failed.hostname in get_unreachable_segment_hosts([req.failed.hostname], 1)):
-                    logger.warning("Failover host: %s cannot be reached. Still continuing with recovery." % failover_host)
+                if( req.failed.unreachable):
+                    logger.warning("Failover host: %s cannot be reached, skipping recovery." % req.failed.hostname)
+                    continue
 
             triplets.append(RecoveryTriplet(req.failed, peer, failover))
 
