@@ -123,7 +123,7 @@ class GpRecoverSegmentProgram:
         if self.__options.rebalanceSegments:
             return GpSegmentRebalanceOperation(gpEnv, gpArray, self.__options.parallelDegree, self.__options.parallelPerHost)
         else:
-            instance = RecoveryTripletsFactory.instance(gpArray, self.__options.recoveryConfigFile, self.__options.newRecoverHosts)
+            instance = RecoveryTripletsFactory.instance(gpArray, self.__options.recoveryConfigFile, self.__options.newRecoverHosts, self.__options.parallelDegree)
             segs = [GpMirrorToBuild(t.failed, t.live, t.failover, self.__options.forceFullResynchronization) for t in instance.getTriplets()]
             return GpMirrorListToBuild(segs, self.__pool, self.__options.quiet,
                                        self.__options.parallelDegree,
@@ -276,9 +276,11 @@ class GpRecoverSegmentProgram:
         unreachable_hosts = get_unreachable_segment_hosts(hosts, num_workers)
         for i, segmentPair in enumerate(gpArray.segmentPairs):
             if segmentPair.primaryDB.getSegmentHostName() in unreachable_hosts:
+                logger.warning("Not recovering segment %d because %s is unreachable" % (segmentPair.primaryDB.dbid, segmentPair.primaryDB.getSegmentHostName()))
                 gpArray.segmentPairs[i].primaryDB.unreachable = True
 
             if segmentPair.mirrorDB.getSegmentHostName() in unreachable_hosts:
+                logger.warning("Not recovering segment %d because %s is unreachable" % (segmentPair.mirrorDB.dbid, segmentPair.mirrorDB.getSegmentHostName()))
                 gpArray.segmentPairs[i].mirrorDB.unreachable = True
 
         # We have phys-rep/filerep mirrors.
