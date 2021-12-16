@@ -281,7 +281,6 @@ class GpRecoverSegmentProgram:
             if segmentPair.mirrorDB.getSegmentHostName() in unreachable_hosts:
                 gpArray.segmentPairs[i].mirrorDB.unreachable = True
 
-        gpArray.unreachable_hosts = unreachable_hosts
         # We have phys-rep/filerep mirrors.
 
         if self.__options.newRecoverHosts is not None:
@@ -334,7 +333,6 @@ class GpRecoverSegmentProgram:
         elif len(mirrorBuilder.getMirrorsToBuild()) == 0:
             self.logger.info('No segments to recover')
         else:
-            #TODO this already happens in buildMirrors function
             mirrorBuilder.checkForPortAndDirectoryConflicts(gpArray)
             self.validate_heap_checksum_consistency(gpArray, mirrorBuilder)
 

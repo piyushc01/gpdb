@@ -166,7 +166,7 @@ class RecoveryTriplets(abc.ABC):
             # this must come AFTER the if check above because failedSegment can be adjusted to
             #   point to a different object
             peer = dbIdToPeerMap.get(req.failed.getSegmentDbId())
-            # self._validate_is_reachable(req, peer)
+            
             # Validate if reachable
             if req.failover_host:
                 # This means, request to to failover to another node (could be existing one)
