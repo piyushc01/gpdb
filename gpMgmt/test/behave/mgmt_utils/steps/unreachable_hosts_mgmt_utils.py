@@ -18,7 +18,6 @@ def impl(context, disconnected, spare):
 
 @when('the user creates config file with failed host "{down}" and failover to "{spare}" and runs gprecoverseg -i "{config_file}"')
 def impl(context, down, spare, config_file):
-    f_name = '/tmp/test-gprecoverseg01-scheraio-config-file'
     command = "echo '%s|20000|/data/gpdata/primary/gpseg0 %s|20000|/data/gpdata/primary/gpseg0' > %s" %(down, spare, config_file)
     rc, error, output = run_cmd(command)
     if rc:
