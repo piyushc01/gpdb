@@ -18,7 +18,7 @@ def impl(context, disconnected, spare):
 
 @when('the user creates config file with failed host "{down}" and failover to "{spare}" and runs gprecoverseg -i "{config_file}"')
 def impl(context, down, spare, config_file):
-    command = "echo '%s|20000|/data/gpdata/primary/gpseg0 %s|20000|/data/gpdata/primary/gpseg0' > %s" %(down, spare, config_file)
+    command = "echo '%s|20001|/data/gpdata/primary/gpseg0 %s|20000|/data/gpdata/primary/gpseg0' > %s" %(down, spare, config_file)
     rc, error, output = run_cmd(command)
     if rc:
         raise Exception("Error while creating config file:%s, Command:%s\nReturn Code:%d Error:%s" %(config_file, command, rc, error))
