@@ -47,5 +47,5 @@ Feature: gprecoverseg tests involving migrating to a new host
       And segment hosts <down> are reconnected to the cluster and to the spare segment hosts "<unused>"
       And database "gptest" exists
      Examples:
-      | test_case      |  down        | spare            | unused | config_file                                     | down_sql                          |
-      | one_host_down  |  "sdw2"      | "sdw5,sdw6"      | sdw6   | "/tmp/test-gprecoverseg01-scheraio-config-file" | "hostname='sdw2' and status='u'"  |
+      | test_case      |  down        | spare       | unused | config_file                                     | down_sql                          |
+      | one_host_down  |  "sdw2"      | "sdw5"      | sdw6   | "/tmp/test-gprecoverseg01-scheraio-config-file" | "hostname='sdw2' and status='u'"  |
