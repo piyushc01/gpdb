@@ -41,8 +41,8 @@ Feature: gprecoverseg tests involving migrating to a new host
       #And the user runs gpconfig sets guc "wal_sender_timeout" with "15s"
       #And the user runs "gpstop -air"
       And segment hosts <down> are disconnected from the cluster and from the spare segment hosts <spare>
-      Then the user runs psql with " -c 'select gp_request_fts_probe_scan()'" against database "template1"
-      When the user creates config file with failed host <down> and failover to <spare> and runs gprecoverseg -i <config_file>
+      #Then the user runs psql with " -c 'select gp_request_fts_probe_scan()'" against database "template1"
+      #When the user creates config file with failed host <down> and failover to <spare> and runs gprecoverseg -i <config_file>
       #Then the cluster configuration has no segments where <down_sql>
       Then segment hosts <down> are reconnected to the cluster and to the spare segment hosts "<unused>"
       And database "gptest" exists
