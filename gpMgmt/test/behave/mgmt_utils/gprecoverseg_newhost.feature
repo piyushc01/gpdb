@@ -40,7 +40,7 @@ Feature: gprecoverseg tests involving migrating to a new host
         And database "gptest" exists
         And segment hosts "sdw2" are disconnected from the cluster and from the spare segment hosts "sdw5,sdw6"
         #And the cluster configuration has no segments where "hostname='sdw2' and status='u'"
-        When the user runs command "echo '%s|20000|/data/gpdata/primary/gpseg2 %s|20000|/data/gpdata/primary/gpseg2' > /tmp/test-gprecoverseg01-scheraio-config-file"
+        When the user runs command "echo 'sdw2|20000|/data/gpdata/primary/gpseg2 sdw5|20000|/data/gpdata/primary/gpseg2' > /tmp/test-gprecoverseg01-scheraio-config-file"
         Then the user runs "gprecoverseg -i /tmp/test-gprecoverseg01-scheraio-config-file -a"
         Then gprecoverseg should return a return code of 0
         Then segment hosts "sdw2" are reconnected to the cluster and to the spare segment hosts "sdw6"
