@@ -305,7 +305,7 @@ class GpRecoverSegmentProgram:
         from pprint import PrettyPrinter
         pp = PrettyPrinter(indent=2)
         logger.debug("PIYUSH: Before getRecoveryBasedOnOptons")
-        logger.debug(pp.pformat(gpArray))
+        logger.debug(pp.pformat(gpArray, depth=10))
         mirrorBuilder = self.getRecoveryActionsBasedOnOptions(gpEnv, gpArray)
         logger.debug("PIYUSH: After getRecoveryBasedOnOptons")
         logger.debug(pp.pformat(gpArray))

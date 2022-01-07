@@ -173,7 +173,7 @@ class RecoveryTriplets(abc.ABC):
                 failover.setSegmentPort(int(req.failover_port))
                 failover.setSegmentDataDirectory(req.failover_datadir)
                 # failover.unreachable = False if req.failover_to_new_host else failover.unreachable
-                if (failover.failover_host in unreachable_hosts):
+                if (failover.getSegmentHostName() in unreachable_hosts):
                     failover.unreachable = True
                 else:
                     failover.unreachable = False
