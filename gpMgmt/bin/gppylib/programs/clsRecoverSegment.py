@@ -304,11 +304,11 @@ class GpRecoverSegmentProgram:
         # figure out what needs to be done
         from pprint import PrettyPrinter
         pp = PrettyPrinter(indent=2)
-        print("DEBUG: GPARRAY Before call:")
-        pp.pprint(gpArray)
+        logger.debug("PIYUSH: Before getRecoveryBasedOnOptons")
+        logger.debug(pp.pformat(gpArray))
         mirrorBuilder = self.getRecoveryActionsBasedOnOptions(gpEnv, gpArray)
-        print("GPARRAY after call:")
-        pp.pprint(gpArray)
+        logger.debug("PIYUSH: After getRecoveryBasedOnOptons")
+        logger.debug(pp.pformat(gpArray))
 
         if self.__options.outputSampleConfigFile is not None:
             # just output config file and done
