@@ -302,7 +302,13 @@ class GpRecoverSegmentProgram:
         existing_hosts = set(gpArray.getHostList())
 
         # figure out what needs to be done
+        from pprint import PrettyPrinter
+        pp = PrettyPrinter(indent=2)
+        print("DEBUG: GPARRAY Before call:")
+        pp.pprint(gpArray)
         mirrorBuilder = self.getRecoveryActionsBasedOnOptions(gpEnv, gpArray)
+        print("GPARRAY after call:")
+        pp.pprint(gpArray)
 
         if self.__options.outputSampleConfigFile is not None:
             # just output config file and done
