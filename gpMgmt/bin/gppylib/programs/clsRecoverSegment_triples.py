@@ -172,30 +172,33 @@ class RecoveryTriplets(abc.ABC):
                 failover.setSegmentHostName(req.failover_host)
                 failover.setSegmentPort(int(req.failover_port))
                 failover.setSegmentDataDirectory(req.failover_datadir)
-                failover.unreachable = False if req.failover_to_new_host else failover.unreachable
-
+                # failover.unreachable = False if req.failover_to_new_host else failover.unreachable
+                if (failover.failover_host in unreachable_hosts):
+                    failover.unreachable = True
+                else:
+                    failover.unreachable = False
             # this must come AFTER the if check above because failedSegment can be adjusted to
             #   point to a different object
             peer = dbIdToPeerMap.get(req.failed.getSegmentDbId())
 
-            # Validate if reachable
-            if req.failover_host:
-                # This means, request to to failover to another node (could be existing one)
-                # Check if failover host can be reached, raise exception if not reachable
-                failover_host = req.failover_host
-                if(failover_host in unreachable_hosts):
-                    failover.unreachable = True
-                    raise ExceptionNoStackTraceNeeded("Failover host: %s cannot be reached. Can't proceed with recovery." % failover_host)
-                else:
-                    failover.unreachable = False
-
-                if peer.unreachable:
-                    raise ExceptionNoStackTraceNeeded("[Live host: %s cannot be reached." % peer)
-            else:
-                # This is in place recovery
-                if( req.failed.unreachable):
-                    logger.warning("Failover host: %s cannot be reached, skipping recovery." % req.failed.hostname)
-                    continue
+            # # Validate if reachable
+            # if req.failover_host:
+            #     # This means, request to to failover to another node (could be existing one)
+            #     # Check if failover host can be reached, raise exception if not reachable
+            #     failover_host = req.failover_host
+            #     if(failover_host in unreachable_hosts):
+            #         failover.unreachable = True
+            #         raise ExceptionNoStackTraceNeeded("Failover host: %s cannot be reached. Can't proceed with recovery." % failover_host)
+            #     else:
+            #         failover.unreachable = False
+            #
+            #     if peer.unreachable:
+            #         raise ExceptionNoStackTraceNeeded("[Live host: %s cannot be reached." % peer)
+            # else:
+            #     # This is in place recovery
+            #     if( req.failed.unreachable):
+            #         logger.warning("Failover host: %s cannot be reached, skipping recovery." % req.failed.hostname)
+            #         continue
 
             triplets.append(RecoveryTriplet(req.failed, peer, failover))
 
