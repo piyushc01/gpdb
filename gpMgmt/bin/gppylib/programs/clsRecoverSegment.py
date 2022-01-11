@@ -361,9 +361,11 @@ class GpRecoverSegmentProgram:
 
             contentsToUpdate = [seg.getLiveSegment().getSegmentContentId() for seg in mirrorBuilder.getMirrorsToBuild()]
             update_pg_hba_on_segments(gpArray, self.__options.hba_hostnames, self.__options.parallelDegree, contentsToUpdate)
+            logger.debug("PIYUSH:Building Mirror with gpArray:" + gpArray.__str__())
             if not mirrorBuilder.buildMirrors("recover", gpEnv, gpArray):
                 sys.exit(1)
 
+            logger.debug("PIYUSH:After Building Mirror with gpArray:" + gpArray.__str__())
             self.trigger_fts_probe(port=gpEnv.getCoordinatorPort())
 
             self.logger.info("********************************")

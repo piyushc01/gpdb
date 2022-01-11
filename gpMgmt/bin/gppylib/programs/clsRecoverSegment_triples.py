@@ -177,6 +177,7 @@ class RecoveryTriplets(abc.ABC):
                     failover.unreachable = True
                 else:
                     failover.unreachable = False
+
             # this must come AFTER the if check above because failedSegment can be adjusted to
             #   point to a different object
             peer = dbIdToPeerMap.get(req.failed.getSegmentDbId())

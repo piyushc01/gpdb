@@ -247,6 +247,7 @@ class GpMirrorListToBuild:
                             "failed segment should not be in the new configuration if failing over to new segment")
 
                 seg = toRecover.getFailoverSegment()
+            self.__logger.debug("PIYUSH: 250: Setting segment [%s %s %s %s] as not in sync" %(seg.getSegmentDbId, seg.getSegmentRole, seg.getSegmentHostName, seg.getSegmentDataDirectory))
             seg.setSegmentStatus(gparray.STATUS_DOWN)  # down initially, we haven't started it yet
             seg.setSegmentMode(gparray.MODE_NOT_SYNC)
 
@@ -278,6 +279,8 @@ class GpMirrorListToBuild:
 
             # The change in configuration to of the mirror to down requires that
             # the primary also be marked as unsynchronized.
+            self.__logger.debug("PIYUSH: 282: Setting segment [%s %s %s %s] as not in sync" % (
+            seg.getSegmentDbId, seg.getSegmentRole, seg.getSegmentHostName, seg.getSegmentDataDirectory))
             primarySeg.setSegmentMode(gparray.MODE_NOT_SYNC)
             primariesToConvert.append(primarySeg)
             convertPrimaryUsingFullResync.append(toRecover.isFullSynchronization())
@@ -293,7 +296,7 @@ class GpMirrorListToBuild:
         rewindFailedSegments = []
         try:
             self.__logger.info("Updating configuration with new mirrors")
-            self.__logger.debug("PIYUSH:DBID to recover:%s Host:%s Role:%s Directory:%s" %(seg.getSegmentDbId(), seg.getSegmentHostName, seg.getSegmentRole, seg.getSegmentDataDirectory))
+            self.__logger.debug("PIYUSH:DBID to recover:%s Host:%s Role:%s Directory:%s" %(seg.getSegmentDbId(), seg.getSegmentHostName, seg.getSegmentRole, seg.getSegmentDataDirectory,  ))
             configInterface.getConfigurationProvider().updateSystemConfig(
                 gpArray,
                 "%s: segment config for resync" % programName,
