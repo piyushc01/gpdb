@@ -296,7 +296,8 @@ class GpMirrorListToBuild:
         rewindFailedSegments = []
         try:
             self.__logger.info("Updating configuration with new mirrors")
-            self.__logger.debug("PIYUSH:DBID to recover:%s Host:%s Role:%s Directory:%s" %(seg.getSegmentDbId(), seg.getSegmentHostName, seg.getSegmentRole, seg.getSegmentDataDirectory,  ))
+            self.__logger.debug("PIYUSH:DBID to recover:%s Host:%s Role:%s Directory:%s"
+                                %(seg.getSegmentDbId(), seg.getSegmentHostName, seg.getSegmentRole, seg.getSegmentDataDirectory))
             configInterface.getConfigurationProvider().updateSystemConfig(
                 gpArray,
                 "%s: segment config for resync" % programName,
