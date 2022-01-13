@@ -22,5 +22,5 @@ Feature: gprecoverseg tests involving migrating to a new host
       Then gprecoverseg should return a return code of 0
       Then segment hosts "sdw2" are reconnected to the cluster and to the spare segment hosts "sdw6"
       Then the original cluster state is recreated after cleaning up "sdw2" hosts
-      And the cluster configuration is saved for "after_recreation"
+      #And the cluster configuration is saved for "after_recreation"
       #And the "before" and "after_recreation" cluster configuration matches with the expected for gprecoverseg newhost
