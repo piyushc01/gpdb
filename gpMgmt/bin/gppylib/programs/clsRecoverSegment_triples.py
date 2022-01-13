@@ -178,7 +178,7 @@ class RecoveryTriplets(abc.ABC):
                     failover.unreachable = True
                 else:
                     failover.unreachable = False
-                    failover.setSegmentStatus(STATUS_UP)
+                    #failover.setSegmentStatus(STATUS_UP)
 
             # this must come AFTER the if check above because failedSegment can be adjusted to
             #   point to a different object
