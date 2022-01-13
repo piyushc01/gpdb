@@ -8,6 +8,7 @@ from gppylib.utils import checkNotNone, normalizeAndValidateInputPath
 from gppylib.gparray import GpArray, Segment
 from gppylib.operations.detect_unreachable_hosts import get_unreachable_segment_hosts
 from gppylib import gplog
+from gppylib.gparray import STATUS_UP
 
 logger = gplog.get_default_logger()
 class RecoveryTriplet:
@@ -177,6 +178,7 @@ class RecoveryTriplets(abc.ABC):
                     failover.unreachable = True
                 else:
                     failover.unreachable = False
+                    failover.setSegmentStatus(STATUS_UP)
 
             # this must come AFTER the if check above because failedSegment can be adjusted to
             #   point to a different object
