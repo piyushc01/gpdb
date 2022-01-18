@@ -50,6 +50,7 @@ Feature: gprecoverseg tests involving migrating to a new host
       Then gprecoverseg should return a return code of 0
       Then segment hosts "sdw2" are reconnected to the cluster and to the spare segment hosts "sdw6"
       Then the original cluster state is recreated after cleaning up "sdw2" hosts
+      And database "gptest" exists
       And the cluster configuration is saved for "after_recreation"
       And the "before" and "after_recreation" cluster configuration matches with the expected for gprecoverseg newhost
 
@@ -58,7 +59,7 @@ Feature: gprecoverseg tests involving migrating to a new host
       Given  the database is running
       And all the segments are running
       And the segments are synchronized
-    And database "gptest" exists
+      And database "gptest" exists
       And the cluster configuration is saved for "before"
       And segment hosts "sdw2" are disconnected from the cluster and from the spare segment hosts "sdw5,sdw6"
       And the user runs psql with "-c 'SELECT gp_request_fts_probe_scan()'" against database "postgres"
@@ -71,6 +72,7 @@ Feature: gprecoverseg tests involving migrating to a new host
       Then gprecoverseg should return a return code of 0
       Then segment hosts "sdw2" are reconnected to the cluster and to the spare segment hosts "sdw6"
       Then the original cluster state is recreated after cleaning up "sdw2" hosts
+      And database "gptest" exists
       And the cluster configuration is saved for "after_recreation"
       And the "before" and "after_recreation" cluster configuration matches with the expected for gprecoverseg newhost
 
@@ -79,7 +81,7 @@ Feature: gprecoverseg tests involving migrating to a new host
       Given  the database is running
       And all the segments are running
       And the segments are synchronized
-    And database "gptest" exists
+      And database "gptest" exists
       And the cluster configuration is saved for "before"
       And segment hosts "sdw2" are disconnected from the cluster and from the spare segment hosts "sdw5,sdw6"
       And the user runs psql with "-c 'SELECT gp_request_fts_probe_scan()'" against database "postgres"
@@ -92,5 +94,6 @@ Feature: gprecoverseg tests involving migrating to a new host
       Then gprecoverseg should return a return code of 0
       Then segment hosts "sdw2" are reconnected to the cluster and to the spare segment hosts "sdw6"
       Then the original cluster state is recreated after cleaning up "sdw2" hosts
+      And database "gptest" exists
       And the cluster configuration is saved for "after_recreation"
       And the "before" and "after_recreation" cluster configuration matches with the expected for gprecoverseg newhost
