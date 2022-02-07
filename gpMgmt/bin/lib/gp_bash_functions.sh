@@ -228,7 +228,7 @@ REMOTE_EXECUTE_AND_GET_OUTPUT () {
   LOG_MSG "[INFO]:-Start Function $FUNCNAME"
   HOST="$1"
   CMD="echo 'GP_DELIMITER_FOR_IGNORING_BASH_BANNER';$2"
-  OUTPUT=$( $TRUSTED_SHELL "$HOST" "$CMD" | $AWK '/^GP_DELIMITER_FOR_IGNORING_BASH_BANNER/ {seen = 1} seen {print}' | $TAIL -n +2 )
+  OUTPUT=($( $TRUSTED_SHELL "$HOST" "$CMD" | $AWK '/^GP_DELIMITER_FOR_IGNORING_BASH_BANNER/ {seen = 1} seen {print}' | $TAIL -n +2 ))
   RETVAL=$?
   if [ $RETVAL -ne 0 ]; then
  
