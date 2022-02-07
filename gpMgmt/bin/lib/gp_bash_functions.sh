@@ -246,6 +246,7 @@ REMOTE_EXECUTE_AND_GET_OUTPUT () {
 # Parameter 1 -> Host name to execute the command
 # Parameter 2 -> Command/s to be executed
 # Executes REMOTE_EXECUTE_AND_GET_OUTPUT, converts output into array and returns
+# Limitations: Same as REMOTE_EXECUTE_AND_GET_OUTPUT
 REMOTE_EXECUTE_AND_GET_ARRAY_OUTPUT () {
   OUTPUT = ( $( REMOTE_EXECUTE_AND_GET_OUTPUT "$@"))
   echo "$OUTPUT"
