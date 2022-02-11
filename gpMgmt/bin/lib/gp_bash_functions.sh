@@ -228,7 +228,7 @@ REMOTE_EXECUTE_AND_GET_OUTPUT () {
   LOG_MSG "[INFO]:-Start Function $FUNCNAME"
   HOST="$1"
   CMD="echo 'GP_DELIMITER_FOR_IGNORING_BASH_BANNER';$2"
-  OUTPUT=$( $TRUSTED_SHELL "$HOST" "$CMD" | $AWK '/^GP_DELIMITER_FOR_IGNORING_BASH_BANNER/ {seen = 1} seen {print}' | $TAIL -n +2 )
+  OUTPUT=($( $TRUSTED_SHELL "$HOST" "$CMD" | $AWK '/^GP_DELIMITER_FOR_IGNORING_BASH_BANNER/ {seen = 1} seen {print}' | $TAIL -n +2 ))
   RETVAL=$?
   if [ $RETVAL -ne 0 ]; then
  
@@ -238,7 +238,7 @@ REMOTE_EXECUTE_AND_GET_OUTPUT () {
   fi
   LOG_MSG "[INFO]:-End Function $FUNCNAME"
   #Return output
-  echo "$OUTPUT"
+  echo "${OUTPUT[@]}"
 }
 
 POSTGRES_VERSION_CHK() {
@@ -757,7 +757,7 @@ BUILD_COORDINATOR_PG_HBA_FILE () {
         if [ $HBA_HOSTNAMES -eq 0 ];then
             local COORDINATOR_IP_ADDRESS_NO_LOOPBACK=($("$GPHOME"/libexec/ifaddrs --no-loopback))
             if [ x"" != x"$STANDBY_HOSTNAME" ] && [ "$STANDBY_HOSTNAME" != "$COORDINATOR_HOSTNAME" ];then
-                local STANDBY_IP_ADDRESS_NO_LOOPBACK=($( REMOTE_EXECUTE_AND_GET_OUTPUT $STANDBY_HOSTNAME "'$GPHOME'/libexec/ifaddrs --no-loopback" ))
+                local STANDBY_IP_ADDRESS_NO_LOOPBACK=$( REMOTE_EXECUTE_AND_GET_OUTPUT $STANDBY_HOSTNAME "'$GPHOME'/libexec/ifaddrs --no-loopback" )
             fi
             for ADDR in "${COORDINATOR_IP_ADDRESS_NO_LOOPBACK[@]}" "${STANDBY_IP_ADDRESS_NO_LOOPBACK[@]}"
             do
@@ -862,7 +862,7 @@ GET_PG_PID_ACTIVE () {
 			if [ $RETVAL -ne 0 ];then
 				PID=0
 			else
-				PORT_ARRAY=($( REMOTE_EXECUTE_AND_GET_OUTPUT $HOST $SS -an 2>/dev/null |$AWK '{for (i =1; i<=NF ; i++) if ($i==".s.PGSQL.${PORT}") print $i}'|$AWK -F"." '{print $NF}'|$SORT -u))
+				PORT_ARRAY=$( REMOTE_EXECUTE_AND_GET_OUTPUT $HOST $SS -an 2>/dev/null |$AWK '{for (i =1; i<=NF ; i++) if ($i==".s.PGSQL.${PORT}") print $i}'|$AWK -F"." '{print $NF}'|$SORT -u)
 				for P_CHK in ${PORT_ARRAY[@]}
 				do
 					if [ $P_CHK -eq $PORT ];then  PG_LOCK_NETSTAT=$PORT;fi
