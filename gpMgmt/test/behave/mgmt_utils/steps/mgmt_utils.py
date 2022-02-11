@@ -488,7 +488,7 @@ def impl(context):
     if(result[0] != 0):
         raise Exception ("Expected error code is 0. Command returned error code:%s.\nStderr:%s\n" % (result[0], result[2]))
 
-    message = message + "\n1"
+    message = message + " 1"
     if(result[1].strip() != message):
         raise Exception ("Expected output is: [%s] while received output is:[%s] Return code:%s" %(message, result[1], result[0]))
 
@@ -504,7 +504,7 @@ def impl(context):
     if(result[0] != 0):
         raise Exception ("Expected error code is 0. Command returned error code:%s.\nStderr:%s\n" % (result[0], result[2]))
 
-    message = "%s\n%s\n%s" %(message, token, message)
+    message = "%s %s %s" %(message, token, message)
     if(result[1].strip() != message):
         raise Exception ("Expected output is: [%s] while received output is:[%s] Return code:%s" %(message, result[1], result[0]))
 
