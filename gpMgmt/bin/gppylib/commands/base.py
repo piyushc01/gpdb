@@ -605,6 +605,25 @@ class Command(object):
             self.logger.debug(self.results)
             raise ExecutionError("non-zero rc: %d" % self.results.rc, self)
 
+class BannerSafeCommand(Command):
+    # Executes command and returns output by removing banner
+    def __init__(self, name, gphome, cmdStr, ctxt=LOCAL, remoteHost=None):
+        self.gphome = gphome
+        self.cmdStr = "echo 'START_CMD_OUTPUT';"+cmdStr
+        self.ctxt = ctxt
+        self.remoteHost = remoteHost
+        Command.__init__(self, name, self.cmdStr, self.ctxt, self.remoteHost)
+
+    def get_output(self):
+        # Retrns output by removing banner and token
+        sout = self.results.stdout.lstrip(' ')
+        sout = sout.split('START_CMD_OUTPUT\n')[1].strip()
+        return sout
+
+    def execute_command(self):
+        logger.info("Executing banner-safe command:"+self.cmdStr)
+        self.run(validateAfter=True)
+
 
 class SQLCommand(Command):
     """Base class for commands that execute SQL statements.  Classes

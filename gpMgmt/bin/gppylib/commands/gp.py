@@ -1004,25 +1004,25 @@ def _get_cmd_for_recovery_wrapper(wrapper_filename, confinfo, logdir, batchSize,
 
 
 #-----------------------------------------------
-class GpVersion(Command):
+class GpVersion(BannerSafeCommand):
     def __init__(self,name,gphome,ctxt=LOCAL,remoteHost=None):
         # XXX this should make use of the gphome that was passed
         # in, but this causes problems in some environments and
         # requires further investigation.
-
         self.gphome=gphome
-        #self.cmdStr="%s/bin/postgres --gp-version" % gphome
-        self.cmdStr="$GPHOME/bin/postgres --gp-version"
-        Command.__init__(self,name,self.cmdStr,ctxt,remoteHost)
+        self.cmdStr = "$GPHOME/bin/postgres --gp-version"
+        BannerSafeCommand.__init__(self, name, gphome, self.cmdStr)
 
     def get_version(self):
-        return self.results.stdout.strip()
+        output = BannerSafeCommand.get_output()
+        return output
 
     @staticmethod
-    def local(name,gphome):
-        cmd=GpVersion(name,gphome)
-        cmd.run(validateAfter=True)
-        return cmd.get_version()
+    def local(name, gphome):
+        cmdStr = "$GPHOME/bin/postgres --gp-version"
+        cmd = BannerSafeCommand(name, gphome, cmdStr)
+        cmd.execute_command()
+        return cmd.get_output()
 
 #-----------------------------------------------
 class GpCatVersion(Command):
