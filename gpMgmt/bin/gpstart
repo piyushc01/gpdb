@@ -194,7 +194,7 @@ class GpStart:
         pgconf_dict = pgconf.readfile(self.coordinator_datadir + "/postgresql.conf")
         self.port = pgconf_dict.int('port')
         logger.debug("Read from postgresql.conf port=%s" % self.port)
-        self.max_connections = pgconf_dict.int('max_connections')
+        self.max_connyections = pgconf_dict.int('max_connections')
         logger.debug("Read from postgresql.conf max_connections=%s" % self.max_connections)
 
     ######
