@@ -172,11 +172,11 @@ class RecoveryTriplets(abc.ABC):
                 failover.setSegmentHostName(req.failover_host)
                 failover.setSegmentPort(int(req.failover_port))
                 failover.setSegmentDataDirectory(req.failover_datadir)
-                failover.unreachable = False if req.failover_to_new_host else failover.unreachable
-                if (failover.getSegmentHostName() in unreachable_hosts):
-                    failover.unreachable = True
-                else:
-                    failover.unreachable = False
+                failover.unreachable = False if (req.failover_to_new_host or failover.getSegmentHostName() not in unreachable_hosts) else failover.unreachable
+                ## if (failover.getSegmentHostName() in unreachable_hosts):
+                ##     failover.unreachable = True
+                ## else:
+                ##     failover.unreachable = False
                 #if req.failed.unreachable and not req.failover_to_new_host:
                     # TODO Failed host cannot be reached and in-place recovery : Log warning?
                     #logging.Logger.info()
