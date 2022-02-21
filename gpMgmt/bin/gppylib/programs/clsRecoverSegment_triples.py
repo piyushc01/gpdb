@@ -182,6 +182,12 @@ class RecoveryTriplets(abc.ABC):
                     #logging.Logger.info()
                     #failover.setSegmentStatus(STATUS_UP)
 
+            else:
+                # This means recovery in place, check for host reachable
+                if(req.failed.address in unreachable_hosts):
+                    req.failed.unreachable = True
+                    # As ureachable, skip the recovery
+                    continue
             # this must come AFTER the if check above because failedSegment can be adjusted to
             #   point to a different object
             peer = dbIdToPeerMap.get(req.failed.getSegmentDbId())
