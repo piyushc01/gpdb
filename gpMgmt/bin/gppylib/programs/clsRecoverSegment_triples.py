@@ -216,7 +216,7 @@ class RecoveryTripletsInplace(RecoveryTriplets):
 
 
 class RecoveryTripletsNewHosts(RecoveryTriplets):
-    def __init__(self, gpArray, newHosts):
+    def __init__(self, gpArray, newHosts, paralleldegree):
         super().__init__(gpArray)
         self.newHosts = [] if not newHosts else newHosts[:]
         self.portAssigner = self._PortAssigner(gpArray)
