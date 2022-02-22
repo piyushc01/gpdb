@@ -184,7 +184,7 @@ class RecoveryTriplets(abc.ABC):
 
             else:
                 # This means recovery in place, check for host reachable
-                if(req.failed.address in unreachable_hosts):
+                if(req.failed.address in unreachable_hosts or req.failed.unreachable):
                     req.failed.unreachable = True
                     # As ureachable, skip the recovery
                     continue
