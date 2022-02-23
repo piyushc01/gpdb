@@ -119,7 +119,7 @@ def impl(context, test_case):
 sdw5|20001|/data/gpdata/primary/gpseg1 sdw1|20001|/data/gpdata/primary/gpseg1
 sdw5|20002|/data/gpdata/mirror/gpseg6 sdw1|21000|/data/gpdata/mirror/gpseg6
 sdw5|20003|/data/gpdata/mirror/gpseg7 sdw1|21001|/data/gpdata/mirror/gpseg7'''
-      if test_case == "one_host_down_-i":
+    if test_case == "one_host_down_-i":
         down = 'sdw1'
         spare = 'sdw5'
         hostname_filter = "hostname in ('sdw5')"
