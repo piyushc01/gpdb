@@ -47,7 +47,7 @@ Feature: gprecoverseg tests involving migrating to a new host
        Then the user runs command "echo 'sdw1|20001|/data/gpdata/primary/gpseg1 sdw5|20001|/data/gpdata/primary/gpseg1' >> /tmp/test-gprecoverseg01-scheraio-config-file"
        Then the user runs "gprecoverseg -i /tmp/test-gprecoverseg01-scheraio-config-file -av"
        Then gprecoverseg should return a return code of 0
-       #Then segment hosts "sdw1" are reconnected to the cluster and to the spare segment hosts "sdw6"
+       Then segment hosts "sdw1" are reconnected to the cluster and to the spare segment hosts "sdw6"
        Then the original cluster state is recreated for "one_host_down_-i"
        #And database "gptest" exists
        And the cluster configuration is saved for "after_recreation"
@@ -70,7 +70,7 @@ Feature: gprecoverseg tests involving migrating to a new host
        Then the user runs "gprecoverseg -i /tmp/test-gprecoverseg01-scheraio-config-file -av"
        Then gprecoverseg should return a return code of 0
        Then the original cluster state is recreated for "one_host_down_-i"
-       #Then segment hosts "sdw1" are reconnected to the cluster and to the spare segment hosts "sdw6"
+       Then segment hosts "sdw1" are reconnected to the cluster and to the spare segment hosts "sdw6"
        #And database "gptest" exists
        And the cluster configuration is saved for "after_recreation"
        And the "before" and "after_recreation" cluster configuration matches with the expected for gprecoverseg newhost
@@ -92,7 +92,7 @@ Feature: gprecoverseg tests involving migrating to a new host
        Then the user runs "gprecoverseg -i /tmp/test-gprecoverseg01-scheraio-config-file -av"
        Then gprecoverseg should return a return code of 0
        Then the original cluster state is recreated for "one_host_down_-i"
-       #Then segment hosts "sdw1" are reconnected to the cluster and to the spare segment hosts "sdw6"
+       Then segment hosts "sdw1" are reconnected to the cluster and to the spare segment hosts "sdw6"
        #Then the original cluster state is recreated for "one_host_down"
        #And database "gptest" exists
        And the cluster configuration is saved for "after_recreation"
