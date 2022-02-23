@@ -43,8 +43,8 @@ Feature: gprecoverseg tests involving migrating to a new host
        And the cluster configuration has no segments where "hostname='sdw1' and status='u'"
        When the user runs command "echo 'sdw1|20000|/data/gpdata/primary/gpseg0 sdw5|20000|/data/gpdata/primary/gpseg0' > /tmp/test-gprecoverseg01-scheraio-config-file"
        Then the user runs command "echo 'sdw1|21001|/data/gpdata/mirror/gpseg7 sdw5|21001|/data/gpdata/mirror/gpseg7' >> /tmp/test-gprecoverseg01-scheraio-config-file"
-       Then the user runs command "echo 'sdw2|21000|/data/gpdata/mirror/gpseg6 sdw5|21000|/data/gpdata/mirror/gpseg6' >> /tmp/test-gprecoverseg01-scheraio-config-file"
-       Then the user runs command "echo 'sdw2|20001|/data/gpdata/primary/gpseg1 sdw5|21001|/data/gpdata/primary/gpseg1' >> /tmp/test-gprecoverseg01-scheraio-config-file"
+       Then the user runs command "echo 'sdw1|21000|/data/gpdata/mirror/gpseg6 sdw5|21000|/data/gpdata/mirror/gpseg6' >> /tmp/test-gprecoverseg01-scheraio-config-file"
+       Then the user runs command "echo 'sdw1|20001|/data/gpdata/primary/gpseg1 sdw5|21001|/data/gpdata/primary/gpseg1' >> /tmp/test-gprecoverseg01-scheraio-config-file"
        Then the user runs "gprecoverseg -i /tmp/test-gprecoverseg01-scheraio-config-file -av"
        Then gprecoverseg should return a return code of 0
        Then segment hosts "sdw1" are reconnected to the cluster and to the spare segment hosts "sdw6"
@@ -65,7 +65,7 @@ Feature: gprecoverseg tests involving migrating to a new host
        And the cluster configuration has no segments where "hostname='sdw1' and status='u'"
        When the user runs command "echo 'sdw1|20000|/data/gpdata/primary/gpseg0 sdw5|20000|/data/gpdata/primary/gpseg0' > /tmp/test-gprecoverseg01-scheraio-config-file"
        #Then the user runs command "echo 'sdw2|20000|/data/gpdata/primary/gpseg2 sdw5|20000|/data/gpdata/primary/gpseg2' >> /tmp/test-gprecoverseg01-scheraio-config-file"
-       Then the user runs command "echo 'sdw2|21000|/data/gpdata/mirror/gpseg6 sdw5|21000|/data/gpdata/mirror/gpseg6' >> /tmp/test-gprecoverseg01-scheraio-config-file"
+       Then the user runs command "echo 'sdw1|21000|/data/gpdata/mirror/gpseg6 sdw5|21000|/data/gpdata/mirror/gpseg6' >> /tmp/test-gprecoverseg01-scheraio-config-file"
        #Then the user runs command "echo 'sdw2|21001|/data/gpdata/mirror/gpseg1 sdw5|21001|/data/gpdata/mirror/gpseg1' >> /tmp/test-gprecoverseg01-scheraio-config-file"
        Then the user runs "gprecoverseg -i /tmp/test-gprecoverseg01-scheraio-config-file -av"
        Then gprecoverseg should return a return code of 0
