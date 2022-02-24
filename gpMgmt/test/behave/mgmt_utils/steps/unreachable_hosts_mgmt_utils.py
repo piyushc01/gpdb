@@ -132,13 +132,17 @@ sdw5|21001|/data/gpdata/mirror/gpseg7 sdw1|21001|/data/gpdata/mirror/gpseg7'''
         spare = 'sdw5'
         hostname_filter = "hostname in ('sdw5')"
         expected_config = '''sdw5|20000|/data/gpdata/primary/gpseg0 sdw1|20000|/data/gpdata/primary/gpseg0
+sdw1|20001|/data/gpdata/primary/gpseg1 sdw1|20001|/data/gpdata/primary/gpseg1
+sdw1|21001|/data/gpdata/mirror/gpseg7 sdw1|21001|/data/gpdata/mirror/gpseg7
 sdw5|21000|/data/gpdata/mirror/gpseg6 sdw1|21000|/data/gpdata/mirror/gpseg6'''
     elif test_case == "one_host_down-3":
         down = 'sdw1'
         spare = 'sdw5'
         hostname_filter = "hostname in ('sdw5')"
         expected_config = '''sdw5|20000|/data/gpdata/primary/gpseg0 sdw1|20000|/data/gpdata/primary/gpseg0
-        sdw5|20001|/data/gpdata/primary/gpseg1 sdw1|20001|/data/gpdata/primary/gpseg1'''
+sdw5|20001|/data/gpdata/primary/gpseg1 sdw1|20001|/data/gpdata/primary/gpseg1
+sdw1|21001|/data/gpdata/mirror/gpseg7 sdw1|21001|/data/gpdata/mirror/gpseg7
+sdw1|21000|/data/gpdata/mirror/gpseg6 sdw1|21000|/data/gpdata/mirror/gpseg6'''
     elif test_case == "two_hosts_down":
         down = 'sdw1,sdw3'
         spare = 'sdw5,sdw6'
