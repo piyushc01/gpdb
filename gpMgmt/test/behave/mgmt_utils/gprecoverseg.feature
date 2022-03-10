@@ -301,6 +301,7 @@ Feature: gprecoverseg tests
 
       And the user runs psql with "-c 'DROP TABLE foo'" against database "postgres"
       And the cluster is returned to a good state
+      And all the segments are running
 
       Examples:
         | scenario    | args |
@@ -312,6 +313,7 @@ Feature: gprecoverseg tests
   @concourse_cluster
   Scenario: incremental recovery works with tablespaces on a multi-host environment
     Given the database is running
+    And all the segments are running
     And a tablespace is created with data
     And user stops all primary processes
     And user can start transactions
@@ -319,6 +321,7 @@ Feature: gprecoverseg tests
     Then gprecoverseg should return a return code of 0
     And the segments are synchronized
     And the tablespace is valid
+    And all the segments are running
 
     Given another tablespace is created with data
     When the user runs "gprecoverseg -ra"
@@ -326,10 +329,12 @@ Feature: gprecoverseg tests
     And the segments are synchronized
     And the tablespace is valid
     And the other tablespace is valid
+    And all the segments are running
 
   @concourse_cluster
   Scenario: full recovery works with tablespaces on a multi-host environment
     Given the database is running
+    And all the segments are running
     And a tablespace is created with data
     And user stops all primary processes
     And user can start transactions
@@ -337,6 +342,7 @@ Feature: gprecoverseg tests
     Then gprecoverseg should return a return code of 0
     And the segments are synchronized
     And the tablespace is valid
+    And all the segments are running
 
     Given another tablespace is created with data
     When the user runs "gprecoverseg -ra"
@@ -344,10 +350,12 @@ Feature: gprecoverseg tests
     And the segments are synchronized
     And the tablespace is valid
     And the other tablespace is valid
+    And all the segments are running
 
   @concourse_cluster
   Scenario: recovering a host with tablespaces succeeds
     Given the database is running
+    And all the segments are running
 
         # Add data including tablespaces
     And a tablespace is created with data
