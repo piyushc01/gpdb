@@ -15,8 +15,7 @@ for executing this set of commands.
 
 
 """
-
-
+import datetime
 from queue import Queue, Empty
 from threading import Thread
 
@@ -526,6 +525,8 @@ class Command(object):
     cmdStr = None
     results = None
     exec_context = None
+    cmd_id = None
+
     propagate_env_map = {}  # specific environment variables for this command instance
 
     def __init__(self, name, cmdStr, ctxt=LOCAL, remoteHost=None, stdin=None, gphome=None, pickled=False):
@@ -551,7 +552,11 @@ class Command(object):
 
     def run(self, validateAfter=False):
         self.logger.debug("Running Command: %s" % self.cmdStr)
+        start_time = datetime.datetime.now()
         self.exec_context.execute(self, pickled=self.pickled)
+        end_time = datetime.datetime.now()
+        diff = end_time - start_time
+        self.results.cmd_runtime = diff.total_seconds()
 
         if validateAfter:
             self.validate()
@@ -560,8 +565,16 @@ class Command(object):
     def set_results(self, results):
         self.results = results
 
+    def set_cmd_id(self, cmd_id):
+        self.cmd_id = cmd_id
+    def get_cmd_id(self):
+        return self.cmd_id
+
     def get_results(self):
         return self.results
+
+    def get_cmd_runtime(self):
+        return self.results.cmd_runtime
 
     def get_stdout(self, strip=True):
         if self.results is None:

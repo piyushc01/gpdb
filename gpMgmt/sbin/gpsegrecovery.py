@@ -7,6 +7,7 @@ from gppylib.commands.base import Command
 from gppylib.commands.gp import SegmentStart
 from gppylib.gparray import Segment
 from gppylib.commands.gp import ModifyConfSetting
+from gppylib.db import dbconn
 
 
 class FullRecovery(Command):
@@ -35,6 +36,7 @@ class FullRecovery(Command):
                            forceoverwrite=self.forceoverwrite,
                            target_gp_dbid=self.recovery_info.target_segment_dbid,
                            progress_file=self.recovery_info.progress_file)
+        cmd.set_cmd_id = self.recovery_info.target_segment_dbid
         self.logger.info("Running pg_basebackup with progress output temporarily in %s" % self.recovery_info.progress_file)
         try:
             cmd.run(validateAfter=True)
@@ -61,6 +63,23 @@ class FullRecovery(Command):
         self.logger.info("Successfully ran pg_basebackup for dbid: {}".format(
             self.recovery_info.target_segment_dbid))
 
+        cmd_runtime = cmd.get_cmd_runtime()
+        #Push this data to segment DB:
+        dburl = dbconn.DbURL(hostname=self.recovery_info.source_hostname,
+                             port=self.recovery_info.source_port, dbname='template1')
+        conn = dbconn.connect(dburl, utility=True)
+        dbconn.execSQL(conn, "CREATE TABLE IF NOT EXISTS recovery_history_table("
+                             "ID  SERIAL PRIMARY KEY, SOURCE_DBID INTEGER, DEST_DBID INTEGER, RECOVERY_IS_FULL INTEGER ,"
+                             "RECOVERY_TIME INTEGER, NETWORK_SPPED_AT_START INTEGER , DISK_READ_SPEED INTEGER, "
+                             "RECOVERY_SIZE INTEGER );")
+
+        postgres_insert_query = "INSERT INTO recovery_history_table(SOURCE_DBID, DEST_DBID, RECOVERY_IS_FULL, RECOVERY_TIME," \
+                                " METWORK_SPEED_AT_START, DISK_READ_SPEED, RECOVERY_SIZE) VALUES (%d, %d, 1, %d, 0, 0, 0)" \
+                                %(self.recovery_info.target_segment_dbid, self.recovery_info.target_segment_dbid, cmd_runtime)
+
+        dbconn.execSQL(conn, postgres_insert_query)
+        conn.close()
+
         # Updating port number on conf after recovery
         self.error_type = RecoveryErrorType.UPDATE_ERROR
         update_port_in_conf(self.recovery_info, self.logger)
@@ -79,16 +98,39 @@ class IncrementalRecovery(Command):
         self.logger = logger
         self.error_type = RecoveryErrorType.DEFAULT_ERROR
 
+    def get_network_speed(self, hostname):
+        cmd_str = "dd if=/dev/zero of=test bs=1024k count=200 2>/dev/null;rsync -av test %s:test|tail -2|head -1" % hostname
+        cmd = Command(name='Get-Network-Speed', cmdStr=cmd_str, ctxt=REMOTE, remoteHost=hostname)
+        cmd.run(validateAfter=True)
+        str_output = cmd.get_results().stdout
+        # sent 58060 bytes  received 101430 bytes  106326.67 bytes/sec
+
     @set_recovery_cmd_results
     def run(self):
         self.logger.info("Running pg_rewind with progress output temporarily in %s" % self.recovery_info.progress_file)
+
         self.error_type = RecoveryErrorType.REWIND_ERROR
         cmd = PgRewind('rewind dbid: {}'.format(self.recovery_info.target_segment_dbid),
                        self.recovery_info.target_datadir, self.recovery_info.source_hostname,
                        self.recovery_info.source_port, self.recovery_info.progress_file)
         cmd.run(validateAfter=True)
         self.logger.info("Successfully ran pg_rewind for dbid: {}".format(self.recovery_info.target_segment_dbid))
+        cmd_runtime = cmd.get_cmd_runtime()
+        # Push this data to segment DB:
+        dburl = dbconn.DbURL(hostname=self.recovery_info.source_hostname, port=self.recovery_info.source_port, dbname='template1')
+        conn = dbconn.connect(dburl, utility=True)
+        dbconn.execSQL(conn, "CREATE SCHEMA IF NOT EXISTS gpdb_test;")
 
+        dbconn.execSQL(conn, "CREATE TABLE IF NOT EXISTS gpdb_test.recovery_history_table("
+                             "ID  SERIAL PRIMARY KEY, SOURCE_DBID INTEGER, DEST_DBID INTEGER, RECOVERY_IS_FULL INTEGER ,"
+                             "RECOVERY_TIME INTEGER, NETWORK_SPEED_AT_START INTEGER , DISK_READ_SPEED INTEGER, "
+                             "RECOVERY_SIZE INTEGER );")
+        postgres_insert_query = "INSERT INTO gpdb_test.recovery_history_table(SOURCE_DBID, DEST_DBID, RECOVERY_IS_FULL, RECOVERY_TIME," \
+                                " NETWORK_SPEED_AT_START, DISK_READ_SPEED, RECOVERY_SIZE) VALUES (%d, %d, 0, %d, 0, 0, 0)" \
+                                % (self.recovery_info.target_segment_dbid, self.recovery_info.target_segment_dbid,
+                                   cmd_runtime)
+        dbconn.execSQL(conn, postgres_insert_query)
+        conn.close()
         # Updating port number on conf after recovery
         self.error_type = RecoveryErrorType.UPDATE_ERROR
         update_port_in_conf(self.recovery_info, self.logger)
