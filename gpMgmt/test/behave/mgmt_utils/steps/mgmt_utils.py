@@ -433,7 +433,7 @@ def impl(context, content):
 @then('the user waits until recovery_progress.file is created in {logdir} and verifies its format')
 def impl(context, logdir):
     attempt = 0
-    num_retries = 60000
+    num_retries = 6000
     log_dir = _get_gpAdminLogs_directory() if logdir == 'gpAdminLogs' else logdir
     recovery_progress_file = '{}/recovery_progress.file'.format(log_dir)
     while attempt < num_retries:
@@ -449,7 +449,7 @@ def impl(context, logdir):
                     return
                 else:
                     raise Exception('File present but incorrect format line "{}"'.format(line))
-        time.sleep(0.01)
+        time.sleep(0.1)
         if attempt == num_retries:
             raise Exception('Timed out after {} retries'.format(num_retries))
 

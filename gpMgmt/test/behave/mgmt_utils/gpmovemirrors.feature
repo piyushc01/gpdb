@@ -247,6 +247,7 @@ Feature: Tests for gpmovemirrors
     And the "test_recoverseg" table row count in "postgres" is saved
     And the user asynchronously runs "gprecoverseg -aF" and the process is saved
     And the user waits until recovery_progress.file is created in gpAdminLogs and verifies its format
+    And an FTS probe is triggered
     And the user waits until mirror on content 1,2 is up
     And verify that mirror on content 0 is down
     And the gprecoverseg lock directory is removed
@@ -288,6 +289,7 @@ Feature: Tests for gpmovemirrors
     And the "test_recoverseg" table row count in "postgres" is saved
     And the user asynchronously runs "gprecoverseg -aF" and the process is saved
     And the user waits until recovery_progress.file is created in gpAdminLogs and verifies its format
+    And an FTS probe is triggered
     And the user waits until mirror on content 2 is up
     And verify that mirror on content 0,1 is down
     And the gprecoverseg lock directory is removed
