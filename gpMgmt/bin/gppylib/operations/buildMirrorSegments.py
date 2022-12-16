@@ -59,8 +59,6 @@ gDatabaseFiles = [
 
 def get_recovery_progress_file(gplog):
     # recovery progress file on the coordinator, used by gpstate to read and show progress
-    if not os.path.exists(gplog.get_logger_dir()) or not os.path.isdir(gplog.get_logger_dir()):
-        logger.warning("Given log directory %s does not exists." % gplog.get_logger_dir())
     return "{}/recovery_progress.file".format(gplog.get_logger_dir())
 
 
@@ -420,10 +418,6 @@ class GpMirrorListToBuild:
                     written = True
                 # Make sure every line is updated with the final status.
                 print_progress()
-        except Exception as e:
-            self.__logger.warning("Error while opening the recovery progress file: %s" % combined_progress_filepath)
-            self.__logger.warning(str(e))
-            raise e
         finally:
             if os.path.exists(combined_progress_filepath):
                 os.remove(combined_progress_filepath)
