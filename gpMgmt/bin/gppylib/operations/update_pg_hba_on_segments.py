@@ -111,6 +111,7 @@ def update_pg_hba_on_segments(gpArray, hba_hostnames, batch_size,
     update_cmds = []
     unreachable_seg_hosts = []
 
+
     for segmentPair in gpArray.getSegmentList():
 
         if contents_to_update and not segmentPair.primaryDB.getSegmentContentId() in contents_to_update:
@@ -120,6 +121,13 @@ def update_pg_hba_on_segments(gpArray, hba_hostnames, batch_size,
         if segmentPair.primaryDB.unreachable or not segmentPair.mirrorDB or segmentPair.mirrorDB.unreachable:
             unreachable_seg_hosts.append(segmentPair.primaryDB.getSegmentHostName())
             continue
+        # Remove any old replication entries from pg_hba.conf
+        cmdStr = "sed  -i'.bak1' -e \"s/^host  replication {username} */#host  replication/\" {datadir}/pg_hba.conf".format(
+                 username=unix.getUserName(), datadir=segmentPair.primaryDB.datadir)
+        cmd = Command(name="delete previous replication entries from  pg_hba.conf",
+                      cmdStr=cmdStr, ctxt=base.REMOTE, remoteHost=segmentPair.primaryDB.hostname)
+        cmd.run(validateAfter=True)
+
 
         primary_hostname = segmentPair.primaryDB.getSegmentHostName()
         mirror_hostname = segmentPair.mirrorDB.getSegmentHostName()
@@ -145,7 +153,15 @@ def update_pg_hba_on_segments(gpArray, hba_hostnames, batch_size,
 
 def update_pg_hba_for_new_mirrors(PgHbaEntriesToUpdate, hba_hostnames, batch_size):
     update_cmds = []
+    # Remove any replication entries from pg_hba.conf
     for primary_datadir, primary_hostname, newMirror_hostname in PgHbaEntriesToUpdate:
+        # Remove any old replication entries from pg_hba.conf
+        cmdStr = "sed -i'.bak1' -e \"s/^host  replication {username} */#host  replication/\" {datadir}/pg_hba.conf".format(
+            username=unix.getUserName(), datadir=primary_datadir)
+        cmd = Command(name="delete previous replication entries from  pg_hba.conf",
+                      cmdStr=cmdStr, ctxt=base.REMOTE, remoteHost=primary_hostname)
+        cmd.run(validateAfter=True)
+        
         entries = create_entries(primary_hostname, newMirror_hostname, hba_hostnames)
         update_cmds.append(SegUpdateHba(entries, primary_datadir,
                                         remoteHost=primary_hostname))
@@ -156,4 +172,6 @@ def update_pg_hba_for_new_mirrors(PgHbaEntriesToUpdate, hba_hostnames, batch_siz
         logger.info("None of the reachable segments require update to pg_hba.conf")
         return
 
+    # Get list of all IP addresses for primary host
+    # Remove replication entry from the pg_hba.conf for the each IP address listed above
     update_on_segments(update_cmds, batch_size)

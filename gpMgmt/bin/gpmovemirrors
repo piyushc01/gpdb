@@ -372,6 +372,7 @@ try:
                     PgHbaEntriesToUpdate.append((segment.getSegmentDataDirectory(), segment.getSegmentHostName(), newMirror.address))
 
 
+
     """ Prepare common execution steps for running commands on segments """
     oldMirrorsToMove = [mirror for mirror in newConfig.oldMirrorList if not mirror.inPlace]
     totalDirsToDelete = len(oldMirrorsToMove)
