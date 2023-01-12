@@ -1,0 +1,62 @@
+//syntax = "proto3";
+//
+//option go_package = "/agent";
+//
+//package main;
+//
+//service Calculator {
+//    rpc Add (AddRequest) returns (AddResponse);
+//}
+//
+//message AddRequest {
+//    int32 a = 1;
+//    int32 b = 2;
+//}
+//
+//message AddResponse {
+//    int32 result = 1;
+//}
+
+syntax = "proto3";
+
+option go_package = "/agent";
+
+package main;
+
+service CliToSegmentHost {
+    rpc createAndConfigureSegments(segmentConfigList) returns (segmentStatusList) {}
+}
+
+message segmentStatusList{
+    repeated segStatus segStatus=1;
+}
+
+message segStatus{
+    string dataDir=1;
+    int32 retVal=2;
+    string errMessage=3;
+}
+
+message segmentConfigList{
+    repeated segmentConfig segConfig=1;
+}
+
+message segmentConfig{
+    string dataDir=1;
+    int32 maxConnections=2;
+    string sharedBuffers=3;
+    lcStruct lcConfig=4;
+    int32 portNum=5;
+    int32 dbid=6;
+    int32 contentId=7;
+    string coordinatorIP=8;
+}
+
+message lcStruct {
+    string lcCollate=1;
+    string lcCtpye=2;
+    string lcMessages=3;
+    string lcMonetary=4;
+    string lcNumeric=5;
+    string lcTime=6;
+}

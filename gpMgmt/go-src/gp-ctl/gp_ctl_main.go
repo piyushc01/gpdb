@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"net"
@@ -45,22 +46,37 @@ var wg sync.WaitGroup
 
 func main() {
 	fmt.Println("GP-CT starting")
-	/*
-		lcSettings := lcStruct{"en_US.UTF-8", "en_US.UTF-8", "en_US.UTF-8",
-
-			"en_US.UTF-8", "en_US.UTF-8", "en_US.UTF-8"}
-		coordinator := segmentConfig{"/tmp/coordinator", 150, "128000kB", lcSettings}
-
-		out, retVal := createPgInstance(coordinator)
-		if retVal != nil {
-			fmt.Println("Error creating segment:")
-			fmt.Println(retVal.Error())
+	// sample: gp_ctl init
+	// sample: gp_ctl init --listener --port 9000
+	initFlag := flag.Bool("init", false, "Starts initialization of gpdb")
+	listenerFlag := flag.Bool("listener", false, "Starts segment listener process")
+	//listnerPort := flag.Int("port", segListnerPort, "Listen port fo initsystem segment listner")
+	flag.Parse()
+	if *initFlag {
+		//Check if segment listener mode, start listener
+		if *listenerFlag {
+			fmt.Println("GP-CT starting listener")
+			// Run as a listener to accept segment creation request
+			startSegmnetListener(segListnerPort)
 			return
 		}
-		fmt.Printf("\nINITDB RC:%s \nOutput:%s", retVal, out)
+		//GP-CTL init main
+		if !*listenerFlag {
+			fmt.Println("GP-CT starting initsystem")
+			err := startInitsystem()
+			if err != nil {
+				fmt.Println("GP-CT finished with error")
+			}
+			// createGpCluster()
 
-	*/
-	createGpCluster()
+		}
+
+	}
+
+	if !*initFlag && !*listenerFlag {
+		fmt.Println("GP-CT no parameters provided, existing")
+		return
+	}
 }
 
 func createGpCluster() {
