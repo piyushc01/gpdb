@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
@@ -19,7 +20,10 @@ import (
 	grpcStatus "google.golang.org/grpc/status"
 )
 
-var DialTimeout = 3 * time.Second
+var (
+	platform = utils.GetOS()
+	DialTimeout = 3 * time.Second
+)
 
 type Dialer func(ctx context.Context, target string, opts ...grpc.DialOption) (*grpc.ClientConn, error)
 
@@ -29,6 +33,7 @@ type Config struct {
 	Hostnames   []string `json:"hostnames"`
 	LogDir      string   `json:"hubLogDir"` // log directory for the hub itself; utilities might go somewhere else
 	ServiceName string   `json:"serviceName"`
+	GpHome      string   `json:"gphome"`
 
 	*utils.Credentials
 }
@@ -151,10 +156,16 @@ func (s *Server) StartAllAgents() error {
 	for _, host := range s.Hostnames {
 		remoteCmd = append(remoteCmd, "-h", host)
 	}
-	remoteCmd = append(remoteCmd, "service", fmt.Sprintf("%s_agent", s.ServiceName), "start")
-	err = exec.Command("gpssh", remoteCmd...).Run()
+	remoteCmd = append(remoteCmd, platform.GetStartAgentCmd(s.ServiceName)...)
+
+	err = exec.Command("/bin/bash", "-c", fmt.Sprintf("source %s/greenplum_path.sh", s.GpHome)).Run()
 	if err != nil {
 		return fmt.Errorf("Could not start agent: %w", err)
+	}
+	os.Setenv("PYTHONPATH", fmt.Sprintf("%s/lib/python:%s", s.GpHome, os.Getenv("PYTHONPATH")))
+	err = exec.Command(fmt.Sprintf("%s/bin/gpssh", s.GpHome), remoteCmd...).Run()
+	if err != nil {
+		return fmt.Errorf("Could not start agent: %w ", err)
 	}
 	return nil
 }

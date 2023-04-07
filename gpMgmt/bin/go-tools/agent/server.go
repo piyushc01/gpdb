@@ -4,12 +4,17 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"runtime"
 	"sync"
 
 	"github.com/greenplum-db/gpdb/gp/idl"
 	"github.com/greenplum-db/gpdb/gp/utils"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
+)
+
+var (
+	platform = utils.GetOS()
 )
 
 type Config struct {
@@ -91,10 +96,16 @@ func (s *Server) Status(ctx context.Context, in *idl.StatusAgentRequest) (*idl.S
 }
 
 func (s *Server) GetStatus() (*idl.ServiceStatus, error) {
-	message, err := utils.GetServiceStatusMessage(fmt.Sprintf("%s_agent", s.ServiceName))
+	service := ""
+	if runtime.GOOS == "linux" {
+		service = fmt.Sprintf("%s_agent", s.ServiceName)
+	}else if runtime.GOOS == "darwin"{
+		service = fmt.Sprintf("%s.agent", s.ServiceName)
+	}
+	message, err := platform.GetServiceStatusMessage(service)
 	if err != nil {
 		return nil, err
 	}
-	status := utils.ParseServiceStatusMessage(message)
+	status := platform.ParseServiceStatusMessage(message)
 	return &status, nil
 }

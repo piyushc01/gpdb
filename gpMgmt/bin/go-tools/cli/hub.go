@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
@@ -16,10 +15,11 @@ import (
 )
 
 var (
+	platform = utils.GetOS()
 	defaultHubLogDir  string = "/tmp"
 	defaultHubPort    int    = 4242
 	defaultAgentPort  int    = 8000
-	defaultServiceDir string = "/home/%s/.config/systemd/user"
+	defaultServiceDir string = platform.GetDefaultServiceDir()
 
 	agentPort      int
 	caCertPath     string
@@ -107,22 +107,22 @@ func RunInstall(cmd *cobra.Command, args []string) (err error) {
 		return err
 	}
 
-	err = CreateConfigFile(caCertPath, caKeyPath, serverCertPath, serverKeyPath, hubPort, agentPort, hostnames, hubLogDir, serviceName)
+	err = CreateConfigFile(caCertPath, caKeyPath, serverCertPath, serverKeyPath, hubPort, agentPort, hostnames, hubLogDir, serviceName, serviceDir)
 	if err != nil {
 		return err
 	}
 
-	err = CreateAndInstallHubServiceFile()
+	err = platform.CreateAndInstallHubServiceFile(gphome, serviceDir, serviceName)
 	if err != nil {
 		return err
 	}
 
-	err = CreateAndInstallAgentServiceFile()
+	err = platform.CreateAndInstallAgentServiceFile(hostnames, gphome, serviceDir, serviceName)
 	if err != nil {
 		return err
 	}
 
-	err = EnableSystemdUserServices()
+	err = utils.NewLinuxOS().EnableSystemdUserServices(serviceUser)
 	if err != nil {
 		return err
 	}
@@ -130,9 +130,9 @@ func RunInstall(cmd *cobra.Command, args []string) (err error) {
 	return nil
 }
 
-func CreateConfigFile(caCertPath, caKeyPath, serverCertPath, serverKeyPath string, hubPort, agentPort int, hostnames []string, hubLogDir, serviceName string) error {
+func CreateConfigFile(caCertPath, caKeyPath, serverCertPath, serverKeyPath string, hubPort, agentPort int, hostnames []string, hubLogDir, serviceName string, serviceDir string) error {
 	creds := &utils.Credentials{caCertPath, caKeyPath, serverCertPath, serverKeyPath}
-	conf = &hub.Config{hubPort, agentPort, hostnames, hubLogDir, serviceName, creds}
+	conf = &hub.Config{hubPort, agentPort, hostnames, hubLogDir, serviceName, gphome, creds}
 	configContents, err := json.MarshalIndent(conf, "", "\t")
 	if err != nil {
 		return fmt.Errorf("Could not generate configuration file: %w", err)
@@ -147,85 +147,6 @@ func CreateConfigFile(caCertPath, caKeyPath, serverCertPath, serverKeyPath strin
 		return fmt.Errorf("Could not write to configuration file %s: %w\n", configFilePath, err)
 	}
 	gplog.Info("Wrote configuration file to %s", configFilePath)
-	return nil
-}
-
-func CreateAndInstallHubServiceFile() error {
-	hubServiceContents := GenerateServiceFileContents("hub", gphome, serviceName)
-	hubServiceFilePath := fmt.Sprintf("%s/%s_hub.service", serviceDir, serviceName)
-	err := writeServiceFile(hubServiceFilePath, hubServiceContents)
-	if err != nil {
-		return err
-	}
-	gplog.Info("Wrote hub service file to %s on coordinator host", hubServiceFilePath)
-	return nil
-}
-
-func CreateAndInstallAgentServiceFile() error {
-	agentServiceContents := GenerateServiceFileContents("agent", gphome, serviceName)
-	localAgentServiceFilePath := fmt.Sprintf("./%s_agent.service", serviceName)
-	err := writeServiceFile(localAgentServiceFilePath, agentServiceContents)
-	if err != nil {
-		return err
-	}
-	defer os.Remove(localAgentServiceFilePath)
-
-	remoteAgentServiceFilePath := fmt.Sprintf("%s/%s_agent.service", serviceDir, serviceName)
-	remoteCmd := make([]string, 0)
-	for _, host := range conf.Hostnames {
-		remoteCmd = append(remoteCmd, "-h", host)
-	}
-	remoteCmd = append(remoteCmd, localAgentServiceFilePath, fmt.Sprintf("=:%s", remoteAgentServiceFilePath))
-	err = exec.Command("gpsync", remoteCmd...).Run()
-	if err != nil {
-		return fmt.Errorf("Could not copy agent service files to segment hosts: %w", err)
-	}
-	gplog.Info("Wrote agent service file to %s on segment hosts", remoteAgentServiceFilePath)
-	return nil
-}
-
-func EnableSystemdUserServices() error {
-	// Allow user services to run on startup and be started/stopped without root access
-	err := exec.Command("loginctl", "enable-linger", serviceUser).Run()
-	if err != nil {
-		return fmt.Errorf("Could not enable user lingering: %w", err)
-	}
-	// Allow user to view the status of their services
-	err = exec.Command("usermod", "-a", "-G", " systemd-journal", serviceUser).Run()
-	if err != nil {
-		return fmt.Errorf("Could not enable user journal access: %w", err)
-	}
-	return nil
-}
-
-func GenerateServiceFileContents(which string, gphome string, serviceName string) string {
-	template := `[Unit]
-Description=Greenplum Database management utility %[1]s
-
-[Service]
-Type=simple
-Environment=GPHOME=%[2]s
-ExecStart=%[2]s/bin/gp %[1]s
-Restart=on-failure
-
-[Install]
-Alias=%[3]s_%[1]s.service
-WantedBy=default.target
-`
-
-	return fmt.Sprintf(template, which, gphome, serviceName)
-}
-
-func writeServiceFile(filename string, contents string) error {
-	handle, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-	defer handle.Close()
-	if err != nil {
-		return fmt.Errorf("Could not create systemd service file %s: %w\n", filename, err)
-	}
-	_, err = handle.WriteString(contents)
-	if err != nil {
-		return fmt.Errorf("Could not write to systemd service file %s: %w\n", filename, err)
-	}
 	return nil
 }
 

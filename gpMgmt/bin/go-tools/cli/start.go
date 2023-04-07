@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"os/exec"
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpdb/gp/idl"
@@ -34,7 +33,7 @@ func startHubCmd() *cobra.Command {
 }
 
 func RunStartHub(cmd *cobra.Command, args []string) error {
-	err := exec.Command("service", fmt.Sprintf("%s_hub", conf.ServiceName), "start").Run()
+	err := platform.GetStartHubCmd(conf.ServiceName).Run()
 	if err != nil {
 		return fmt.Errorf("Could not start hub: %w", err)
 	}

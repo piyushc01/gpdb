@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime"
 
 	"github.com/greenplum-db/gpdb/gp/hub"
 	"github.com/greenplum-db/gpdb/gp/idl"
-	"github.com/greenplum-db/gpdb/gp/utils"
 	"github.com/spf13/cobra"
 )
+
 
 func statusCmd() *cobra.Command {
 	statusCmd := &cobra.Command{
@@ -67,13 +68,19 @@ func RunStatusAgent(cmd *cobra.Command, args []string) error {
 }
 
 func ShowHubStatus(conf *hub.Config) error {
-	message, err := utils.GetServiceStatusMessage(fmt.Sprintf("%s_hub", conf.ServiceName))
+	service := ""
+	if runtime.GOOS == "linux" {
+		service = fmt.Sprintf("%s_hub", conf.ServiceName)
+	}else if runtime.GOOS == "darwin"{
+		service = fmt.Sprintf("%s.hub", conf.ServiceName)
+	}
+	message, err := platform.GetServiceStatusMessage(service)
 	if err != nil {
 		return err
 	}
-	status := utils.ParseServiceStatusMessage(message)
+	status := platform.ParseServiceStatusMessage(message)
 	status.Host, _ = os.Hostname()
-	utils.DisplayServiceStatus([]*idl.ServiceStatus{&status})
+	platform.DisplayServiceStatus([]*idl.ServiceStatus{&status})
 	return nil
 }
 
@@ -82,6 +89,6 @@ func ShowAgentsStatus(client idl.HubClient, conf *hub.Config) error {
 	if err != nil {
 		return err
 	}
-	utils.DisplayServiceStatus(reply.Statuses)
+	platform.DisplayServiceStatus(reply.Statuses)
 	return nil
 }
