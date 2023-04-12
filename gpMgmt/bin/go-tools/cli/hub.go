@@ -62,7 +62,7 @@ func installCmd() *cobra.Command {
 	installCmd := &cobra.Command{
 		Use:    "install",
 		Short:  "Install gp as a systemd daemon",
-		PreRun: InitializeCommand,
+		PreRun: InitializeGplog,
 		RunE:   RunInstall,
 	}
 
