@@ -94,16 +94,16 @@ func (l *linuxOS) EnableSystemdUserServices(serviceUser string) error {
 	return nil
 }
 
-func (l * linuxOS) GetStartHubCmd(serviceName string) *exec.Cmd {
-	return exec.Command("service", fmt.Sprintf("%s_hub", serviceName), "start")
+func (l *linuxOS) GetStartHubCmd(serviceName string) *exec.Cmd {
+	return exec.Command("systemctl", "--user", "start", fmt.Sprintf("%s_hub", serviceName))
 }
 
-func (l * linuxOS) GetStartAgentCmd(serviceName string) []string {
-	return []string{"service", fmt.Sprintf("%s_agent", serviceName), "start"}
+func (l *linuxOS) GetStartAgentCmd(serviceName string) []string {
+	return []string{"systemctl", "--user", "start", fmt.Sprintf("%s_agent", serviceName)}
 }
 
-func (l * linuxOS) GetServiceStatusMessage(serviceName string) (string, error) {
-	output, err := exec.Command("service", serviceName, "status").Output()
+func (l *linuxOS) GetServiceStatusMessage(serviceName string) (string, error) {
+	output, err := exec.Command("systemctl", "--user", "status", serviceName).Output()
 	if err != nil {
 		if err.Error() != "exit status 3" { // 3 = service is stopped
 			return "", err
