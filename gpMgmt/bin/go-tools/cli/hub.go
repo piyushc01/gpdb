@@ -111,6 +111,11 @@ func RunInstall(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return err
 	}
+	err = os.MkdirAll(serviceDir, os.ModePerm)
+	if err != nil {
+		gplog.Error("Error creating directory for service:%s. Error:%w", serviceDir, err)
+		return err
+	}
 
 	err = platform.CreateAndInstallHubServiceFile(gphome, serviceDir, serviceName)
 	if err != nil {
