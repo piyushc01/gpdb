@@ -65,15 +65,36 @@ func (l *linuxOS) CreateAndInstallAgentServiceFile(hostnames []string, gphome st
 
 	remoteAgentServiceFilePath := fmt.Sprintf("%s/%s_agent.service", serviceDir, serviceName)
 	remoteCmd := make([]string, 0)
+	hostList := make([]string, 0)
 	for _, host := range hostnames {
-		remoteCmd = append(remoteCmd, "-h", host)
+		hostList = append(hostList, "-h", host)
 	}
-	remoteCmd = append(remoteCmd, localAgentServiceFilePath, fmt.Sprintf("=:%s", remoteAgentServiceFilePath))
+	// Create service-file directory if does not exists
+	remoteCmd = append(hostList, fmt.Sprintf("/usr/bin/mkdir -p %s", serviceDir))
+	err = exec.Command(fmt.Sprintf("%s/bin/gpssh", gphome), remoteCmd...).Run()
+	if err != nil {
+		gplog.Error("could not create service-file directory to segment hosts: %s\nCmd output:", err.Error())
+		return fmt.Errorf("could not create service-file directory to segment hosts: %s", err.Error())
+	}
+	gplog.Info("Created service-file directory at %s on segment hosts", remoteAgentServiceFilePath)
+
+	// Copy the service-file to service directory
+	remoteCmd = append(hostList, localAgentServiceFilePath, fmt.Sprintf("=:%s", remoteAgentServiceFilePath))
 	err = exec.Command("gpsync", remoteCmd...).Run()
 	if err != nil {
 		return fmt.Errorf("Could not copy agent service files to segment hosts: %w", err)
 	}
 	gplog.Info("Wrote agent service file to %s on segment hosts", remoteAgentServiceFilePath)
+
+	// Do systemctl daemon-reload to enable agent service
+	remoteCmd = append(hostList, "systemctl --user daemon-reload")
+	err = exec.Command(fmt.Sprintf("%s/bin/gpssh", gphome), remoteCmd...).Run()
+	if err != nil {
+		gplog.Error("could not reload systemctl daemon on segment hosts: %w", err)
+		return fmt.Errorf("could not reload systemctl daemon on segment hosts: %w", err)
+	}
+	gplog.Info("Reloaded systemctl daemon on segment hosts successfully")
+
 	return nil
 }
 
@@ -85,11 +106,6 @@ func (l *linuxOS) EnableSystemdUserServices(serviceUser string) error {
 	err := exec.Command("loginctl", "enable-linger", serviceUser).Run()
 	if err != nil {
 		return fmt.Errorf("Could not enable user lingering: %w", err)
-	}
-	// Allow user to view the status of their services
-	err = exec.Command("usermod", "-a", "-G", " systemd-journal", serviceUser).Run()
-	if err != nil {
-		return fmt.Errorf("Could not enable user journal access: %w", err)
 	}
 	return nil
 }
