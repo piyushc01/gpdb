@@ -3,11 +3,11 @@ package agent
 import (
 	"context"
 	"fmt"
-	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"net"
 	"runtime"
 	"sync"
 
+	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpdb/gp/idl"
 	"github.com/greenplum-db/gpdb/gp/utils"
 	"google.golang.org/grpc"
@@ -49,7 +49,7 @@ func (s *Server) Stop(ctx context.Context, in *idl.StopAgentRequest) (*idl.StopA
 
 func (s *Server) Start() error {
 	gplog.Debug("Entering function:Start")
-	lis, err := net.Listen("tcp", fmt.Sprintf("localhost:%d", s.Port))
+	lis, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", s.Port))
 	if err != nil {
 		gplog.Error("Could not listen on port %d: %s", s.Port, err.Error())
 		return fmt.Errorf("Could not listen on port %d: %w", s.Port, err)

@@ -69,7 +69,7 @@ func (s *Server) Start() error {
 	_, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", s.Port)) // TODO: make this "hostname:port" so it can be started from somewhere other than the coordinator host
+	lis, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", s.Port)) // TODO: make this "hostname:port" so it can be started from somewhere other than the coordinator host
 	if err != nil {
 		gplog.Error("Could not listen on port %d: %s", s.Port, err.Error())
 		return fmt.Errorf("Could not listen on port %d: %w", s.Port, err)
@@ -300,7 +300,8 @@ func (s *Server) StatusAgents(ctx context.Context, in *idl.StatusAgentsRequest) 
 
 	statuses := make([]*idl.ServiceStatus, 0)
 	for status := range statusChan {
-		statuses = append(statuses, &status)
+		s := status
+		statuses = append(statuses, &s)
 	}
 
 	gplog.Debug("Exiting function:StatusAgents")

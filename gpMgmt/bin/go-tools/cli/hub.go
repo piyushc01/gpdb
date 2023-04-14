@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -226,6 +227,18 @@ func CreateConfigFile(caCertPath, caKeyPath, serverCertPath, serverKeyPath strin
 		return fmt.Errorf("Could not write to configuration file %s: %w\n", configFilePath, err)
 	}
 	gplog.Debug("Wrote configuration file to %s", configFilePath)
+
+	hostList := make([]string, 0)
+	for _, host := range hostnames {
+		hostList = append(hostList, "-h", host)
+	}
+	remoteCmd := append(hostList, configFilePath, fmt.Sprintf("=:%s", configFilePath))
+	err = exec.Command("/bin/bash", "-c", fmt.Sprintf("source %s/greenplum_path.sh; gpsync %s", gphome, strings.Join(remoteCmd, " "))).Run()
+	if err != nil {
+		return fmt.Errorf("Could not copy gp.conf file to segment hosts: %w", err)
+	}
+	gplog.Info("Copied gp.conf file to segment hosts")
+
 	gplog.Debug("Exiting function:CreateConfigFile")
 	return nil
 }
@@ -242,5 +255,5 @@ func getHostnames(hostnames []string, hostfilePath string) ([]string, error) {
 		return []string{}, fmt.Errorf("Could not read hostfile: %w", err)
 	}
 	gplog.Debug("Exiting function:getHostnames")
-	return strings.Split(string(contents), "\n"), nil
+	return strings.Fields(string(contents)), nil
 }

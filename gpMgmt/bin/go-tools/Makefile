@@ -21,14 +21,14 @@ depend-dev:
 	go install github.com/golang/protobuf/protoc-gen-go@v1.3.2
 	go install github.com/golang/mock/mockgen@v1.6.0
 
-build: proto
+build:
 	$(BUILD_ENV) go build -o gp $(BUILD_FLAGS) github.com/greenplum-db/gpdb/gp
 
 proto:
 	go generate ./idl
 
 cert:
-	./generate_test_tls_certificates.sh
+	./generate_test_tls_certificates.sh `hostname`
 
 BUILD_FLAGS = -gcflags="all=-N -l"
 
