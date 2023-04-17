@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
@@ -102,6 +103,13 @@ func RunInstall(cmd *cobra.Command, args []string) (err error) {
 		return errors.New("At least one hostname must be provided using either --host or --hostfile")
 	}
 
+	// Convert file/directory paths to absolute path before writing to gp.conf file
+	err = updateAbsolutePath(cmd)
+	if err != nil {
+		gplog.Error("Error while converting file/directory paths to absolute path %w", err)
+		return err
+	}
+
 	hostnames, err := getHostnames(hostnames, hostfilePath)
 	if err != nil {
 		return err
@@ -132,6 +140,61 @@ func RunInstall(cmd *cobra.Command, args []string) (err error) {
 		return err
 	}
 
+	return nil
+}
+
+func updateAbsolutePath(cmd *cobra.Command) error {
+	// Convert certificate file paths to absolute path
+	var err error = nil
+	if cmd.Flags().Lookup("ca-certificate").Changed && !filepath.IsAbs(caCertPath) {
+
+		caCertPath, err = filepath.Abs(caCertPath)
+		if err != nil {
+			gplog.Error("Error converting to absolute path for file:%s. Error: %w", caCertPath, err)
+			return err
+		}
+		gplog.Info("Cert Path New Path:%s", caCertPath)
+	}
+	if cmd.Flags().Lookup("ca-key").Changed && !filepath.IsAbs(caKeyPath) {
+		caKeyPath, err = filepath.Abs(caKeyPath)
+		if err != nil {
+			gplog.Error("Error converting to absolute path for file:%s. Error: %w", caKeyPath, err)
+			return err
+		}
+	}
+	if cmd.Flags().Lookup("server-certificate").Changed && !filepath.IsAbs(serverCertPath) {
+		serverCertPath, err = filepath.Abs(serverCertPath)
+		if err != nil {
+			gplog.Error("Error converting to absolute path for file:%s. Error: %w", serverCertPath, err)
+			return err
+		}
+	}
+	if cmd.Flags().Lookup("server-key").Changed && !filepath.IsAbs(serverKeyPath) {
+		serverKeyPath, err = filepath.Abs(serverKeyPath)
+		if err != nil {
+			gplog.Error("Error converting to absolute path for file:%s. Error: %w", serverKeyPath, err)
+			return err
+		}
+	}
+	gplog.Debug("Certificate Paths updated:\n CA-Cert:%s\nCA-Key:%s\nServer-Cert:%s\nServer-Key:%s", caCertPath, caKeyPath, serverCertPath, serverKeyPath)
+
+	// Update hub data directory if not absolulte
+	if cmd.Flags().Lookup("log-dir").Changed && !filepath.IsAbs(defaultHubLogDir) {
+		defaultHubLogDir, err = filepath.Abs(defaultHubLogDir)
+		if err != nil {
+			gplog.Error("Error converting to absolute path for file:%s. Error: %w", defaultHubLogDir, err)
+			return err
+		}
+	}
+
+	// Update GPHOME directory path if not absolute
+	if cmd.Flags().Lookup("gphome").Changed && !filepath.IsAbs(gphome) {
+		gphome, err = filepath.Abs(gphome)
+		if err != nil {
+			gplog.Error("Error converting to absolute path for file:%s. Error: %w", defaultHubLogDir, err)
+			return err
+		}
+	}
 	return nil
 }
 
