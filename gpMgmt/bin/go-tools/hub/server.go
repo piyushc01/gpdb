@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"os"
 	"os/exec"
 	"strings"
 	"sync"
@@ -157,16 +156,11 @@ func (s *Server) StartAllAgents() error {
 		remoteCmd = append(remoteCmd, "-h", host)
 	}
 	remoteCmd = append(remoteCmd, platform.GetStartAgentCmd(s.ServiceName)...)
-
-	err = exec.Command("/bin/bash", "-c", fmt.Sprintf("source %s/greenplum_path.sh", s.GpHome)).Run()
+	err = exec.Command("/bin/bash", "-c", fmt.Sprintf("source %s/greenplum_path.sh; gpssh %s", s.GpHome, strings.Join(remoteCmd, " "))).Run()
 	if err != nil {
 		return fmt.Errorf("Could not start agent: %w", err)
 	}
-	os.Setenv("PYTHONPATH", fmt.Sprintf("%s/lib/python:%s", s.GpHome, os.Getenv("PYTHONPATH")))
-	err = exec.Command(fmt.Sprintf("%s/bin/gpssh", s.GpHome), remoteCmd...).Run()
-	if err != nil {
-		return fmt.Errorf("Could not start agent: %w ", err)
-	}
+
 	return nil
 }
 
@@ -191,8 +185,8 @@ func (s *Server) DialAllAgents() error {
 			return fmt.Errorf("Could not load credentials: %w", err)
 		}
 
-		//address := fmt.Sprintf("%s:%d", host, s.AgentPort)
-		address := fmt.Sprintf("localhost:%d", s.AgentPort)
+		address := fmt.Sprintf("%s:%d", host, s.AgentPort)
+		// address := fmt.Sprintf("localhost:%d", s.AgentPort)
 		conn, err := s.grpcDialer(ctx, address,
 			grpc.WithBlock(),
 			grpc.WithTransportCredentials(credentials),

@@ -64,13 +64,13 @@ func (l *linuxOS) CreateAndInstallAgentServiceFile(hostnames []string, gphome st
 	defer os.Remove(localAgentServiceFilePath)
 
 	remoteAgentServiceFilePath := fmt.Sprintf("%s/%s_agent.service", serviceDir, serviceName)
-	remoteCmd := make([]string, 0)
+
 	hostList := make([]string, 0)
 	for _, host := range hostnames {
 		hostList = append(hostList, "-h", host)
 	}
 	// Create service-file directory if does not exists
-	remoteCmd = append(hostList, fmt.Sprintf("/usr/bin/mkdir -p %s", serviceDir))
+	remoteCmd := append(hostList, fmt.Sprintf("/usr/bin/mkdir -p %s", serviceDir))
 	err = exec.Command(fmt.Sprintf("%s/bin/gpssh", gphome), remoteCmd...).Run()
 	if err != nil {
 		gplog.Error("could not create service-file directory to segment hosts: %s\nCmd output:", err.Error())
@@ -80,7 +80,7 @@ func (l *linuxOS) CreateAndInstallAgentServiceFile(hostnames []string, gphome st
 
 	// Copy the service-file to service directory
 	remoteCmd = append(hostList, localAgentServiceFilePath, fmt.Sprintf("=:%s", remoteAgentServiceFilePath))
-	err = exec.Command("gpsync", remoteCmd...).Run()
+	err = exec.Command("/bin/bash", "-c", fmt.Sprintf("source %s/greenplum_path.sh; gpsync %s", gphome, strings.Join(remoteCmd, " "))).Run()
 	if err != nil {
 		return fmt.Errorf("Could not copy agent service files to segment hosts: %w", err)
 	}
