@@ -9,6 +9,11 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
+type CredentialsInterface interface {
+	 LoadServerCredentials() (credentials.TransportCredentials, error)
+	 LoadClientCredentials() (credentials.TransportCredentials, error)
+}
+
 type Credentials struct {
 	CACertPath     string `json:"caCert"`
 	CAKeyPath      string `json:"caKey"`

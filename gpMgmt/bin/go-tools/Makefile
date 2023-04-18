@@ -9,7 +9,7 @@ TEST_PACKAGES := ./...
 
 unit: TEST_PACKAGES := $(shell go list ./...)
 unit:
-	go test -count=1 $(TEST_PACKAGES)
+	go test -v -count=1 $(TEST_PACKAGES) --cover
 
 test: unit
 
