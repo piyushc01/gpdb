@@ -98,12 +98,18 @@ func (l *linuxOS) CreateAndInstallAgentServiceFile(hostnames []string, gphome st
 	return nil
 }
 
-func (l *linuxOS) EnableSystemdUserServices(serviceUser string) error {
+func (l *linuxOS) EnableSystemdUserServices(hostnames []string, gphome string, serviceUser string) error {
 	if runtime.GOOS != "linux" {
 		return nil
 	}
+	hostList := make([]string, 0)
+	for _, host := range hostnames {
+		hostList = append(hostList, "-h", host)
+	}
+	// Do systemctl daemon-reload to enable agent service
+	remoteCmd := append(hostList, "loginctl enable-linger ", serviceUser)
 	// Allow user services to run on startup and be started/stopped without root access
-	err := exec.Command("loginctl", "enable-linger", serviceUser).Run()
+	err := exec.Command(fmt.Sprintf("%s/bin/gpssh", gphome), remoteCmd...).Run()
 	if err != nil {
 		return fmt.Errorf("Could not enable user lingering: %w", err)
 	}

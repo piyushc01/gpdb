@@ -135,7 +135,7 @@ func RunInstall(cmd *cobra.Command, args []string) (err error) {
 		return err
 	}
 
-	err = utils.NewLinuxOS().EnableSystemdUserServices(serviceUser)
+	err = utils.NewLinuxOS().EnableSystemdUserServices(hostnames, gphome,serviceUser)
 	if err != nil {
 		return err
 	}
