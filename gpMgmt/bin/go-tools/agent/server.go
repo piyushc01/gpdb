@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"runtime"
 	"sync"
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
@@ -111,13 +110,7 @@ func (s *Server) Status(ctx context.Context, in *idl.StatusAgentRequest) (*idl.S
 
 func (s *Server) GetStatus() (*idl.ServiceStatus, error) {
 	gplog.Debug("Entering function:GetStatus")
-	service := ""
-	if runtime.GOOS == "linux" {
-		service = fmt.Sprintf("%s_agent", s.ServiceName)
-	} else if runtime.GOOS == "darwin" {
-		service = fmt.Sprintf("%s.agent", s.ServiceName)
-	}
-	message, err := platform.GetServiceStatusMessage(service)
+	message, err := platform.GetServiceStatusMessage(fmt.Sprintf("%s_agent", s.ServiceName))
 	if err != nil {
 		gplog.Error("Error while getting Service Status Message:%s", err.Error())
 		return nil, err

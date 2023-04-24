@@ -25,7 +25,7 @@ func (d *darwinOS) GenerateServiceFileContents(which string, gphome string, serv
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>%[3]s.%[1]s</string>
+    <string>%[3]s_%[1]s</string>
     <key>ProgramArguments</key>
     <array>
         <string>%[2]s/bin/gp</string>
@@ -110,11 +110,11 @@ func (d *darwinOS) CreateAndInstallAgentServiceFile(hostnames []string, gphome s
 }
 
 func (d * darwinOS) GetStartHubCmd(serviceName string) *exec.Cmd {
-	return exec.Command("launchctl", "start", fmt.Sprintf("%s.hub", serviceName))
+	return exec.Command("launchctl", "start", fmt.Sprintf("%s_hub", serviceName))
 }
 
 func (d * darwinOS) GetStartAgentCmd(serviceName string) []string {
-	return []string{"launchctl", "start", fmt.Sprintf("%s.agent", serviceName)}
+	return []string{"launchctl", "start", fmt.Sprintf("%s_agent", serviceName)}
 }
 
 func (d * darwinOS) GetServiceStatusMessage(serviceName string) (string, error) {

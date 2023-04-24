@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"runtime"
 
 	"github.com/greenplum-db/gpdb/gp/hub"
 	"github.com/greenplum-db/gpdb/gp/idl"
@@ -68,13 +67,7 @@ func RunStatusAgent(cmd *cobra.Command, args []string) error {
 }
 
 func ShowHubStatus(conf *hub.Config) error {
-	service := ""
-	if runtime.GOOS == "linux" {
-		service = fmt.Sprintf("%s_hub", conf.ServiceName)
-	}else if runtime.GOOS == "darwin"{
-		service = fmt.Sprintf("%s.hub", conf.ServiceName)
-	}
-	message, err := platform.GetServiceStatusMessage(service)
+	message, err := platform.GetServiceStatusMessage(fmt.Sprintf("%s_hub", conf.ServiceName))
 	if err != nil {
 		return err
 	}
