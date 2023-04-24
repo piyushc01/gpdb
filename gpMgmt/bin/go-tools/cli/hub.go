@@ -105,7 +105,7 @@ func RunInstall(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	// Convert file/directory paths to absolute path before writing to gp.conf file
-	err = updateAbsolutePath(cmd)
+	err = updateConfAbsolutePath(cmd)
 	if err != nil {
 		gplog.Error("Error while converting file/directory paths to absolute path %s", err.Error())
 		return err
@@ -150,60 +150,43 @@ func RunInstall(cmd *cobra.Command, args []string) (err error) {
 	return nil
 }
 
-func updateAbsolutePath(cmd *cobra.Command) error {
+func updateConfAbsolutePath(cmd *cobra.Command) error {
 	// Convert certificate file paths to absolute path
 	gplog.Debug("Entering function:updateAbsolutePath")
 	var err error = nil
-	if cmd.Flags().Lookup("ca-certificate").Changed && !filepath.IsAbs(caCertPath) {
-
-		caCertPath, err = filepath.Abs(caCertPath)
-		if err != nil {
-			gplog.Error("Error converting to absolute path for file:%s. Error: %s", caCertPath, err.Error())
-			return err
-		}
-		gplog.Info("Cert Path New Path:%s", caCertPath)
+	// List of variables to be converted to absolute value
+	varMap := map[string]*string{
+		"ca-certificate":     &caCertPath,
+		"ca-key":             &caKeyPath,
+		"server-certificate": &serverCertPath,
+		"server-key":         &serverKeyPath,
+		"log-dir":            &defaultHubLogDir,
+		"gphome":             &gphome,
 	}
-	if cmd.Flags().Lookup("ca-key").Changed && !filepath.IsAbs(caKeyPath) {
-		caKeyPath, err = filepath.Abs(caKeyPath)
+	for key, value := range varMap {
+		err = updateConfAbsoluteVar(cmd, key, value)
 		if err != nil {
-			gplog.Error("Error converting to absolute path for file:%s. Error: %s", caKeyPath, err.Error())
-			return err
-		}
-	}
-	if cmd.Flags().Lookup("server-certificate").Changed && !filepath.IsAbs(serverCertPath) {
-		serverCertPath, err = filepath.Abs(serverCertPath)
-		if err != nil {
-			gplog.Error("Error converting to absolute path for file:%s. Error: %s", serverCertPath, err.Error())
-			return err
-		}
-	}
-	if cmd.Flags().Lookup("server-key").Changed && !filepath.IsAbs(serverKeyPath) {
-		serverKeyPath, err = filepath.Abs(serverKeyPath)
-		if err != nil {
-			gplog.Error("Error converting to absolute path for file:%s. Error: %s", serverKeyPath, err.Error())
-			return err
-		}
-	}
-	gplog.Debug("Certificate Paths updated:\n CA-Cert:%s\nCA-Key:%s\nServer-Cert:%s\nServer-Key:%s", caCertPath, caKeyPath, serverCertPath, serverKeyPath)
-
-	// Update hub data directory if not absolulte
-	if cmd.Flags().Lookup("log-dir").Changed && !filepath.IsAbs(defaultHubLogDir) {
-		defaultHubLogDir, err = filepath.Abs(defaultHubLogDir)
-		if err != nil {
-			gplog.Error("Error converting to absolute path for file:%s. Error: %s", defaultHubLogDir, err.Error())
-			return err
-		}
-	}
-
-	// Update GPHOME directory path if not absolute
-	if cmd.Flags().Lookup("gphome").Changed && !filepath.IsAbs(gphome) {
-		gphome, err = filepath.Abs(gphome)
-		if err != nil {
-			gplog.Error("Error converting to absolute path for file:%s. Error: %s", defaultHubLogDir, err.Error())
+			gplog.Error("Error converting to absolute path for %s is file:%s. Error: %s", key, *value, err.Error())
 			return err
 		}
 	}
 	return nil
+}
+
+// Converts variable from command and updates it with absolute value to varToUpdate variable
+func updateConfAbsoluteVar(cmd *cobra.Command, varName string, varToUpdate *string) error {
+	var err error = nil
+	gplog.Debug("Entering function:updateVarAbsolut")
+	if cmd.Flags().Lookup(varName).Changed && !filepath.IsAbs(*varToUpdate) {
+		*varToUpdate, err = filepath.Abs(*varToUpdate)
+		if err != nil {
+			gplog.Error("Error converting to absolute path for file:%s. Error: %s", *varToUpdate, err.Error())
+			return err
+		}
+		gplog.Debug("Updated %s to absolute value:%s", varName, *varToUpdate)
+	}
+	gplog.Debug("Exiting function:updateVarAbsolut")
+	return err
 }
 
 func CreateConfigFile(caCertPath, caKeyPath, serverCertPath, serverKeyPath string, hubPort, agentPort int, hostnames []string, hubLogDir, serviceName string, serviceDir string) error {
