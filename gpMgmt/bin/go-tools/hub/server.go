@@ -209,6 +209,7 @@ func (s *Server) DialAllAgents() error {
 		conn, err := s.grpcDialer(ctx, address,
 			grpc.WithBlock(),
 			grpc.WithTransportCredentials(credentials),
+			grpc.WithReturnConnectionError()
 		)
 		if err != nil {
 			cancelFunc()

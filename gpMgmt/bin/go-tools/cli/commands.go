@@ -106,6 +106,7 @@ func connectToHub(conf *hub.Config) (idl.HubClient, error) {
 		grpc.WithTransportCredentials(credentials),
 		grpc.WithBlock(),
 		grpc.FailOnNonTempDialError(true),
+		grpc.WithReturnConnectionError(),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("Could not connect to hub on port %d: %w", conf.Port, err)
