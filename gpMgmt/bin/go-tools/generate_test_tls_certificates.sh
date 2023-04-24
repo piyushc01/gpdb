@@ -10,5 +10,5 @@ openssl req -x509 -sha256 -newkey rsa:4096 -days 365 -nodes -keyout ./certificat
 openssl req -newkey rsa:4096 -nodes -keyout ./certificates/server-key.pem -out ./certificates/server-request.pem -subj "/C=US/ST=California/L=Palo Alto/O=Greenplum/OU=GPDB/CN=$1" -sha256
 
 # Signed certificate
-echo "subjectAltName=DNS:$1,DNS:$1,IP:0.0.0.0" > ./certificates/extensions.conf
+echo "subjectAltName=DNS:$1,DNS:localhost,IP:0.0.0.0" > ./certificates/extensions.conf
 openssl x509 -req -in ./certificates/server-request.pem -days 365 -CA ./certificates/ca-cert.pem -CAkey ./certificates/ca-key.pem -CAcreateserial -out ./certificates/server-cert.pem -extfile ./certificates/extensions.conf -sha256

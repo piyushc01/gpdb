@@ -3,6 +3,8 @@ package agent_test
 import (
 	"errors"
 	"github.com/greenplum-db/gpdb/gp/agent"
+	"github.com/greenplum-db/gpdb/gp/idl"
+	"github.com/greenplum-db/gpdb/gp/testutils"
 	"google.golang.org/grpc/credentials"
 	"strings"
 	"testing"
@@ -22,7 +24,7 @@ func (s* MockCredentials) LoadClientCredentials() (credentials.TransportCredenti
 	return s.TlsConnection,s.err
 }
 
-func TestGetStatus(t *testing.T){
+func TestStartServer(t *testing.T){
 
 	t.Run("successfully starts the server", func(t *testing.T) {
 
@@ -75,6 +77,83 @@ func TestGetStatus(t *testing.T){
 			}
 		case <-time.After(1 * time.Second):
 			t.Fatalf("Failed to raise error if load credential fail")
+		}
+	})
+}
+
+func TestGetStatus(t *testing.T){
+
+	t.Run("get service status when no agent is running", func(t *testing.T) {
+
+
+		credCmd := &MockCredentials{nil,nil}
+
+		agentServer := agent.New(agent.Config{
+			Port: 8000,
+			ServiceName: "gp",
+			CredentialsInterface: credCmd,
+		})
+
+		msg,err := agentServer.GetStatus()
+
+		if err != nil{
+			t.Fatalf("unexpected error: %#v", err)
+		}
+
+		if msg.Status != "Unknown" || msg.Pid != 0 || msg.Uptime != "Unknown" {
+			t.Fatalf("expected unknown status not found")
+		}
+
+	})
+
+	t.Run("get service status when hub and agent is running", func(t *testing.T) {
+
+		credCmd := &MockCredentials{nil,nil}
+
+		agentServer := agent.New(agent.Config{
+			Port: 8000,
+			ServiceName: "gp",
+			CredentialsInterface: credCmd,
+		})
+
+		os := &testutils.MockOs{}
+		os.RetStatus = idl.ServiceStatus{Status: "running", Uptime: "10ms", Pid: uint32(1234)}
+		os.Err = nil
+		agent.SetPlatform(os)
+		defer agent.ResetPlatform()
+
+		/*start the hub and make sure it connects*/
+		msg,err := agentServer.GetStatus()
+
+		if err != nil{
+			t.Fatalf("unexpected error: %#v", err)
+		}
+
+		if msg.Status == "Unknown" || msg.Pid == 0 || msg.Uptime == "Unknown" {
+			t.Fatalf("expected unknown status not found")
+		}
+	})
+
+	t.Run("get service status when raised error", func(t *testing.T) {
+
+		credCmd := &MockCredentials{nil,nil}
+
+		agentServer := agent.New(agent.Config{
+			Port: 8000,
+			ServiceName: "gp",
+			CredentialsInterface: credCmd,
+		})
+
+		os := &testutils.MockOs{}
+		os.Err = errors.New("")
+		agent.SetPlatform(os)
+		defer agent.ResetPlatform()
+
+		/*start the hub and make sure it connects*/
+		_,err := agentServer.GetStatus()
+
+		if err == nil{
+			t.Fatalf("Expected error but found success : %#v", err)
 		}
 	})
 }

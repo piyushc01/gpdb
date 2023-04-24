@@ -21,7 +21,7 @@ type Config struct {
 	Port        int
 	ServiceName string
 
-	*utils.Credentials
+	utils.CredentialsInterface
 }
 
 type Server struct {
@@ -118,4 +118,13 @@ func (s *Server) GetStatus() (*idl.ServiceStatus, error) {
 	status := platform.ParseServiceStatusMessage(message)
 	gplog.Debug("Exiting function:GetStatus")
 	return &status, nil
+}
+
+
+func SetPlatform( os utils.OS){
+	platform = os
+}
+
+func ResetPlatform()  {
+	platform = utils.GetOS()
 }
