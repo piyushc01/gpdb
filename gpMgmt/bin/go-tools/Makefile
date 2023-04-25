@@ -1,12 +1,15 @@
-all: cert build
+all: build
 
 .DEFAULT_GOAL := all
 MODULE_NAME=gp
 
+
+LINUX_ENV := env GOOS=linux GOARCH=amd64
+MAC_ENV := env GOOS=darwin GOARCH=amd64
+
+
 .PHONY: unit test
-
 TEST_PACKAGES := ./...
-
 unit: TEST_PACKAGES := $(shell go list ./...)
 unit:
 	go test -v -count=1 $(TEST_PACKAGES) --cover
@@ -20,9 +23,21 @@ depend-dev:
 	mkdir -p $(GOBIN)
 	go install github.com/golang/protobuf/protoc-gen-go@v1.3.2
 	go install github.com/golang/mock/mockgen@v1.6.0
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.52.2
+	
+.PHONY: lint
+lint:
+	golangci-lint run
 
+BUILD_ENV = $($(OS)_ENV)
+
+.PHONY: build build_linux build_mac
 build:
 	$(BUILD_ENV) go build -o gp $(BUILD_FLAGS) github.com/greenplum-db/gpdb/gp
+
+build_linux: OS := LINUX
+build_mac: OS := MAC
+build_linux build_mac: build
 
 proto:
 	go generate ./idl
