@@ -21,7 +21,7 @@ type Config struct {
 	Port        int
 	ServiceName string
 
-	utils.CredentialsInterface
+	utils.Credentials
 }
 
 type Server struct {

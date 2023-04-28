@@ -32,9 +32,9 @@ func TestStartServer(t *testing.T) {
 		credCmd := &MockCredentials{nil, nil}
 
 		agentServer := agent.New(agent.Config{
-			Port:                 8000,
-			ServiceName:          "gp",
-			CredentialsInterface: credCmd,
+			Port:        8000,
+			ServiceName: "gp",
+			Credentials: credCmd,
 		})
 
 		errChan := make(chan error, 1)
@@ -60,9 +60,9 @@ func TestStartServer(t *testing.T) {
 		credCmd := &MockCredentials{nil, errors.New("")}
 
 		agentServer := agent.New(agent.Config{
-			Port:                 8000,
-			ServiceName:          "gp",
-			CredentialsInterface: credCmd,
+			Port:        8000,
+			ServiceName: "gp",
+			Credentials: credCmd,
 		})
 
 		errChan := make(chan error, 1)
@@ -89,9 +89,9 @@ func TestGetStatus(t *testing.T) {
 		credCmd := &MockCredentials{nil, nil}
 
 		agentServer := agent.New(agent.Config{
-			Port:                 8000,
-			ServiceName:          "gp",
-			CredentialsInterface: credCmd,
+			Port:        8000,
+			ServiceName: "gp",
+			Credentials: credCmd,
 		})
 
 		msg, err := agentServer.GetStatus()
@@ -111,9 +111,9 @@ func TestGetStatus(t *testing.T) {
 		credCmd := &MockCredentials{nil, nil}
 
 		agentServer := agent.New(agent.Config{
-			Port:                 8000,
-			ServiceName:          "gp",
-			CredentialsInterface: credCmd,
+			Port:        8000,
+			ServiceName: "gp",
+			Credentials: credCmd,
 		})
 
 		os := &testutils.MockOs{}
@@ -139,9 +139,9 @@ func TestGetStatus(t *testing.T) {
 		credCmd := &MockCredentials{nil, nil}
 
 		agentServer := agent.New(agent.Config{
-			Port:                 8000,
-			ServiceName:          "gp",
-			CredentialsInterface: credCmd,
+			Port:        8000,
+			ServiceName: "gp",
+			Credentials: credCmd,
 		})
 
 		os := &testutils.MockOs{}

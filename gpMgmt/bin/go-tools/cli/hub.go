@@ -191,7 +191,7 @@ func updateConfAbsoluteVar(cmd *cobra.Command, varName string, varToUpdate *stri
 
 func CreateConfigFile(caCertPath, caKeyPath, serverCertPath, serverKeyPath string, hubPort, agentPort int, hostnames []string, hubLogDir, serviceName string, serviceDir string) error {
 	gplog.Debug("Entering function:CreateConfigFile")
-	creds := &utils.Credentials{caCertPath, caKeyPath, serverCertPath, serverKeyPath}
+	creds := utils.GpCredentials{caCertPath, caKeyPath, serverCertPath, serverKeyPath}
 	conf = &hub.Config{hubPort, agentPort, hostnames, hubLogDir, serviceName, gphome, creds}
 	configContents, err := json.MarshalIndent(conf, "", "\t")
 	if err != nil {

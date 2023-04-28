@@ -9,19 +9,19 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-type CredentialsInterface interface {
+type Credentials interface {
 	LoadServerCredentials() (credentials.TransportCredentials, error)
 	LoadClientCredentials() (credentials.TransportCredentials, error)
 }
 
-type Credentials struct {
+type GpCredentials struct {
 	CACertPath     string `json:"caCert"`
 	CAKeyPath      string `json:"caKey"`
 	ServerCertPath string `json:"serverCert"`
 	ServerKeyPath  string `json:"serverKey"`
 }
 
-func (c *Credentials) LoadServerCredentials() (credentials.TransportCredentials, error) {
+func (c GpCredentials) LoadServerCredentials() (credentials.TransportCredentials, error) {
 	serverCert, err := tls.LoadX509KeyPair(c.ServerCertPath, c.ServerKeyPath)
 	if err != nil {
 		return nil, err
@@ -35,7 +35,7 @@ func (c *Credentials) LoadServerCredentials() (credentials.TransportCredentials,
 
 }
 
-func (c *Credentials) LoadClientCredentials() (credentials.TransportCredentials, error) {
+func (c GpCredentials) LoadClientCredentials() (credentials.TransportCredentials, error) {
 	caCert, err := ioutil.ReadFile(c.CACertPath)
 	if err != nil {
 		return nil, err
