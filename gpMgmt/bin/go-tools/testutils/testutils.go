@@ -1,44 +1,47 @@
 package testutils
 
 import (
-	"github.com/greenplum-db/gpdb/gp/idl"
 	"os/exec"
+
+	"github.com/greenplum-db/gpdb/gp/idl"
 )
 
-type MockOs struct {
-	RetStatus  idl.ServiceStatus
+type MockPlatform struct {
+	RetStatus            idl.ServiceStatus
 	ServiceStatusMessage string
-	Err error
-	ServiceFileContent string
-	DefServiceDir string
-	StartCmd *exec.Cmd
+	Err                  error
+	ServiceFileContent   string
+	DefServiceDir        string
+	StartCmd             *exec.Cmd
 }
 
-
-func (s* MockOs)GetServiceStatusMessage(serviceName string) (string, error){
-	return s.ServiceStatusMessage, s.Err
+func (p *MockPlatform) GetServiceStatusMessage(serviceName string) (string, error) {
+	return p.ServiceStatusMessage, p.Err
 }
-func (s* MockOs)GenerateServiceFileContents(which string, gphome string, serviceName string) string{
-	return s.ServiceFileContent
+func (p *MockPlatform) GenerateServiceFileContents(which string, gphome string, serviceName string) string {
+	return p.ServiceFileContent
 }
-func (s* MockOs)GetDefaultServiceDir() string{
-	return s.DefServiceDir
+func (p *MockPlatform) GetDefaultServiceDir() string {
+	return p.DefServiceDir
 }
-func (s* MockOs)CreateAndInstallHubServiceFile(gphome string, serviceDir string, serviceName string) error{
-	return s.Err
+func (p *MockPlatform) CreateAndInstallHubServiceFile(gphome string, serviceDir string, serviceName string) error {
+	return p.Err
 }
-func (s* MockOs)CreateAndInstallAgentServiceFile(hostnames []string, gphome string, serviceDir string, serviceName string) error{
-	return s.Err
+func (p *MockPlatform) CreateAndInstallAgentServiceFile(hostnames []string, gphome string, serviceDir string, serviceName string) error {
+	return p.Err
 }
-func (s* MockOs)GetStartHubCmd(serviceName string) *exec.Cmd{
-	return  s.StartCmd
+func (p *MockPlatform) GetStartHubCommand(serviceName string) *exec.Cmd {
+	return p.StartCmd
 }
-func (s* MockOs)GetStartAgentCmd(serviceName string) []string{
+func (p *MockPlatform) GetStartAgentCommandString(serviceName string) []string {
 	return nil
 }
-func (s* MockOs)ParseServiceStatusMessage(message string) idl.ServiceStatus{
-	return s.RetStatus
+func (p *MockPlatform) ParseServiceStatusMessage(message string) idl.ServiceStatus {
+	return p.RetStatus
 }
-func (s* MockOs)DisplayServiceStatus(statuses []*idl.ServiceStatus){
+func (p *MockPlatform) DisplayServiceStatus(statuses []*idl.ServiceStatus) {
 	return
+}
+func (p *MockPlatform) EnableUserLingering(hostnames []string, gphome string, serviceUser string) error {
+	return nil
 }

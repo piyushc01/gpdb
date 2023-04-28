@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	platform    = utils.GetOS()
+	platform    = utils.GetPlatform()
 	DialTimeout = 3 * time.Second
 )
 
@@ -168,7 +168,7 @@ func (s *Server) StartAllAgents() error {
 	for _, host := range s.Hostnames {
 		remoteCmd = append(remoteCmd, "-h", host)
 	}
-	remoteCmd = append(remoteCmd, platform.GetStartAgentCmd(s.ServiceName)...)
+	remoteCmd = append(remoteCmd, platform.GetStartAgentCommandString(s.ServiceName)...)
 	err = exec.Command("/bin/bash", "-c", fmt.Sprintf("source %s/greenplum_path.sh; gpssh %s", s.GpHome, strings.Join(remoteCmd, " "))).Run()
 	if err != nil {
 		gplog.Error("Could not start agent: %s", err.Error())

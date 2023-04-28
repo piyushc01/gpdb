@@ -33,7 +33,7 @@ func startHubCmd() *cobra.Command {
 }
 
 func RunStartHub(cmd *cobra.Command, args []string) error {
-	err := platform.GetStartHubCmd(conf.ServiceName).Run()
+	err := platform.GetStartHubCommand(conf.ServiceName).Run()
 	if err != nil {
 		return fmt.Errorf("Could not start hub: %w", err)
 	}

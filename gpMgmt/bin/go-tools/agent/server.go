@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	platform = utils.GetOS()
+	platform = utils.GetPlatform()
 )
 
 type Config struct {
@@ -120,11 +120,10 @@ func (s *Server) GetStatus() (*idl.ServiceStatus, error) {
 	return &status, nil
 }
 
-
-func SetPlatform( os utils.OS){
-	platform = os
+func SetPlatform(p utils.Platform) {
+	platform = p
 }
 
-func ResetPlatform()  {
-	platform = utils.GetOS()
+func ResetPlatform() {
+	platform = utils.GetPlatform()
 }

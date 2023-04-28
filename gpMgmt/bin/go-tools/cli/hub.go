@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	platform                 = utils.GetOS()
+	platform                 = utils.GetPlatform()
 	defaultHubLogDir  string = "/tmp"
 	defaultHubPort    int    = 4242
 	defaultAgentPort  int    = 8000
@@ -140,9 +140,9 @@ func RunInstall(cmd *cobra.Command, args []string) (err error) {
 		return err
 	}
 
-	err = utils.NewLinuxOS().EnableSystemdUserServices(hostnames, gphome, serviceUser)
+	err = platform.EnableUserLingering(hostnames, gphome, serviceUser)
 	if err != nil {
-		gplog.Error("Error in EnableSystemdUserServices on Coordinator: %s", err.Error())
+		gplog.Error("Error in EnableUserLingering on Coordinator: %s", err.Error())
 		return err
 	}
 
