@@ -2,37 +2,38 @@ package agent_test
 
 import (
 	"errors"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/greenplum-db/gpdb/gp/agent"
 	"github.com/greenplum-db/gpdb/gp/idl"
 	"github.com/greenplum-db/gpdb/gp/testutils"
 	"google.golang.org/grpc/credentials"
-	"strings"
-	"testing"
-	"time"
 )
 
 type MockCredentials struct {
 	TlsConnection credentials.TransportCredentials
-	err error
+	err           error
 }
 
-func (s* MockCredentials)LoadServerCredentials() (credentials.TransportCredentials, error) {
-	return s.TlsConnection,s.err
+func (s *MockCredentials) LoadServerCredentials() (credentials.TransportCredentials, error) {
+	return s.TlsConnection, s.err
 }
 
-func (s* MockCredentials) LoadClientCredentials() (credentials.TransportCredentials, error){
-	return s.TlsConnection,s.err
+func (s *MockCredentials) LoadClientCredentials() (credentials.TransportCredentials, error) {
+	return s.TlsConnection, s.err
 }
 
-func TestStartServer(t *testing.T){
+func TestStartServer(t *testing.T) {
 
 	t.Run("successfully starts the server", func(t *testing.T) {
 
-		credCmd := &MockCredentials{nil,nil}
+		credCmd := &MockCredentials{nil, nil}
 
 		agentServer := agent.New(agent.Config{
-			Port: 8000,
-			ServiceName: "gp",
+			Port:                 8000,
+			ServiceName:          "gp",
 			CredentialsInterface: credCmd,
 		})
 
@@ -56,11 +57,11 @@ func TestStartServer(t *testing.T){
 
 	t.Run("failed to start if the load credential fail", func(t *testing.T) {
 
-		credCmd := &MockCredentials{nil,errors.New("")}
+		credCmd := &MockCredentials{nil, errors.New("")}
 
 		agentServer := agent.New(agent.Config{
-			Port: 8000,
-			ServiceName: "gp",
+			Port:                 8000,
+			ServiceName:          "gp",
 			CredentialsInterface: credCmd,
 		})
 
@@ -72,7 +73,7 @@ func TestStartServer(t *testing.T){
 
 		select {
 		case err := <-errChan:
-			if err == nil || !strings.Contains(err.Error(),"Could not load credentials")  {
+			if err == nil || !strings.Contains(err.Error(), "Could not load credentials") {
 				t.Fatalf("want \"Could not load credentials\" but get: %q", err.Error())
 			}
 		case <-time.After(1 * time.Second):
@@ -81,22 +82,21 @@ func TestStartServer(t *testing.T){
 	})
 }
 
-func TestGetStatus(t *testing.T){
+func TestGetStatus(t *testing.T) {
 
 	t.Run("get service status when no agent is running", func(t *testing.T) {
 
-
-		credCmd := &MockCredentials{nil,nil}
+		credCmd := &MockCredentials{nil, nil}
 
 		agentServer := agent.New(agent.Config{
-			Port: 8000,
-			ServiceName: "gp",
+			Port:                 8000,
+			ServiceName:          "gp",
 			CredentialsInterface: credCmd,
 		})
 
-		msg,err := agentServer.GetStatus()
+		msg, err := agentServer.GetStatus()
 
-		if err != nil{
+		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
 		}
 
@@ -108,11 +108,11 @@ func TestGetStatus(t *testing.T){
 
 	t.Run("get service status when hub and agent is running", func(t *testing.T) {
 
-		credCmd := &MockCredentials{nil,nil}
+		credCmd := &MockCredentials{nil, nil}
 
 		agentServer := agent.New(agent.Config{
-			Port: 8000,
-			ServiceName: "gp",
+			Port:                 8000,
+			ServiceName:          "gp",
 			CredentialsInterface: credCmd,
 		})
 
@@ -123,9 +123,9 @@ func TestGetStatus(t *testing.T){
 		defer agent.ResetPlatform()
 
 		/*start the hub and make sure it connects*/
-		msg,err := agentServer.GetStatus()
+		msg, err := agentServer.GetStatus()
 
-		if err != nil{
+		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
 		}
 
@@ -136,11 +136,11 @@ func TestGetStatus(t *testing.T){
 
 	t.Run("get service status when raised error", func(t *testing.T) {
 
-		credCmd := &MockCredentials{nil,nil}
+		credCmd := &MockCredentials{nil, nil}
 
 		agentServer := agent.New(agent.Config{
-			Port: 8000,
-			ServiceName: "gp",
+			Port:                 8000,
+			ServiceName:          "gp",
 			CredentialsInterface: credCmd,
 		})
 
@@ -150,9 +150,9 @@ func TestGetStatus(t *testing.T){
 		defer agent.ResetPlatform()
 
 		/*start the hub and make sure it connects*/
-		_,err := agentServer.GetStatus()
+		_, err := agentServer.GetStatus()
 
-		if err == nil{
+		if err == nil {
 			t.Fatalf("Expected error but found success : %#v", err)
 		}
 	})

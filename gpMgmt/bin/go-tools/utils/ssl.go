@@ -10,8 +10,8 @@ import (
 )
 
 type CredentialsInterface interface {
-	 LoadServerCredentials() (credentials.TransportCredentials, error)
-	 LoadClientCredentials() (credentials.TransportCredentials, error)
+	LoadServerCredentials() (credentials.TransportCredentials, error)
+	LoadClientCredentials() (credentials.TransportCredentials, error)
 }
 
 type Credentials struct {

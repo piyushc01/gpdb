@@ -50,6 +50,12 @@ BUILD_FLAGS = -gcflags="all=-N -l"
 install:
 	GOBIN=$(GPHOME)/bin go install $(BUILD_FLAGS) github.com/greenplum-db/gpdb/gp
 
+# goimports supports a superset of the formatting rules gofmt supports, but
+# gofmt allows custom formatting rules so we include both for now
+format:
+	goimports -l -w agent/ cli/ hub/ testutils/ utils/
+	gofmt -l -w agent/ cli/ hub/ testutils/ utils/
+
 clean:
 	rm -f gp
 	rm -f ./idl/*.pb.go

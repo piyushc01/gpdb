@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-
 func statusCmd() *cobra.Command {
 	statusCmd := &cobra.Command{
 		Use:   "status",
