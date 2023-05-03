@@ -122,9 +122,9 @@ func RunInstall(cmd *cobra.Command, args []string) (err error) {
 		gplog.Error("Error creating config file: %s", err.Error())
 		return err
 	}
-	err = os.MkdirAll(serviceDir, os.ModePerm)
+
+	err = platform.CreateServiceDir(hostnames, serviceDir, gphome)
 	if err != nil {
-		gplog.Error("Error creating directory for service:%s. Error:%s", serviceDir, err.Error())
 		return err
 	}
 

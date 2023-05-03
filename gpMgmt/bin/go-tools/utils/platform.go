@@ -19,30 +19,30 @@ var (
 )
 
 type GpPlatform struct {
-	OS          string
-	ServiceCmd  string   // Binary for managing services
-	UserArg     string   // systemd always needs a "--user" flag passed, launchctl does not
-	ServiceExt  string   // Extension for service files
-	RestartArgs []string // Arguments passed to ServiceCmd when reloading a service
+	OS         string
+	ServiceCmd string // Binary for managing services
+	UserArg    string // systemd always needs a "--user" flag passed, launchctl does not
+	ServiceExt string // Extension for service files
+	StatusArg  string // Argument passed to ServiceCmd to get status of a service
 }
 
 func NewPlatform(os string) Platform {
 	switch os {
 	case "darwin":
 		return GpPlatform{
-			OS:          "darwin",
-			ServiceCmd:  "systemd",
-			UserArg:     "--user",
-			ServiceExt:  "plist",
-			RestartArgs: []string{"kickstart", "-k"},
+			OS:         "darwin",
+			ServiceCmd: "launchctl",
+			UserArg:    "",
+			ServiceExt: "plist",
+			StatusArg:  "list",
 		}
 	case "linux":
 		return GpPlatform{
-			OS:          "linux",
-			ServiceCmd:  "launchctl",
-			UserArg:     "",
-			ServiceExt:  "service",
-			RestartArgs: []string{"--user", "daemon-reload"},
+			OS:         "linux",
+			ServiceCmd: "systemctl",
+			UserArg:    "--user",
+			ServiceExt: "service",
+			StatusArg:  "status",
 		}
 	default:
 		panic("Unsupported OS")
@@ -50,6 +50,7 @@ func NewPlatform(os string) Platform {
 }
 
 type Platform interface {
+	CreateServiceDir(hostnames []string, serviceDir string, gphome string) error
 	GenerateServiceFileContents(which string, gphome string, serviceName string) string
 	GetDefaultServiceDir() string
 	CreateAndInstallHubServiceFile(gphome string, serviceDir string, serviceName string) error
@@ -67,6 +68,23 @@ func GetPlatform() Platform {
 		platform = NewPlatform(runtime.GOOS)
 	}
 	return platform
+}
+
+func (p GpPlatform) CreateServiceDir(hostnames []string, serviceDir string, gphome string) error {
+	hostList := make([]string, 0)
+	for _, host := range hostnames {
+		hostList = append(hostList, "-h", host)
+	}
+
+	// Create service directory if it does not exist
+	args := append(hostList, "mkdir", "-p", serviceDir)
+	err := exec.Command(fmt.Sprintf("%s/bin/gpssh", gphome), args...).Run()
+	if err != nil {
+		return fmt.Errorf("Could not create service directory %s on hosts: %w", serviceDir, err)
+	}
+
+	gplog.Info("Created service file directory %s on all hosts", serviceDir)
+	return nil
 }
 
 func writeServiceFile(filename string, contents string) error {
@@ -162,8 +180,21 @@ func (p GpPlatform) CreateAndInstallHubServiceFile(gphome string, serviceDir str
 }
 
 func (p GpPlatform) reloadHubService(servicePath string) error {
-	args := append(p.RestartArgs, servicePath)
-	err := exec.Command(p.ServiceCmd, args...).Run()
+	if p.OS == "darwin" {
+
+		// launchctl does not have a single reload command. Hence unload and load the file to update the configuration.
+		err := exec.Command(p.ServiceCmd, "unload", servicePath).Run()
+		if err != nil {
+			return fmt.Errorf("Could not unload hub service file %s: %w", servicePath, err)
+		}
+		err = exec.Command(p.ServiceCmd, "load", servicePath).Run()
+		if err != nil {
+			return fmt.Errorf("Could not load hub service file %s: %w", servicePath, err)
+		}
+		return nil
+	}
+
+	err := exec.Command(p.ServiceCmd, p.UserArg, "daemon-reload").Run()
 	if err != nil {
 		return fmt.Errorf("Could not reload hub service file %s: %w", servicePath, err)
 	}
@@ -171,15 +202,26 @@ func (p GpPlatform) reloadHubService(servicePath string) error {
 }
 
 func (p GpPlatform) reloadAgentService(gphome string, hostList []string, servicePath string) error {
-	args := append(append(hostList, p.ServiceCmd), p.RestartArgs...)
+	args := append(hostList, p.ServiceCmd)
+
 	if p.OS == "darwin" { // launchctl reloads a specific service, not all of them
-		args = append(args, servicePath)
+
+		// launchctl does not have a single reload command. Hence unload and load the file to update the configuration.
+		err := exec.Command(fmt.Sprintf("%s/bin/gpssh", gphome), append(args, "unload", servicePath)...).Run()
+		if err != nil {
+			return fmt.Errorf("Could not unload agent service file %s on segment hosts: %w", servicePath, err)
+		}
+		err = exec.Command(fmt.Sprintf("%s/bin/gpssh", gphome), append(args, "load", servicePath)...).Run()
+		if err != nil {
+			return fmt.Errorf("Could not load agent service file %s on segment hosts: %w", servicePath, err)
+		}
+		return nil
 	}
-	err := exec.Command(fmt.Sprintf("%s/bin/gpssh", gphome), args...).Run()
+
+	err := exec.Command(fmt.Sprintf("%s/bin/gpssh", gphome), append(args, p.UserArg, "daemon-reload")...).Run()
 	if err != nil {
 		return fmt.Errorf("Could not reload agent service %s on segment hosts: %w", servicePath, err)
 	}
-	gplog.Info("Reloaded systemctl daemon on segment hosts successfully")
 	return nil
 }
 
@@ -198,14 +240,6 @@ func (p GpPlatform) CreateAndInstallAgentServiceFile(hostnames []string, gphome 
 		hostList = append(hostList, "-h", host)
 	}
 
-	// Create service file directory if it does not exist
-	err = exec.Command("/usr/bin/mkdir", "-p", serviceDir).Run()
-	if err != nil {
-		gplog.Error("Could not create service file directory on segment hosts: %s", err.Error())
-		return fmt.Errorf("Could not create service file directory on segment hosts: %w", err)
-	}
-	gplog.Info("Created service file directory at %s on segment hosts", remoteAgentServiceFilePath)
-
 	// Copy the file to segment host service directories
 	args := append(hostList, localAgentServiceFilePath, fmt.Sprintf("=:%s", remoteAgentServiceFilePath))
 	err = exec.Command(fmt.Sprintf("%s/bin/gpsync", gphome), args...).Run()
@@ -214,26 +248,35 @@ func (p GpPlatform) CreateAndInstallAgentServiceFile(hostnames []string, gphome 
 	}
 
 	err = p.reloadAgentService(gphome, hostList, remoteAgentServiceFilePath)
+	if err != nil {
+		return err
+	}
 
 	gplog.Info("Wrote agent service file to %s on segment hosts", remoteAgentServiceFilePath)
 	return nil
 }
 
 func (p GpPlatform) GetStartHubCommand(serviceName string) *exec.Cmd {
-	return exec.Command(p.ServiceCmd, p.UserArg, "start", fmt.Sprintf("%s_hub", serviceName))
+	args := []string{p.UserArg, "start", fmt.Sprintf("%s_hub", serviceName)}
+
+	if p.OS == "darwin" { // empty strings are also treated as arguments
+		args = args[1:]
+	}
+
+	return exec.Command(p.ServiceCmd, args...)
 }
+
 func (p GpPlatform) GetStartAgentCommandString(serviceName string) []string {
 	return []string{p.ServiceCmd, p.UserArg, "start", fmt.Sprintf("%s_agent", serviceName)}
 }
 
 func (p GpPlatform) GetServiceStatusMessage(serviceName string) (string, error) {
-	var statusCmd string
-	if p.OS == "darwin" {
-		statusCmd = "list"
-	} else {
-		statusCmd = "status"
+	args := []string{p.UserArg, p.StatusArg, serviceName}
+
+	if p.OS == "darwin" { // empty strings are also treated as arguments
+		args = args[1:]
 	}
-	output, err := exec.Command(p.ServiceCmd, p.UserArg, statusCmd, serviceName).Output()
+	output, err := exec.Command(p.ServiceCmd, args...).Output()
 	if err != nil {
 		if err.Error() != "exit status 3" { // 3 = service is stopped
 			return "", err

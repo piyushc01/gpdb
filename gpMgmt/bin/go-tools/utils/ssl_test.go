@@ -8,8 +8,8 @@ import (
 	"github.com/greenplum-db/gpdb/gp/utils"
 )
 
-func getDefaultCredentials() *utils.Credentials {
-	return &utils.Credentials{
+func getDefaultCredentials() *utils.GpCredentials {
+	return &utils.GpCredentials{
 		CACertPath:     "./certificates/ca-cert.pem",
 		CAKeyPath:      "./certificates/ca-key.pem",
 		ServerCertPath: "./certificates/server-cert.pem",

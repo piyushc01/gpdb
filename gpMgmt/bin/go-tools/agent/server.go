@@ -21,7 +21,7 @@ type Config struct {
 	Port        int
 	ServiceName string
 
-	utils.Credentials
+	Credentials utils.Credentials
 }
 
 type Server struct {
@@ -59,7 +59,7 @@ func (s *Server) Start() error {
 		gplog.Debug("Exiting function:Start")
 		return handler(ctx, req)
 	}
-	credentials, err := s.LoadServerCredentials()
+	credentials, err := s.Credentials.LoadServerCredentials()
 	if err != nil {
 		gplog.Error("Could not load credentials: %s", err.Error())
 		return fmt.Errorf("Could not load credentials: %w", err)

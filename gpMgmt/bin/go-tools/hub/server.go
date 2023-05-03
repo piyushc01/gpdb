@@ -34,7 +34,7 @@ type Config struct {
 	ServiceName string   `json:"serviceName"`
 	GpHome      string   `json:"gphome"`
 
-	utils.Credentials
+	Credentials utils.GpCredentials
 }
 
 type Server struct {
@@ -80,7 +80,7 @@ func (s *Server) Start() error {
 		return handler(ctx, req)
 	}
 
-	credentials, err := s.LoadServerCredentials()
+	credentials, err := s.Credentials.LoadServerCredentials()
 	if err != nil {
 		gplog.Error("Could not load credentials: %s", err.Error())
 		return fmt.Errorf("Could not load credentials: %w", err)
