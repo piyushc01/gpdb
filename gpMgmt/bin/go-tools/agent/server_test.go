@@ -116,7 +116,7 @@ func TestGetStatus(t *testing.T) {
 			Credentials: credCmd,
 		})
 
-		os := &testutils.MockOs{}
+		os := &testutils.MockPlatform{}
 		os.RetStatus = idl.ServiceStatus{Status: "running", Uptime: "10ms", Pid: uint32(1234)}
 		os.Err = nil
 		agent.SetPlatform(os)
@@ -144,7 +144,7 @@ func TestGetStatus(t *testing.T) {
 			Credentials: credCmd,
 		})
 
-		os := &testutils.MockOs{}
+		os := &testutils.MockPlatform{}
 		os.Err = errors.New("")
 		agent.SetPlatform(os)
 		defer agent.ResetPlatform()
