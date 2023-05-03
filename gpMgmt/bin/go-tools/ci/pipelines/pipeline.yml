@@ -29,21 +29,6 @@ anchors:
   get_params:
     action: destroy
 
-- &ccp_destroy_two_clusters
-  in_parallel:
-    - put: terraform_1
-      params:
-        <<: *destroy_common
-        env_name_file: terraform_1/name
-      get_params:
-        action: destroy
-    - put: terraform_2
-      params:
-        <<: *destroy_common
-        env_name_file: terraform_2/name
-      get_params:
-        action: destroy
-
 - &ccp_gen_cluster_default_params
   AWS_ACCESS_KEY_ID: ((tf-machine-access-key-id))
   AWS_SECRET_ACCESS_KEY: ((tf-machine-secret-access-key))
@@ -79,26 +64,6 @@ anchors:
           BUCKET_PATH: clusters-google/
           BUCKET_NAME: ((tf-bucket-name))
 
-- &set_failed_two_clusters_common
-  platform: linux
-  image_resource:
-    type: registry-image
-    source:
-      repository: gcr.io/data-gpdb-public-images/ccp
-      tag: latest
-  run:
-    path: 'ccp_src/google/ccp_failed_test.sh'
-  params:
-    GOOGLE_CREDENTIALS: ((google-service-account-key/dev))
-    GOOGLE_PROJECT_ID: ((google-project-id))
-    GOOGLE_ZONE: ((google-zone))
-    GOOGLE_SERVICE_ACCOUNT: ((google-service-account/dev))
-    AWS_ACCESS_KEY_ID: ((tf-machine-access-key-id))
-    AWS_SECRET_ACCESS_KEY: ((tf-machine-secret-access-key))
-    AWS_DEFAULT_REGION: ((tf-machine-region))
-    BUCKET_PATH: clusters-google/
-    BUCKET_NAME: ((tf-bucket-name))
-
 - &terraform_cluster
   type: terraform
   source:
@@ -117,26 +82,13 @@ anchors:
       bucket: gpdb5-pipeline-dynamic-terraform
       bucket_path: clusters-google/
 
-- &set_failed_two_clusters
-  in_parallel:
-    - task: on_failure_set_failed-1
-      config:
-        <<: *set_failed_two_clusters_common
-        inputs:
-          - name: ccp_src
-          - name: terraform_1
-    - task: on_failure_set_failed-2
-      config:
-        <<: *set_failed_two_clusters_common
-        inputs:
-          - name: ccp_src
-          - name: terraform_2
-
 groups:
   - name: all
     jobs:
-      - build
       - compile_gpdb_rocky8
+      - lint
+      - run_tests
+      - build
 
 resource_types:
   - name: gcs
@@ -220,6 +172,29 @@ jobs:
         params:
           file: gpdb_artifacts/bin_gpdb.tar.gz
 
+- name: lint
+  plan:
+    - get: gpdb_src
+      trigger: true
+    - task: lint
+      config:
+        platform: linux
+        image_resource:
+          type: registry-image
+          source:
+            repository: golangci/golangci-lint
+        inputs:
+          - name: gpdb_src
+        run:
+          path: bash
+          args:
+            - -c
+            - |
+              set -eux -o pipefail
+
+              cd gpdb_src/gpMgmt/bin/go-tools
+              make lint
+
 - name: build
   plan:
   - in_parallel:
@@ -261,3 +236,27 @@ jobs:
             <<: *ccp_destroy
           ensure:
             <<: *set_failed
+
+- name: run_tests
+  plan:
+  - in_parallel:
+      steps:
+      - get: gpdb_src
+        trigger: true
+      - get: gpdb7-rocky8-build
+  - task: run_unit_tests
+    image: gpdb7-rocky8-build
+    config:
+      platform: linux
+      inputs:
+        - name: gpdb_src
+      run:
+        path: bash
+        args:
+          - -c
+          - |
+            set -eux -o pipefail
+
+            export PATH=/usr/local/go/bin:$PATH
+            cd gpdb_src/gpMgmt/bin/go-tools
+            make test
