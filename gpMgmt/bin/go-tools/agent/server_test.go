@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpdb/gp/agent"
 	"github.com/greenplum-db/gpdb/gp/idl"
 	"github.com/greenplum-db/gpdb/gp/testutils"
@@ -26,6 +27,7 @@ func (s *MockCredentials) LoadClientCredentials() (credentials.TransportCredenti
 }
 
 func TestStartServer(t *testing.T) {
+	testhelper.SetupTestLogger()
 
 	t.Run("successfully starts the server", func(t *testing.T) {
 
@@ -83,6 +85,7 @@ func TestStartServer(t *testing.T) {
 }
 
 func TestGetStatus(t *testing.T) {
+	testhelper.SetupTestLogger()
 
 	t.Run("get service status when no agent is running", func(t *testing.T) {
 
@@ -116,7 +119,7 @@ func TestGetStatus(t *testing.T) {
 			Credentials: credCmd,
 		})
 
-		os := &testutils.MockPlatform{}
+		os := testutils.MockPlatform{}
 		os.RetStatus = idl.ServiceStatus{Status: "running", Uptime: "10ms", Pid: uint32(1234)}
 		os.Err = nil
 		agent.SetPlatform(os)
@@ -144,7 +147,7 @@ func TestGetStatus(t *testing.T) {
 			Credentials: credCmd,
 		})
 
-		os := &testutils.MockPlatform{}
+		os := testutils.MockPlatform{}
 		os.Err = errors.New("")
 		agent.SetPlatform(os)
 		defer agent.ResetPlatform()
