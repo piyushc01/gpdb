@@ -34,7 +34,7 @@ type Config struct {
 	ServiceName string   `json:"serviceName"`
 	GpHome      string   `json:"gphome"`
 
-	Credentials utils.GpCredentials
+	Credentials utils.Credentials
 }
 
 type Server struct {

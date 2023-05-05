@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/greenplum-db/gpdb/gp/utils"
 	"os"
 	"strings"
 	"time"
@@ -46,6 +47,8 @@ func RootCommand() *cobra.Command {
  */
 
 func ParseConfig(configFilePath string) (conf *hub.Config, err error) {
+	conf = &hub.Config{}
+	conf.Credentials = &utils.GpCredentials{}
 	contents, err := os.ReadFile(configFilePath)
 	if err != nil {
 		return nil, err

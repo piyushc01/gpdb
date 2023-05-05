@@ -23,6 +23,7 @@ depend-dev:
 	mkdir -p $(GOBIN)
 	go install github.com/golang/protobuf/protoc-gen-go@v1.3.2
 	go install github.com/golang/mock/mockgen@v1.6.0
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOBIN) v1.52.2
 	
 .PHONY: lint
 lint:

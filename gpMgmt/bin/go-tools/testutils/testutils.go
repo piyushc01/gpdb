@@ -48,3 +48,6 @@ func (p MockPlatform) DisplayServiceStatus(statuses []*idl.ServiceStatus) {
 func (p MockPlatform) EnableUserLingering(hostnames []string, gphome string, serviceUser string) error {
 	return nil
 }
+func (p *MockPlatform) CreateServiceDir(hostnames []string, serviceDir string, gphome string) error {
+	return nil
+}
