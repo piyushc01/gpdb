@@ -1,4 +1,4 @@
-package hub
+package hub_test
 
 import (
 	"errors"
@@ -126,7 +126,7 @@ func TestStartAgents(t *testing.T){
 
 	t.Run("failed to start if the host is not reachable", func(t *testing.T) {
 
-		credCmd := &MockCredentials{nil,errors.New("")}
+		credCmd := &MockCredentials{nil,nil}
 
 		conf := &hub.Config{
 			1234,
@@ -149,7 +149,7 @@ func TestStartAgents(t *testing.T){
 
 	t.Run("failed to start if the gphome is not set", func(t *testing.T) {
 
-		credCmd := &MockCredentials{nil,errors.New("")}
+		credCmd := &MockCredentials{nil,nil}
 
 		conf := &hub.Config{
 			1234,

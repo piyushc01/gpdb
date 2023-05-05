@@ -18,7 +18,7 @@ func getDefaultCredentials() *utils.GpCredentials {
 }
 
 func setup(t *testing.T) {
-	err := exec.Command("bash", "-c", "../generate_test_tls_certificates.sh").Run()
+	err := exec.Command("bash", "-c", "../generate_test_tls_certificates.sh `hostname`").Run()
 	if err != nil {
 		t.Fatalf("Cannot generate test certificates: %v", err)
 	}
