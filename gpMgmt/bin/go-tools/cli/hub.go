@@ -191,19 +191,20 @@ func updateConfAbsoluteVar(cmd *cobra.Command, varName string, varToUpdate *stri
 
 func CreateConfigFile(caCertPath, caKeyPath, serverCertPath, serverKeyPath string, hubPort, agentPort int, hostnames []string, hubLogDir, serviceName string, serviceDir string) error {
 	gplog.Debug("Entering function:CreateConfigFile")
-	creds := utils.GpCredentials{caCertPath, caKeyPath, serverCertPath, serverKeyPath}
-	conf = &hub.Config{hubPort, agentPort, hostnames, hubLogDir, serviceName, gphome, creds}
+	creds := utils.GpCredentials{CACertPath: caCertPath, CAKeyPath: caKeyPath, ServerCertPath: serverCertPath, ServerKeyPath: serverKeyPath}
+	conf = &hub.Config{Port: hubPort, AgentPort: agentPort, Hostnames: hostnames, LogDir: hubLogDir, ServiceName: serviceName, GpHome: gphome, Credentials: creds}
 	configContents, err := json.MarshalIndent(conf, "", "\t")
 	if err != nil {
 		gplog.Error("Could not generate configuration file: %s", err.Error())
 		return fmt.Errorf("Could not generate configuration file: %w", err)
 	}
 	configHandle, err := os.OpenFile(configFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-	defer configHandle.Close()
 	if err != nil {
 		gplog.Error("Could not create configuration file %s: %s", configFilePath, err.Error())
 		return fmt.Errorf("Could not create configuration file %s: %w\n", configFilePath, err)
 	}
+	defer configHandle.Close()
+
 	_, err = configHandle.Write(configContents)
 	if err != nil {
 		gplog.Error("Could not write to configuration file %s: %s", configFilePath, err.Error())

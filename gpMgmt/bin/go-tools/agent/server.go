@@ -30,7 +30,6 @@ type Server struct {
 	mu     sync.Mutex
 	server *grpc.Server
 	lis    net.Listener
-	stop   chan int
 }
 
 func New(conf Config) *Server {

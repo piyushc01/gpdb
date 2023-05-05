@@ -39,7 +39,7 @@ func RunStartHub(cmd *cobra.Command, args []string) error {
 	}
 	gplog.Info("Hub started successfully")
 	if verbose {
-		ShowHubStatus(conf)
+		_ = ShowHubStatus(conf)
 	}
 	return nil
 }
@@ -67,7 +67,7 @@ func RunStartAgent(cmd *cobra.Command, args []string) error {
 	}
 	gplog.Info("Agents started successfully")
 	if verbose {
-		ShowAgentsStatus(client, conf)
+		_ = ShowAgentsStatus(client, conf)
 	}
 	return nil
 }

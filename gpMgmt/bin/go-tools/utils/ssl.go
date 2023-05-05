@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"google.golang.org/grpc/credentials"
 )
@@ -36,7 +36,7 @@ func (c GpCredentials) LoadServerCredentials() (credentials.TransportCredentials
 }
 
 func (c GpCredentials) LoadClientCredentials() (credentials.TransportCredentials, error) {
-	caCert, err := ioutil.ReadFile(c.CACertPath)
+	caCert, err := os.ReadFile(c.CACertPath)
 	if err != nil {
 		return nil, err
 	}

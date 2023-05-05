@@ -43,7 +43,6 @@ func (p MockPlatform) ParseServiceStatusMessage(message string) idl.ServiceStatu
 	return p.RetStatus
 }
 func (p MockPlatform) DisplayServiceStatus(statuses []*idl.ServiceStatus) {
-	return
 }
 func (p MockPlatform) EnableUserLingering(hostnames []string, gphome string, serviceUser string) error {
 	return nil

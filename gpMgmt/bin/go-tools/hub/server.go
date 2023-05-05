@@ -99,19 +99,12 @@ func (s *Server) Start() error {
 	idl.RegisterHubServer(server, s)
 	reflection.Register(server)
 
-	//sigChan := make(chan os.Signal, 1)
-	//signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
-		select {
-		//case sig := <-sigChan:
-		//	gplog.Info("Received signal %v", sig)
-		case <-s.finish:
-			gplog.Info("Received stop command, attempting graceful shutdown")
-			s.server.GracefulStop()
-			gplog.Info("gRPC server has shut down")
-		}
+		gplog.Info("Received stop command, attempting graceful shutdown")
+		s.server.GracefulStop()
+		gplog.Info("gRPC server has shut down")
 		cancel()
 		wg.Done()
 	}()
@@ -214,6 +207,7 @@ func (s *Server) DialAllAgents() error {
 
 		credentials, err := s.Credentials.LoadClientCredentials()
 		if err != nil {
+			cancelFunc()
 			gplog.Error("Could not load credentials: %s", err.Error())
 			return fmt.Errorf("Could not load credentials: %w", err)
 		}
