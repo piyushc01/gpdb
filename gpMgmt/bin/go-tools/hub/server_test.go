@@ -2,35 +2,36 @@ package hub_test
 
 import (
 	"errors"
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpdb/gp/hub"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	"strings"
-	"testing"
-	"time"
 )
 
 type MockCredentials struct {
-	TlsConnection  credentials.TransportCredentials
-	err error
+	TlsConnection credentials.TransportCredentials
+	err           error
 }
 
-func (s MockCredentials)LoadServerCredentials() (credentials.TransportCredentials, error) {
-	return s.TlsConnection,s.err
+func (s MockCredentials) LoadServerCredentials() (credentials.TransportCredentials, error) {
+	return s.TlsConnection, s.err
 }
 
-func (s MockCredentials) LoadClientCredentials() (credentials.TransportCredentials, error){
-	return s.TlsConnection,s.err
+func (s MockCredentials) LoadClientCredentials() (credentials.TransportCredentials, error) {
+	return s.TlsConnection, s.err
 }
 
-func TestStartServer(t *testing.T){
+func TestStartServer(t *testing.T) {
 
 	testhelper.SetupTestLogger()
 
 	t.Run("successfully starts the hub server", func(t *testing.T) {
 
-		credCmd := MockCredentials{nil,nil} //utils.GpCredentials{"","","",""}
+		credCmd := MockCredentials{nil, nil} //utils.GpCredentials{"","","",""}
 
 		conf := &hub.Config{
 			1234,
@@ -42,7 +43,7 @@ func TestStartServer(t *testing.T){
 			credCmd,
 		}
 
-		hubServer := hub.New(conf, grpc.DialContext )
+		hubServer := hub.New(conf, grpc.DialContext)
 
 		errChan := make(chan error, 1)
 		go func() {
@@ -50,7 +51,6 @@ func TestStartServer(t *testing.T){
 		}()
 
 		defer hubServer.Shutdown()
-
 
 		select {
 		case err := <-errChan:
@@ -65,7 +65,7 @@ func TestStartServer(t *testing.T){
 
 	t.Run("failed to start if the load credential fail", func(t *testing.T) {
 
-		credCmd := &MockCredentials{nil,errors.New("")}
+		credCmd := &MockCredentials{nil, errors.New("")}
 
 		conf := &hub.Config{
 			1234,
@@ -76,7 +76,7 @@ func TestStartServer(t *testing.T){
 			"gphome",
 			credCmd,
 		}
-		hubServer := hub.New(conf, grpc.DialContext )
+		hubServer := hub.New(conf, grpc.DialContext)
 
 		errChan := make(chan error, 1)
 		go func() {
@@ -86,7 +86,7 @@ func TestStartServer(t *testing.T){
 
 		select {
 		case err := <-errChan:
-			if err == nil || !strings.Contains(err.Error(),"Could not load credentials")  {
+			if err == nil || !strings.Contains(err.Error(), "Could not load credentials") {
 				t.Fatalf("want \"Could not load credentials\" but get: %q", err.Error())
 			}
 		case <-time.After(1 * time.Second):
@@ -95,13 +95,13 @@ func TestStartServer(t *testing.T){
 	})
 }
 
-func TestStartAgents(t *testing.T){
+func TestStartAgents(t *testing.T) {
 
 	testhelper.SetupTestLogger()
 
 	t.Run("successfully starts the agents from hub", func(t *testing.T) {
 
-		credCmd := &MockCredentials{nil,nil}
+		credCmd := &MockCredentials{nil, nil}
 
 		conf := &hub.Config{
 			1234,
@@ -113,7 +113,7 @@ func TestStartAgents(t *testing.T){
 			credCmd,
 		}
 
-		hubServer := hub.New(conf, grpc.DialContext )
+		hubServer := hub.New(conf, grpc.DialContext)
 
 		err := hubServer.StartAllAgents()
 		defer hubServer.Shutdown()
@@ -126,7 +126,7 @@ func TestStartAgents(t *testing.T){
 
 	t.Run("failed to start if the host is not reachable", func(t *testing.T) {
 
-		credCmd := &MockCredentials{nil,nil}
+		credCmd := &MockCredentials{nil, nil}
 
 		conf := &hub.Config{
 			1234,
@@ -137,7 +137,7 @@ func TestStartAgents(t *testing.T){
 			"/usr/local/gpdb",
 			credCmd,
 		}
-		hubServer := hub.New(conf, grpc.DialContext )
+		hubServer := hub.New(conf, grpc.DialContext)
 
 		err := hubServer.StartAllAgents()
 		defer hubServer.Shutdown()
@@ -149,7 +149,7 @@ func TestStartAgents(t *testing.T){
 
 	t.Run("failed to start if the gphome is not set", func(t *testing.T) {
 
-		credCmd := &MockCredentials{nil,nil}
+		credCmd := &MockCredentials{nil, nil}
 
 		conf := &hub.Config{
 			1234,
@@ -160,7 +160,7 @@ func TestStartAgents(t *testing.T){
 			"gphome",
 			credCmd,
 		}
-		hubServer := hub.New(conf, grpc.DialContext )
+		hubServer := hub.New(conf, grpc.DialContext)
 
 		err := hubServer.StartAllAgents()
 		defer hubServer.Shutdown()
@@ -170,4 +170,3 @@ func TestStartAgents(t *testing.T){
 		}
 	})
 }
-
