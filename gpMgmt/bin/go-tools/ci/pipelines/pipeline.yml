@@ -118,6 +118,12 @@ resources:
       tag: latest
       repository: gcr.io/data-gpdb-public-images/gpdb7-rocky8-build
 
+  - name: gpdb7-rocky8-test
+    type: registry-image
+    source:
+      tag: latest
+      repository: gcr.io/data-gpdb-public-images/gpdb7-rocky8-test
+
   - name: ccp-image
     type: registry-image
     icon: docker
@@ -242,21 +248,17 @@ jobs:
   - in_parallel:
       steps:
       - get: gpdb_src
+      - get: gpdb7-rocky8-test
+      - get: gpdb_binary
+        resource: bin_gpdb
+        passed: [compile_gpdb_rocky8]
         trigger: true
-      - get: gpdb7-rocky8-build
   - task: run_unit_tests
-    image: gpdb7-rocky8-build
+    image: gpdb7-rocky8-test
     config:
       platform: linux
       inputs:
         - name: gpdb_src
+        - name: gpdb_binary
       run:
-        path: bash
-        args:
-          - -c
-          - |
-            set -eux -o pipefail
-
-            export PATH=/usr/local/go/bin:$PATH
-            cd gpdb_src/gpMgmt/bin/go-tools
-            make test
+        path: gpdb_src/gpMgmt/bin/go-tools/ci/scripts/run_unit_tests.bash
