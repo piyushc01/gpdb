@@ -102,6 +102,7 @@ func (s *Server) Start() error {
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
+		<-s.finish
 		gplog.Info("Received stop command, attempting graceful shutdown")
 		s.server.GracefulStop()
 		gplog.Info("gRPC server has shut down")
