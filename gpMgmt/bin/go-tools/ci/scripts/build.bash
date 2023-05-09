@@ -32,4 +32,6 @@ ssh -n cdw "
     gp status agents
     gp stop agents
     gp stop hub
+
+    make test
 "

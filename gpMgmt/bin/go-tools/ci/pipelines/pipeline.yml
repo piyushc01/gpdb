@@ -87,8 +87,7 @@ groups:
     jobs:
       - compile_gpdb_rocky8
       - lint
-      - run_tests
-      - build
+      - build_test
 
 resource_types:
   - name: gcs
@@ -118,11 +117,11 @@ resources:
       tag: latest
       repository: gcr.io/data-gpdb-public-images/gpdb7-rocky8-build
 
-  - name: gpdb7-rocky8-test
-    type: registry-image
-    source:
-      tag: latest
-      repository: gcr.io/data-gpdb-public-images/gpdb7-rocky8-test
+  # - name: gpdb7-rocky8-test
+  #   type: registry-image
+  #   source:
+  #     tag: latest
+  #     repository: gcr.io/data-gpdb-public-images/gpdb7-rocky8-test
 
   - name: ccp-image
     type: registry-image
@@ -201,7 +200,7 @@ jobs:
               cd gpdb_src/gpMgmt/bin/go-tools
               make lint
 
-- name: build
+- name: build_test
   plan:
   - in_parallel:
       steps:
@@ -243,22 +242,23 @@ jobs:
           ensure:
             <<: *set_failed
 
-- name: run_tests
-  plan:
-  - in_parallel:
-      steps:
-      - get: gpdb_src
-      - get: gpdb7-rocky8-test
-      - get: gpdb_binary
-        resource: bin_gpdb
-        passed: [compile_gpdb_rocky8]
-        trigger: true
-  - task: run_unit_tests
-    image: gpdb7-rocky8-test
-    config:
-      platform: linux
-      inputs:
-        - name: gpdb_src
-        - name: gpdb_binary
-      run:
-        path: gpdb_src/gpMgmt/bin/go-tools/ci/scripts/run_unit_tests.bash
+# TODO: Create seperate jobs for build, unit tests and integration tests.
+# - name: run_tests
+#   plan:
+#   - in_parallel:
+#       steps:
+#       - get: gpdb_src
+#       - get: gpdb7-rocky8-test
+#       - get: gpdb_binary
+#         resource: bin_gpdb
+#         passed: [compile_gpdb_rocky8]
+#         trigger: true
+#   - task: run_unit_tests
+#     image: gpdb7-rocky8-test
+#     config:
+#       platform: linux
+#       inputs:
+#         - name: gpdb_src
+#         - name: gpdb_binary
+#       run:
+#         path: gpdb_src/gpMgmt/bin/go-tools/ci/scripts/run_unit_tests.bash
