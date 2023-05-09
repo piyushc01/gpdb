@@ -1,6 +1,7 @@
 package hub
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net"
@@ -162,17 +163,30 @@ func (s *Server) StartAgents(ctx context.Context, in *idl.StartAgentsRequest) (*
 
 func (s *Server) StartAllAgents() error {
 	gplog.Debug("Entering function:StartAllAgents")
-	var err error
+	var outb, errb bytes.Buffer
 
 	remoteCmd := make([]string, 0)
 	for _, host := range s.Hostnames {
 		remoteCmd = append(remoteCmd, "-h", host)
 	}
 	remoteCmd = append(remoteCmd, platform.GetStartAgentCommandString(s.ServiceName)...)
-	err = exec.Command("/bin/bash", "-c", fmt.Sprintf("source %s/greenplum_path.sh; gpssh %s", s.GpHome, strings.Join(remoteCmd, " "))).Run()
-	if err != nil {
+
+	cmd := exec.Command("/bin/bash", "-c", fmt.Sprintf("source %s/greenplum_path.sh; gpssh %s", s.GpHome, strings.Join(remoteCmd, " ")))
+	cmd.Stdout = &outb
+	cmd.Stderr = &errb
+	if err := cmd.Run(); err != nil {
 		gplog.Error("Could not start agent: %s", err.Error())
 		return fmt.Errorf("Could not start agent: %w", err)
+	}
+	//there are chances in most of the cases the command returns nil err even if there is error in stdout.
+	//to overcome this we have added check to handle both
+	if len(errb.String()) > 0 || strings.Contains(outb.String(), "ERROR") {
+		errString := outb.String()
+		if len(errb.String()) > 0 {
+			errString = errb.String()
+		}
+		gplog.Error("Could not start agent: %s", errString)
+		return fmt.Errorf("Could not start agent: %s", errString)
 	}
 
 	gplog.Debug("Exiting function:StartAllAgents")

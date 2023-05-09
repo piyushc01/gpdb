@@ -2,14 +2,13 @@ package hub_test
 
 import (
 	"errors"
-	"strings"
-	"testing"
-	"time"
-
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpdb/gp/hub"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"strings"
+	"testing"
+	"time"
 )
 
 type MockCredentials struct {
@@ -109,7 +108,7 @@ func TestStartAgents(t *testing.T) {
 			[]string{"localhost"},
 			"/tmp/logDir",
 			"gp",
-			"/usr/local/gpdb",
+			"/usr/local/greenplum-db-devel",
 			credCmd,
 		}
 
@@ -134,7 +133,7 @@ func TestStartAgents(t *testing.T) {
 			[]string{"test"},
 			"/tmp/logDir",
 			"gp",
-			"/usr/local/gpdb",
+			"/usr/local/greenplum-db-devel",
 			credCmd,
 		}
 		hubServer := hub.New(conf, grpc.DialContext)
@@ -143,7 +142,7 @@ func TestStartAgents(t *testing.T) {
 		defer hubServer.Shutdown()
 
 		if err == nil {
-			t.Fatalf("was expecting error")
+			t.Fatalf("expected connection error")
 		}
 	})
 
@@ -166,7 +165,7 @@ func TestStartAgents(t *testing.T) {
 		defer hubServer.Shutdown()
 
 		if err == nil {
-			t.Fatalf("was expecting error")
+			t.Fatalf("expected path greenplum_path not found error")
 		}
 	})
 }
