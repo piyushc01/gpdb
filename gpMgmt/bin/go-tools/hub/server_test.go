@@ -6,6 +6,7 @@ import (
 	"github.com/greenplum-db/gpdb/gp/hub"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -27,18 +28,20 @@ func (s MockCredentials) LoadClientCredentials() (credentials.TransportCredentia
 func TestStartServer(t *testing.T) {
 
 	testhelper.SetupTestLogger()
+	host, _ := os.Hostname()
+	gpHome := os.Getenv("GPHOME")
 
 	t.Run("successfully starts the hub server", func(t *testing.T) {
 
-		credCmd := MockCredentials{nil, nil} //utils.GpCredentials{"","","",""}
+		credCmd := MockCredentials{nil, nil}
 
 		conf := &hub.Config{
 			1234,
 			8080,
-			[]string{"localhost"},
+			[]string{host},
 			"/tmp/logDir",
 			"gp",
-			"gphome",
+			gpHome,
 			credCmd,
 		}
 
@@ -69,10 +72,10 @@ func TestStartServer(t *testing.T) {
 		conf := &hub.Config{
 			1234,
 			8080,
-			[]string{"localhost"},
+			[]string{host},
 			"/tmp/logDir",
 			"gp",
-			"gphome",
+			gpHome,
 			credCmd,
 		}
 		hubServer := hub.New(conf, grpc.DialContext)
@@ -97,6 +100,8 @@ func TestStartServer(t *testing.T) {
 func TestStartAgents(t *testing.T) {
 
 	testhelper.SetupTestLogger()
+	host, _ := os.Hostname()
+	gpHome := os.Getenv("GPHOME")
 
 	t.Run("successfully starts the agents from hub", func(t *testing.T) {
 
@@ -105,10 +110,10 @@ func TestStartAgents(t *testing.T) {
 		conf := &hub.Config{
 			1234,
 			8080,
-			[]string{"localhost"},
+			[]string{host},
 			"/tmp/logDir",
 			"gp",
-			"/usr/local/greenplum-db-devel",
+			gpHome,
 			credCmd,
 		}
 
@@ -133,7 +138,7 @@ func TestStartAgents(t *testing.T) {
 			[]string{"test"},
 			"/tmp/logDir",
 			"gp",
-			"/usr/local/greenplum-db-devel",
+			gpHome,
 			credCmd,
 		}
 		hubServer := hub.New(conf, grpc.DialContext)
@@ -141,7 +146,7 @@ func TestStartAgents(t *testing.T) {
 		err := hubServer.StartAllAgents()
 		defer hubServer.Shutdown()
 
-		if err == nil {
+		if err == nil || !strings.Contains(err.Error(), "unable to login") {
 			t.Fatalf("expected connection error")
 		}
 	})
@@ -153,7 +158,7 @@ func TestStartAgents(t *testing.T) {
 		conf := &hub.Config{
 			1234,
 			8080,
-			[]string{"localhost"},
+			[]string{host},
 			"/tmp/logDir",
 			"gp",
 			"gphome",
@@ -164,7 +169,7 @@ func TestStartAgents(t *testing.T) {
 		err := hubServer.StartAllAgents()
 		defer hubServer.Shutdown()
 
-		if err == nil {
+		if err == nil || !strings.Contains(err.Error(), "No such file or directory") {
 			t.Fatalf("expected path greenplum_path not found error")
 		}
 	})
