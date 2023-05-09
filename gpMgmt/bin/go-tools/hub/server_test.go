@@ -70,7 +70,7 @@ func TestStartServer(t *testing.T) {
 		credCmd := &MockCredentials{nil, errors.New("")}
 
 		conf := &hub.Config{
-			1234,
+			1235,
 			8080,
 			[]string{host},
 			"/tmp/logDir",

@@ -62,7 +62,7 @@ func TestStartServer(t *testing.T) {
 		credCmd := &MockCredentials{nil, errors.New("")}
 
 		agentServer := agent.New(agent.Config{
-			Port:        8000,
+			Port:        8001,
 			ServiceName: "gp",
 			Credentials: credCmd,
 		})
