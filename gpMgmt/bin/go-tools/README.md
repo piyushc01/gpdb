@@ -87,10 +87,10 @@ make test     # run unit test in verbose mode
 #### End-to-End tests
 Creates a Concourse pipeline that includes various multi-host unit/functional tests.
 ```
-make set-pipeline
+make pipeline
 ```
 To update the pipeline edit the yaml files in the `ci` directory and run
-`make set-pipeline`.
+`make pipeline`.
 
 
 #### Log Locations

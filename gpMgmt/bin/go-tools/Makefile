@@ -56,6 +56,19 @@ format:
 	goimports -l -w agent/ cli/ hub/ testutils/ utils/
 	gofmt -l -w agent/ cli/ hub/ testutils/ utils/
 
+# You can override these from the command line.
+GIT_BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD)
+GIT_REMOTE ?= $(shell git ls-remote --get-url)
+PIPELINE_NAME ?= gpdb-dev-$(shell git rev-parse --abbrev-ref HEAD | tr '/' '-')
+pipeline:
+	fly -t dev set-pipeline -p $(PIPELINE_NAME) \
+		-c ci/pipelines/pipeline.yml \
+		-l ../../../concourse/vars/common_prod.yml \
+		-l ../../../concourse/vars/common_dev.yml \
+		-v gpdb-git-remote=$(GIT_REMOTE) \
+		-v gpdb-git-branch=$(GIT_BRANCH) \
+		-v pipeline-name=$(PIPELINE_NAME)
+
 clean:
 	rm -f gp
 	rm -f ./idl/*.pb.go

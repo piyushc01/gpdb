@@ -82,12 +82,6 @@ anchors:
       bucket: gpdb5-pipeline-dynamic-terraform
       bucket_path: clusters-google/
 
-groups:
-  - name: all
-    jobs:
-      - compile_gpdb_rocky8
-      - lint
-      - build_test
 
 resource_types:
   - name: gcs
@@ -137,6 +131,13 @@ resources:
       json_key: ((concourse-gcs-resources-service-account-key))
       versioned_file: ((pipeline-name))/bin_gpdb/bin_gpdb.tar.gz
 
+  - name: gp_binary
+    type: gcs
+    source:
+      bucket: ((gcs-bucket-intermediates))
+      json_key: ((concourse-gcs-resources-service-account-key))
+      versioned_file: ((pipeline-name))/gp_binary/gp
+
   - name: ccp_src
     type: git
     source:
@@ -155,6 +156,16 @@ resources:
       secret_access_key: ((aws-bucket-secret-access-key))
       versioned_file: plugin-cache.tgz
     type: s3
+
+
+groups:
+  - name: all
+    jobs:
+      - compile_gpdb_rocky8
+      - lint
+      - build
+      - run_tests
+
 
 jobs:
 - name: compile_gpdb_rocky8
@@ -200,11 +211,46 @@ jobs:
               cd gpdb_src/gpMgmt/bin/go-tools
               make lint
 
-- name: build_test
+- name: build
+  plan:
+  - in_parallel:
+      steps:
+      - get: gpdb_src
+        trigger: true
+      - get: gpdb7-rocky8-build
+  - task: build
+    image: gpdb7-rocky8-build
+    config:
+      platform: linux
+      inputs:
+        - name: gpdb_src
+      outputs:
+       - name: gp_binary
+      run:
+        path: bash
+        args:
+          - -c
+          - |
+            set -eux -o pipefail
+            export GP_BINARY_DIR=$(pwd)/gp_binary
+            cd gpdb_src/gpMgmt/bin/go-tools
+            make build
+            cp gp ${GP_BINARY_DIR}/
+  - in_parallel:
+      steps:
+      - put: gp_binary
+        params:
+          file: gp_binary/gp
+
+- name: run_tests
   plan:
   - in_parallel:
       steps:
       - do:
+        - get: gp_binary
+          resource: gp_binary
+          passed: [build]
+          trigger: true
         - get: gpdb_binary
           resource: bin_gpdb
           passed: [compile_gpdb_rocky8]
@@ -226,7 +272,7 @@ jobs:
           file: ccp_src/ci/tasks/gen_cluster.yml
           params:
             <<: *ccp_gen_cluster_default_params
-        - task: build
+        - task: run_tests
           image: ccp-image
           config:
             platform: linux
@@ -234,8 +280,9 @@ jobs:
               - name: gpdb_src
               - name: ccp_src
               - name: cluster_env_files
+              - name: gp_binary
             run:
-              path: gpdb_src/gpMgmt/bin/go-tools/ci/scripts/build.bash
+              path: gpdb_src/gpMgmt/bin/go-tools/ci/scripts/run_tests.bash
 
           on_success:
             <<: *ccp_destroy
