@@ -27,9 +27,9 @@ type Config struct {
 type Server struct {
 	*Config
 
-	mu     sync.Mutex
-	server *grpc.Server
-	lis    net.Listener
+	mutex      sync.Mutex
+	grpcServer *grpc.Server
+	listener   net.Listener
 }
 
 func New(conf Config) *Server {
@@ -47,7 +47,7 @@ func (s *Server) Stop(ctx context.Context, in *idl.StopAgentRequest) (*idl.StopA
 
 func (s *Server) Start() error {
 	gplog.Debug("Entering function:Start")
-	lis, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", s.Port))
+	listener, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", s.Port))
 	if err != nil {
 		gplog.Error("Could not listen on port %d: %s", s.Port, err.Error())
 		return fmt.Errorf("Could not listen on port %d: %w", s.Port, err)
@@ -63,20 +63,20 @@ func (s *Server) Start() error {
 		gplog.Error("Could not load credentials: %s", err.Error())
 		return fmt.Errorf("Could not load credentials: %w", err)
 	}
-	server := grpc.NewServer(
+	grpcServer := grpc.NewServer(
 		grpc.Creds(credentials),
 		grpc.UnaryInterceptor(interceptor),
 	)
 
-	s.mu.Lock()
-	s.server = server
-	s.lis = lis
-	s.mu.Unlock()
+	s.mutex.Lock()
+	s.grpcServer = grpcServer
+	s.listener = listener
+	s.mutex.Unlock()
 
-	idl.RegisterAgentServer(server, s)
-	reflection.Register(server)
+	idl.RegisterAgentServer(grpcServer, s)
+	reflection.Register(grpcServer)
 
-	err = server.Serve(lis)
+	err = grpcServer.Serve(listener)
 	if err != nil {
 		gplog.Error("Failed to serve: %s", err.Error())
 		return fmt.Errorf("Failed to serve: %w", err)
@@ -87,11 +87,11 @@ func (s *Server) Start() error {
 
 func (s *Server) Shutdown() {
 	gplog.Debug("Entering function:Shutdown")
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
-	if s.server != nil {
-		s.server.Stop()
+	if s.grpcServer != nil {
+		s.grpcServer.Stop()
 	}
 	gplog.Debug("Exiting function:Shutdown")
 }

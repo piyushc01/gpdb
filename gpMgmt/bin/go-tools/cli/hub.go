@@ -105,9 +105,8 @@ func RunInstall(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	// Convert file/directory paths to absolute path before writing to gp.conf file
-	err = updateConfAbsolutePath(cmd)
+	err = resolveAbsolutePaths(cmd)
 	if err != nil {
-		gplog.Error("Error while converting file/directory paths to absolute path %s", err.Error())
 		return err
 	}
 
@@ -150,43 +149,16 @@ func RunInstall(cmd *cobra.Command, args []string) (err error) {
 	return nil
 }
 
-func updateConfAbsolutePath(cmd *cobra.Command) error {
-	// Convert certificate file paths to absolute path
-	gplog.Debug("Entering function:updateAbsolutePath")
-	var err error = nil
-	// List of variables to be converted to absolute value
-	varMap := map[string]*string{
-		"ca-certificate":     &caCertPath,
-		"ca-key":             &caKeyPath,
-		"server-certificate": &serverCertPath,
-		"server-key":         &serverKeyPath,
-		"log-dir":            &defaultHubLogDir,
-		"gphome":             &gphome,
-	}
-	for key, value := range varMap {
-		err = updateConfAbsoluteVar(cmd, key, value)
+func resolveAbsolutePaths(cmd *cobra.Command) error {
+	paths := []*string{&caCertPath, &caKeyPath, &serverCertPath, &serverKeyPath, &defaultHubLogDir, &gphome}
+	for _, path := range paths {
+		p, err := filepath.Abs(*path)
 		if err != nil {
-			gplog.Error("Error converting to absolute path for %s is file:%s. Error: %s", key, *value, err.Error())
-			return err
+			return fmt.Errorf("Error resolving absolute path for %s: %w", *path, err)
 		}
+		*path = p
 	}
 	return nil
-}
-
-// Converts variable from command and updates it with absolute value to varToUpdate variable
-func updateConfAbsoluteVar(cmd *cobra.Command, varName string, varToUpdate *string) error {
-	var err error = nil
-	gplog.Debug("Entering function:updateVarAbsolut")
-	if cmd.Flags().Lookup(varName).Changed && !filepath.IsAbs(*varToUpdate) {
-		*varToUpdate, err = filepath.Abs(*varToUpdate)
-		if err != nil {
-			gplog.Error("Error converting to absolute path for file:%s. Error: %s", *varToUpdate, err.Error())
-			return err
-		}
-		gplog.Debug("Updated %s to absolute value:%s", varName, *varToUpdate)
-	}
-	gplog.Debug("Exiting function:updateVarAbsolut")
-	return err
 }
 
 func CreateConfigFile(caCertPath, caKeyPath, serverCertPath, serverKeyPath string, hubPort, agentPort int, hostnames []string, hubLogDir, serviceName string, serviceDir string) error {

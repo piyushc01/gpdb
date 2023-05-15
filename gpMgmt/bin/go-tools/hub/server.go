@@ -43,10 +43,10 @@ type Server struct {
 	conns      []*Connection
 	grpcDialer Dialer
 
-	mu     sync.Mutex
-	server *grpc.Server
-	lis    net.Listener
-	finish chan struct{}
+	mutex      sync.Mutex
+	grpcServer *grpc.Server
+	listener   net.Listener
+	finish     chan struct{}
 }
 
 type Connection struct {
@@ -70,7 +70,7 @@ func (s *Server) Start() error {
 	_, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	lis, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", s.Port)) // TODO: make this "hostname:port" so it can be started from somewhere other than the coordinator host
+	listener, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", s.Port)) // TODO: make this "hostname:port" so it can be started from somewhere other than the coordinator host
 	if err != nil {
 		gplog.Error("Could not listen on port %d: %s", s.Port, err.Error())
 		return fmt.Errorf("Could not listen on port %d: %w", s.Port, err)
@@ -86,31 +86,31 @@ func (s *Server) Start() error {
 		gplog.Error("Could not load credentials: %s", err.Error())
 		return fmt.Errorf("Could not load credentials: %w", err)
 	}
-	server := grpc.NewServer(
+	grpcServer := grpc.NewServer(
 		grpc.Creds(credentials),
 		grpc.UnaryInterceptor(interceptor),
 	)
 
-	s.mu.Lock()
-	s.server = server
-	s.lis = lis
-	s.mu.Unlock()
+	s.mutex.Lock()
+	s.grpcServer = grpcServer
+	s.listener = listener
+	s.mutex.Unlock()
 
-	idl.RegisterHubServer(server, s)
-	reflection.Register(server)
+	idl.RegisterHubServer(grpcServer, s)
+	reflection.Register(grpcServer)
 
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
 		<-s.finish
 		gplog.Info("Received stop command, attempting graceful shutdown")
-		s.server.GracefulStop()
+		s.grpcServer.GracefulStop()
 		gplog.Info("gRPC server has shut down")
 		cancel()
 		wg.Done()
 	}()
 
-	err = server.Serve(lis)
+	err = grpcServer.Serve(listener)
 	if err != nil {
 		gplog.Error("Failed to serve: %s", err.Error())
 		return fmt.Errorf("Failed to serve: %w", err)
@@ -129,10 +129,10 @@ func (s *Server) Stop(ctx context.Context, in *idl.StopHubRequest) (*idl.StopHub
 
 func (s *Server) Shutdown() {
 	gplog.Debug("Entering function:Shutdown")
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
-	if s.server != nil {
+	if s.grpcServer != nil {
 		s.finish <- struct{}{}
 	}
 	gplog.Debug("Exiting function:Shutdown")
@@ -189,8 +189,8 @@ func (s *Server) StartAllAgents() error {
 
 func (s *Server) DialAllAgents() error {
 	gplog.Debug("Entering function:DialAllAgents")
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 
 	if s.conns != nil {
 		err := EnsureConnectionsAreReady(s.conns)

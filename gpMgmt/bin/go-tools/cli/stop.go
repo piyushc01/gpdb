@@ -41,9 +41,15 @@ func RunStopHub(cmd *cobra.Command, args []string) error {
 	}
 
 	_, err = client.Stop(context.Background(), &idl.StopHubRequest{})
-	err = ignoreAlreadyStoppedError(err)
+	// Ignore a "hub already stopped" error
 	if err != nil {
-		return fmt.Errorf("Could not stop hub: %w", err)
+		errCode := grpcStatus.Code(err)
+		errMsg := grpcStatus.Convert(err).Message()
+		// XXX: "transport is closing" is not documented but is needed to uniquely interpret codes.Unavailable
+		// https://github.com/grpc/grpc/blob/v1.24.0/doc/statuscodes.md
+		if errCode != codes.Unavailable || errMsg != "transport is closing" {
+			return fmt.Errorf("Could not stop hub: %w", err)
+		}
 	}
 	gplog.Info("Hub stopped successfully")
 	if verbose {
@@ -76,19 +82,6 @@ func RunStopAgents(cmd *cobra.Command, args []string) error {
 	gplog.Info("Agents stopped successfully")
 	if verbose {
 		_ = ShowAgentsStatus(client, conf)
-	}
-	return nil
-}
-
-func ignoreAlreadyStoppedError(err error) error {
-	if err != nil {
-		errCode := grpcStatus.Code(err)
-		errMsg := grpcStatus.Convert(err).Message()
-		// XXX: "transport is closing" is not documented but is needed to uniquely interpret codes.Unavailable
-		// https://github.com/grpc/grpc/blob/v1.24.0/doc/statuscodes.md
-		if errCode != codes.Unavailable || errMsg != "transport is closing" {
-			return err
-		}
 	}
 	return nil
 }
