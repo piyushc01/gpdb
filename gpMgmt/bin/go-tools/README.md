@@ -1,13 +1,4 @@
 ### Setup environment
-### Install go
-#### Linux:
-```
-yum install go
-```
-#### For Mac:
-```
-brew install go
-```
 
 ### Build and Install
 ```
@@ -28,12 +19,6 @@ make cert    # generate certificates for given host
 #### Build protobuf
 ```
 make proto   # compile protobuf files to generate grpc code for hub and agents
-```
-
-#### Build & Install
-```
-make               # execute build target to compile and build gp binary
-make install       # installs gp binary in GPHOME/bin
 ```
 
 #### Cross-compile with:
