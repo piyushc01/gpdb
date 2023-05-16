@@ -66,7 +66,6 @@ func New(conf *Config, grpcDialer Dialer) *Server {
 }
 
 func (s *Server) Start() error {
-	gplog.Debug("Entering function:Start")
 	_, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -116,30 +115,24 @@ func (s *Server) Start() error {
 		return fmt.Errorf("Failed to serve: %w", err)
 	}
 	wg.Wait()
-	gplog.Debug("Exiting function:Start")
 	return nil
 }
 
 func (s *Server) Stop(ctx context.Context, in *idl.StopHubRequest) (*idl.StopHubReply, error) {
-	gplog.Debug("Entering function:Stop")
 	s.Shutdown()
-	gplog.Debug("Exiting function:Stop")
 	return &idl.StopHubReply{}, nil
 }
 
 func (s *Server) Shutdown() {
-	gplog.Debug("Entering function:Shutdown")
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	if s.grpcServer != nil {
 		s.finish <- struct{}{}
 	}
-	gplog.Debug("Exiting function:Shutdown")
 }
 
 func (s *Server) StartAgents(ctx context.Context, in *idl.StartAgentsRequest) (*idl.StartAgentsReply, error) {
-	gplog.Debug("Entering function:StartAgents")
 	err := s.StartAllAgents()
 	if err != nil {
 		gplog.Error("Error in starting all agents: %s", err.Error())
@@ -151,12 +144,10 @@ func (s *Server) StartAgents(ctx context.Context, in *idl.StartAgentsRequest) (*
 		return &idl.StartAgentsReply{}, err
 	}
 
-	gplog.Debug("Exiting function:StartAgents")
 	return &idl.StartAgentsReply{}, nil
 }
 
 func (s *Server) StartAllAgents() error {
-	gplog.Debug("Entering function:StartAllAgents")
 	var outb, errb bytes.Buffer
 
 	remoteCmd := make([]string, 0)
@@ -183,12 +174,10 @@ func (s *Server) StartAllAgents() error {
 		return fmt.Errorf("Could not start agent: %s", errString)
 	}
 
-	gplog.Debug("Exiting function:StartAllAgents")
 	return nil
 }
 
 func (s *Server) DialAllAgents() error {
-	gplog.Debug("Entering function:DialAllAgents")
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
@@ -199,7 +188,6 @@ func (s *Server) DialAllAgents() error {
 			return fmt.Errorf("Could not ensure connections were ready: %w", err)
 		}
 
-		gplog.Debug("Exiting function:DialAllAgents")
 		return nil
 	}
 
@@ -239,12 +227,10 @@ func (s *Server) DialAllAgents() error {
 		return fmt.Errorf("Could not ensure connections were ready: %w", err)
 	}
 
-	gplog.Debug("Exiting function:DialAllAgents")
 	return nil
 }
 
 func (s *Server) StopAgents(ctx context.Context, in *idl.StopAgentsRequest) (*idl.StopAgentsReply, error) {
-	gplog.Debug("Entering function:StopAgents")
 	request := func(conn *Connection) error {
 		_, err := conn.AgentClient.Stop(context.Background(), &idl.StopAgentRequest{})
 		if err == nil { // no error -> didn't stop
@@ -258,7 +244,6 @@ func (s *Server) StopAgents(ctx context.Context, in *idl.StopAgentsRequest) (*id
 			return fmt.Errorf("Failed to stop agent on host %s: %w", conn.Hostname, err)
 		}
 
-		gplog.Debug("Entering function:StopAgents")
 		return nil
 	}
 
@@ -276,7 +261,6 @@ func (s *Server) StopAgents(ctx context.Context, in *idl.StopAgentsRequest) (*id
 }
 
 func (s *Server) StatusAgents(ctx context.Context, in *idl.StatusAgentsRequest) (*idl.StatusAgentsReply, error) {
-	gplog.Debug("Entering function:StatusAgents")
 	statusChan := make(chan idl.ServiceStatus, len(s.conns))
 
 	request := func(conn *Connection) error {
@@ -292,7 +276,6 @@ func (s *Server) StatusAgents(ctx context.Context, in *idl.StatusAgentsRequest) 
 			Pid:    status.Pid,
 		}
 		statusChan <- s
-		gplog.Debug("Exiting function:StatusAgents")
 		return nil
 	}
 
@@ -314,12 +297,10 @@ func (s *Server) StatusAgents(ctx context.Context, in *idl.StatusAgentsRequest) 
 		statuses = append(statuses, &s)
 	}
 
-	gplog.Debug("Exiting function:StatusAgents")
 	return &idl.StatusAgentsReply{Statuses: statuses}, err
 }
 
 func EnsureConnectionsAreReady(conns []*Connection) error {
-	gplog.Debug("Entering function:EnsureConnectionsAreReady")
 	hostnames := []string{}
 	for _, conn := range conns {
 		if conn.Conn.GetState() != connectivity.Ready {
@@ -332,12 +313,10 @@ func EnsureConnectionsAreReady(conns []*Connection) error {
 		return fmt.Errorf("unready hosts: %s", strings.Join(hostnames, ","))
 	}
 
-	gplog.Debug("Exiting function:EnsureConnectionsAreReady")
 	return nil
 }
 
 func ExecuteRPC(agentConns []*Connection, executeRequest func(conn *Connection) error) error {
-	gplog.Debug("Entering function:ExecuteRPC")
 	var wg sync.WaitGroup
 	errs := make(chan error, len(agentConns))
 
@@ -360,6 +339,5 @@ func ExecuteRPC(agentConns []*Connection, executeRequest func(conn *Connection) 
 		break
 	}
 
-	gplog.Debug("Exiting function:ExecuteRPC")
 	return err
 }

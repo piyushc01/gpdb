@@ -86,7 +86,6 @@ func installCmd() *cobra.Command {
 	return installCmd
 }
 func RunInstall(cmd *cobra.Command, args []string) (err error) {
-	gplog.Debug("Entering function:RunInstall")
 	if gphome == "" {
 		return fmt.Errorf("GPHOME environment variable not set and --gphome flag not provided\n")
 	}
@@ -144,8 +143,6 @@ func RunInstall(cmd *cobra.Command, args []string) (err error) {
 		gplog.Error("Error in EnableUserLingering on Coordinator: %s", err.Error())
 		return err
 	}
-
-	gplog.Debug("Exiting function:RunInstall")
 	return nil
 }
 
@@ -162,7 +159,6 @@ func resolveAbsolutePaths(cmd *cobra.Command) error {
 }
 
 func CreateConfigFile(caCertPath, caKeyPath, serverCertPath, serverKeyPath string, hubPort, agentPort int, hostnames []string, hubLogDir, serviceName string, serviceDir string) error {
-	gplog.Debug("Entering function:CreateConfigFile")
 	creds := utils.GpCredentials{CACertPath: caCertPath, CAKeyPath: caKeyPath, ServerCertPath: serverCertPath, ServerKeyPath: serverKeyPath}
 	conf = &hub.Config{Port: hubPort, AgentPort: agentPort, Hostnames: hostnames, LogDir: hubLogDir, ServiceName: serviceName, GpHome: gphome, Credentials: creds}
 	configContents, err := json.MarshalIndent(conf, "", "\t")
@@ -194,13 +190,10 @@ func CreateConfigFile(caCertPath, caKeyPath, serverCertPath, serverKeyPath strin
 		return fmt.Errorf("Could not copy gp.conf file to segment hosts: %w", err)
 	}
 	gplog.Info("Copied gp.conf file to segment hosts")
-
-	gplog.Debug("Exiting function:CreateConfigFile")
 	return nil
 }
 
 func getHostnames(hostnames []string, hostfilePath string) ([]string, error) {
-	gplog.Debug("Entering function:getHostnames")
 	if len(hostnames) > 0 {
 		return hostnames, nil
 	}
@@ -210,6 +203,5 @@ func getHostnames(hostnames []string, hostfilePath string) ([]string, error) {
 		gplog.Error("Could not read hostfile: %s", err.Error())
 		return []string{}, fmt.Errorf("Could not read hostfile: %w", err)
 	}
-	gplog.Debug("Exiting function:getHostnames")
 	return strings.Fields(string(contents)), nil
 }
