@@ -2,6 +2,7 @@ package agent_test
 
 import (
 	"errors"
+	"net"
 	"strings"
 	"testing"
 	"time"
@@ -81,6 +82,40 @@ func TestStartServer(t *testing.T) {
 		case <-time.After(1 * time.Second):
 			t.Fatalf("Failed to raise error if load credential fail")
 		}
+	})
+
+	t.Run("Listen fails when starting the server", func(t *testing.T) {
+
+		credCmd := &MockCredentials{nil, nil}
+		listener, err := net.Listen("tcp", "0.0.0.0:8000")
+		if err != nil {
+
+			t.Fatal("Port 8000 already in use. Error: %w", err)
+		}
+		defer listener.Close()
+
+		agentServer := agent.New(agent.Config{
+			Port:        8000,
+			ServiceName: "gp",
+			Credentials: credCmd,
+		})
+
+		errChan := make(chan error, 1)
+		go func() {
+			errChan <- agentServer.Start()
+		}()
+
+		defer agentServer.Shutdown()
+
+		select {
+		case err := <-errChan:
+			if err == nil || !strings.Contains(err.Error(), "Could not listen on port 8000:") {
+				t.Fatalf("Expected error: %s Got:%s", "Could not listen on port 8000:", err.Error())
+			}
+		case <-time.After(1 * time.Second):
+			t.Log("Failed to raise error if listener fail")
+		}
+
 	})
 }
 
