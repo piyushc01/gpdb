@@ -1,7 +1,7 @@
 package hub_test
 
 import (
-	"errors"
+	"github.com/greenplum-db/gpdb/gp/testutils"
 	"os"
 	"strings"
 	"testing"
@@ -10,21 +10,7 @@ import (
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpdb/gp/hub"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
-
-type MockCredentials struct {
-	TlsConnection credentials.TransportCredentials
-	err           error
-}
-
-func (s MockCredentials) LoadServerCredentials() (credentials.TransportCredentials, error) {
-	return s.TlsConnection, s.err
-}
-
-func (s MockCredentials) LoadClientCredentials() (credentials.TransportCredentials, error) {
-	return s.TlsConnection, s.err
-}
 
 func TestStartServer(t *testing.T) {
 
@@ -34,7 +20,7 @@ func TestStartServer(t *testing.T) {
 
 	t.Run("successfully starts the hub server", func(t *testing.T) {
 
-		credCmd := MockCredentials{nil, nil}
+		credCmd := &testutils.MockCredentials{}
 
 		conf := &hub.Config{
 			1234,
@@ -68,7 +54,8 @@ func TestStartServer(t *testing.T) {
 
 	t.Run("failed to start if the load credential fail", func(t *testing.T) {
 
-		credCmd := &MockCredentials{nil, errors.New("")}
+		credCmd := &testutils.MockCredentials{}
+		credCmd.SetCredsError("Test error in loading creds")
 
 		conf := &hub.Config{
 			1235,
@@ -98,92 +85,14 @@ func TestStartServer(t *testing.T) {
 	})
 }
 
-// func TestStartAgents(t *testing.T) {
-//
-// 	testhelper.SetupTestLogger()
-// 	host, _ := os.Hostname()
-// 	gpHome := os.Getenv("GPHOME")
-//
-// 	t.Run("successfully starts the agents from hub", func(t *testing.T) {
-//
-// 		credCmd := &MockCredentials{nil, nil}
-//
-// 		conf := &hub.Config{
-// 			1234,
-// 			8080,
-// 			[]string{host},
-// 			"/tmp/logDir",
-// 			"gp",
-// 			gpHome,
-// 			credCmd,
-// 		}
-//
-// 		hubServer := hub.New(conf, grpc.DialContext)
-//
-// 		err := hubServer.StartAllAgents()
-// 		defer hubServer.Shutdown()
-//
-// 		if err != nil {
-// 			t.Fatalf("unexpected error: %#v", err)
-// 		}
-//
-// 	})
-//
-// 	t.Run("failed to start if the host is not reachable", func(t *testing.T) {
-//
-// 		credCmd := &MockCredentials{nil, nil}
-//
-// 		conf := &hub.Config{
-// 			1234,
-// 			8080,
-// 			[]string{"test"},
-// 			"/tmp/logDir",
-// 			"gp",
-// 			gpHome,
-// 			credCmd,
-// 		}
-// 		hubServer := hub.New(conf, grpc.DialContext)
-//
-// 		err := hubServer.StartAllAgents()
-// 		defer hubServer.Shutdown()
-//
-// 		if err == nil || !strings.Contains(err.Error(), "unable to login") {
-// 			t.Fatalf("expected connection error")
-// 		}
-// 	})
-//
-// 	t.Run("failed to start if the gphome is not set", func(t *testing.T) {
-//
-// 		credCmd := &MockCredentials{nil, nil}
-//
-// 		conf := &hub.Config{
-// 			1234,
-// 			8080,
-// 			[]string{host},
-// 			"/tmp/logDir",
-// 			"gp",
-// 			"gphome",
-// 			credCmd,
-// 		}
-// 		hubServer := hub.New(conf, grpc.DialContext)
-//
-// 		err := hubServer.StartAllAgents()
-// 		defer hubServer.Shutdown()
-//
-// 		if err == nil || !strings.Contains(err.Error(), "No such file or directory") {
-// 			t.Fatalf("expected path greenplum_path not found error")
-// 		}
-// 	})
-// }
-
 func TestStartAgents(t *testing.T) {
 	host, _ := os.Hostname()
 	gpHome := os.Getenv("GPHOME")
 
 	testCases := []struct {
-		name         string
-		conf         *hub.Config
-		expectedErr  string
+		name        string
+		conf        *hub.Config
+		expectedErr string
 	}{
 		{
 			name: "successfully starts the agents from hub",
@@ -194,7 +103,7 @@ func TestStartAgents(t *testing.T) {
 				"/tmp/logDir",
 				"gp",
 				gpHome,
-				&MockCredentials{nil, nil},
+				&testutils.MockCredentials{},
 			},
 			expectedErr: "",
 		},
@@ -207,7 +116,7 @@ func TestStartAgents(t *testing.T) {
 				"/tmp/logDir",
 				"gp",
 				gpHome,
-				&MockCredentials{nil, nil},
+				&testutils.MockCredentials{},
 			},
 			expectedErr: "unable to login",
 		},
@@ -220,7 +129,7 @@ func TestStartAgents(t *testing.T) {
 				"/tmp/logDir",
 				"gp",
 				"gphome",
-				&MockCredentials{nil, nil},
+				&testutils.MockCredentials{},
 			},
 			expectedErr: "No such file or directory",
 		},

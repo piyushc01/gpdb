@@ -11,28 +11,14 @@ import (
 	"github.com/greenplum-db/gpdb/gp/agent"
 	"github.com/greenplum-db/gpdb/gp/idl"
 	"github.com/greenplum-db/gpdb/gp/testutils"
-	"google.golang.org/grpc/credentials"
 )
-
-type MockCredentials struct {
-	TlsConnection credentials.TransportCredentials
-	err           error
-}
-
-func (s *MockCredentials) LoadServerCredentials() (credentials.TransportCredentials, error) {
-	return s.TlsConnection, s.err
-}
-
-func (s *MockCredentials) LoadClientCredentials() (credentials.TransportCredentials, error) {
-	return s.TlsConnection, s.err
-}
 
 func TestStartServer(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	t.Run("successfully starts the server", func(t *testing.T) {
 
-		credCmd := &MockCredentials{nil, nil}
+		credCmd := &testutils.MockCredentials{}
 
 		agentServer := agent.New(agent.Config{
 			Port:        8000,
@@ -60,7 +46,8 @@ func TestStartServer(t *testing.T) {
 
 	t.Run("failed to start if the load credential fail", func(t *testing.T) {
 
-		credCmd := &MockCredentials{nil, errors.New("")}
+		credCmd := &testutils.MockCredentials{}
+		credCmd.SetCredsError("Test credential error")
 
 		agentServer := agent.New(agent.Config{
 			Port:        8001,
@@ -86,7 +73,7 @@ func TestStartServer(t *testing.T) {
 
 	t.Run("Listen fails when starting the server", func(t *testing.T) {
 
-		credCmd := &MockCredentials{nil, nil}
+		credCmd := &testutils.MockCredentials{}
 		listener, err := net.Listen("tcp", "0.0.0.0:8000")
 		if err != nil {
 
@@ -123,17 +110,13 @@ func TestGetStatus(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	t.Run("get service status when no agent is running", func(t *testing.T) {
-
-		credCmd := &MockCredentials{nil, nil}
-
+		credCmd := &testutils.MockCredentials{}
 		agentServer := agent.New(agent.Config{
 			Port:        8000,
 			ServiceName: "gp",
 			Credentials: credCmd,
 		})
-
 		msg, err := agentServer.GetStatus()
-
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
 		}
@@ -146,7 +129,7 @@ func TestGetStatus(t *testing.T) {
 
 	t.Run("get service status when hub and agent is running", func(t *testing.T) {
 
-		credCmd := &MockCredentials{nil, nil}
+		credCmd := &testutils.MockCredentials{}
 
 		agentServer := agent.New(agent.Config{
 			Port:        8000,
@@ -174,7 +157,7 @@ func TestGetStatus(t *testing.T) {
 
 	t.Run("get service status when raised error", func(t *testing.T) {
 
-		credCmd := &MockCredentials{nil, nil}
+		credCmd := &testutils.MockCredentials{}
 
 		agentServer := agent.New(agent.Config{
 			Port:        8000,

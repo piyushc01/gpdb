@@ -12,6 +12,7 @@ import (
 type Credentials interface {
 	LoadServerCredentials() (credentials.TransportCredentials, error)
 	LoadClientCredentials() (credentials.TransportCredentials, error)
+	GetClientServerCredsPath() (CACertPath string, CAKeyPath string, ServerCertPath string, ServerKeyPath string)
 }
 
 type GpCredentials struct {
@@ -56,4 +57,8 @@ func (c GpCredentials) LoadClientCredentials() (credentials.TransportCredentials
 	}
 
 	return credentials.NewTLS(config), nil
+}
+
+func (c GpCredentials) GetClientServerCredsPath() (CACertPath string, CAKeyPath string, ServerCertPath string, ServerKeyPath string) {
+	return c.CACertPath, c.CAKeyPath, c.ServerCertPath, c.ServerKeyPath
 }

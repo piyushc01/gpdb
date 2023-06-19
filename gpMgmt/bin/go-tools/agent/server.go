@@ -93,7 +93,7 @@ func (s *Server) Status(ctx context.Context, in *idl.StatusAgentRequest) (*idl.S
 	status, err := s.GetStatus()
 	if err != nil {
 		gplog.Error("Error getting status of Agent Service:%s", err.Error())
-		return &idl.StatusAgentReply{}, nil
+		return &idl.StatusAgentReply{}, err
 	}
 	return &idl.StatusAgentReply{Status: status.Status, Uptime: status.Uptime, Pid: uint32(status.Pid)}, nil
 }

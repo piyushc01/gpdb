@@ -47,14 +47,18 @@ func RootCommand() *cobra.Command {
  * Various helper functions used by multiple CLI commands
  */
 
+var ReadFile = os.ReadFile
+var Unmarshal = json.Unmarshal
+var DialContext = grpc.DialContext
+
 func ParseConfig(configFilePath string) (conf *hub.Config, err error) {
 	conf = &hub.Config{}
 	conf.Credentials = &utils.GpCredentials{}
-	contents, err := os.ReadFile(configFilePath)
+	contents, err := ReadFile(configFilePath)
 	if err != nil {
 		return nil, err
 	}
-	err = json.Unmarshal(contents, &conf)
+	err = Unmarshal(contents, &conf)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +110,7 @@ func connectToHub(conf *hub.Config) (idl.HubClient, error) {
 
 	address := fmt.Sprintf("localhost:%d", conf.Port)
 	var conn *grpc.ClientConn
-	conn, err = grpc.DialContext(ctx, address,
+	conn, err = DialContext(ctx, address,
 		grpc.WithTransportCredentials(credentials),
 		grpc.WithBlock(),
 		grpc.FailOnNonTempDialError(true),
