@@ -27,7 +27,7 @@ depend-dev:
 
 .PHONY: lint
 lint:
-	golangci-lint run -e ^copylocks
+	golangci-lint run
 
 BUILD_ENV = $($(OS)_ENV)
 

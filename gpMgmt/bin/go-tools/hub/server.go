@@ -261,7 +261,7 @@ func (s *Server) StopAgents(ctx context.Context, in *idl.StopAgentsRequest) (*id
 }
 
 func (s *Server) StatusAgents(ctx context.Context, in *idl.StatusAgentsRequest) (*idl.StatusAgentsReply, error) {
-	statusChan := make(chan idl.ServiceStatus, len(s.conns))
+	statusChan := make(chan *idl.ServiceStatus, len(s.conns))
 
 	request := func(conn *Connection) error {
 		status, err := conn.AgentClient.Status(context.Background(), &idl.StatusAgentRequest{})
@@ -275,7 +275,7 @@ func (s *Server) StatusAgents(ctx context.Context, in *idl.StatusAgentsRequest) 
 			Uptime: status.Uptime,
 			Pid:    status.Pid,
 		}
-		statusChan <- s
+		statusChan <- &s
 		return nil
 	}
 
@@ -293,8 +293,7 @@ func (s *Server) StatusAgents(ctx context.Context, in *idl.StatusAgentsRequest) 
 
 	statuses := make([]*idl.ServiceStatus, 0)
 	for status := range statusChan {
-		s := status
-		statuses = append(statuses, &s)
+		statuses = append(statuses, status)
 	}
 
 	return &idl.StatusAgentsReply{Statuses: statuses}, err

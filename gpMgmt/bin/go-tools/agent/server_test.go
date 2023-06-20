@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
-	"github.com/greenplum-db/gpdb/gp/agent"
+	agent "github.com/greenplum-db/gpdb/gp/agent"
 	"github.com/greenplum-db/gpdb/gp/idl"
 	"github.com/greenplum-db/gpdb/gp/testutils"
 )
@@ -120,9 +120,9 @@ func TestGetStatus(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
 		}
-
-		if msg.Status != "Unknown" || msg.Pid != 0 || msg.Uptime != "Unknown" {
-			t.Fatalf("expected unknown status not found")
+		expected := idl.ServiceStatus{Status: "Unknown", Pid: 0, Uptime: "Unknown"}
+		if msg.Status != expected.Status || msg.Pid != expected.Pid || msg.Uptime != expected.Uptime {
+			t.Fatalf("expected Unknown status got:%v", msg)
 		}
 
 	})
@@ -137,8 +137,8 @@ func TestGetStatus(t *testing.T) {
 			Credentials: credCmd,
 		})
 
-		os := testutils.MockPlatform{}
-		os.RetStatus = idl.ServiceStatus{Status: "running", Uptime: "10ms", Pid: uint32(1234)}
+		os := &testutils.MockPlatform{}
+		os.RetStatus = idl.ServiceStatus{Status: "Running", Uptime: "10ms", Pid: uint32(1234)}
 		os.Err = nil
 		agent.SetPlatform(os)
 		defer agent.ResetPlatform()
@@ -149,9 +149,9 @@ func TestGetStatus(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
 		}
-
-		if msg.Status == "Unknown" || msg.Pid == 0 || msg.Uptime == "Unknown" {
-			t.Fatalf("expected unknown status not found")
+		expected := idl.ServiceStatus{Status: "Running", Uptime: "10ms", Pid: uint32(1234)}
+		if msg.Status != expected.Status || msg.Pid != expected.Pid || msg.Uptime != expected.Uptime {
+			t.Fatalf("expected running status found %v", msg)
 		}
 	})
 
@@ -165,7 +165,7 @@ func TestGetStatus(t *testing.T) {
 			Credentials: credCmd,
 		})
 
-		os := testutils.MockPlatform{}
+		os := &testutils.MockPlatform{}
 		os.Err = errors.New("")
 		agent.SetPlatform(os)
 		defer agent.ResetPlatform()
