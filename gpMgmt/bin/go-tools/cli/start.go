@@ -39,7 +39,10 @@ func RunStartHub(cmd *cobra.Command, args []string) error {
 	}
 	gplog.Info("Hub started successfully")
 	if verbose {
-		_ = ShowHubStatus(conf)
+		err = ShowHubStatus(conf)
+		if err != nil {
+			return fmt.Errorf("Could not retrieve hub status: %w", err)
+		}
 	}
 	return nil
 }
@@ -67,7 +70,10 @@ func RunStartAgent(cmd *cobra.Command, args []string) error {
 	}
 	gplog.Info("Agents started successfully")
 	if verbose {
-		_ = ShowAgentsStatus(client, conf)
+		err = ShowAgentsStatus(client, conf)
+		if err != nil {
+			return fmt.Errorf("Could not retrieve agent status: %w", err)
+		}
 	}
 	return nil
 }

@@ -13,19 +13,16 @@ anchors:
   instance_type: n1-standard-1
   <<: *default_platform
 
-- &destroy_common
-  action: destroy
-  plugin_dir: ../../terraform.d/plugin-cache/linux_amd64
-  terraform_source: ccp_src/google/
-  vars:
-    aws_instance-node-instance_type: t2.micro #t2.micro is ignored in destroy, but aws_instance-node-instance_type is required.
-    aws_ebs_volume_type: standard
-
 - &ccp_destroy
   put: terraform
   params:
-    <<: *destroy_common
+    action: destroy
+    plugin_dir: ../../terraform.d/plugin-cache/linux_amd64
+    terraform_source: ccp_src/google/
     env_name_file: terraform/name
+    vars:
+      aws_instance-node-instance_type: t2.micro #t2.micro is ignored in destroy, but aws_instance-node-instance_type is required.
+      aws_ebs_volume_type: standard
   get_params:
     action: destroy
 
@@ -185,7 +182,6 @@ jobs:
               - -c
               - |
                 set -eux -o pipefail
-
                 cd gpdb_src/gpMgmt/bin/go-tools
                 make lint
 
@@ -205,7 +201,16 @@ jobs:
         outputs:
         - name: gp_binary
         run:
-          path: gpdb_src/gpMgmt/bin/go-tools/ci/scripts/build.bash
+          path: bash
+          args:
+            - -c
+            - |
+              set -eux -o pipefail
+              pushd gpdb_src/gpMgmt/bin/go-tools
+              make build
+              popd
+              tar -czf gp_binary/gp.tgz -C gpdb_src/gpMgmt/bin/go-tools gp
+
     - in_parallel:
         steps:
         - put: gp_binary
