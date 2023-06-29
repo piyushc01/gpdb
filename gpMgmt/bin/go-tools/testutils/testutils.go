@@ -44,7 +44,7 @@ func (p *MockPlatform) GetStartAgentCommandString(serviceName string) []string {
 	return nil
 }
 func (p *MockPlatform) ParseServiceStatusMessage(message string) idl.ServiceStatus {
-	return p.RetStatus
+	return idl.ServiceStatus{Status: p.RetStatus.Status, Pid: p.RetStatus.Pid, Uptime: p.RetStatus.Uptime}
 }
 func (p *MockPlatform) DisplayServiceStatus(statuses []*idl.ServiceStatus) {
 }
