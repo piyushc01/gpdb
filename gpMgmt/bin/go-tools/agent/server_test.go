@@ -63,7 +63,7 @@ func TestStartServer(t *testing.T) {
 
 		select {
 		case err := <-errChan:
-			if err == nil || !strings.Contains(err.Error(), "Could not load credentials") {
+			if !strings.Contains(err.Error(), "Could not load credentials") {
 				t.Fatalf("want \"Could not load credentials\" but get: %q", err.Error())
 			}
 		case <-time.After(1 * time.Second):
@@ -96,7 +96,7 @@ func TestStartServer(t *testing.T) {
 
 		select {
 		case err := <-errChan:
-			if err == nil || !strings.Contains(err.Error(), "Could not listen on port 8000:") {
+			if !strings.Contains(err.Error(), "Could not listen on port 8000:") {
 				t.Fatalf("Expected error: %s Got:%s", "Could not listen on port 8000:", err.Error())
 			}
 		case <-time.After(1 * time.Second):
@@ -121,10 +121,15 @@ func TestGetStatus(t *testing.T) {
 			t.Fatalf("unexpected error: %#v", err)
 		}
 		expected := idl.ServiceStatus{Status: "Unknown", Pid: 0, Uptime: "Unknown"}
-		if msg.Status != expected.Status || msg.Pid != expected.Pid || msg.Uptime != expected.Uptime {
-			t.Fatalf("expected Unknown status got:%v", msg)
+		if msg.Status != expected.Status {
+			t.Fatalf("expected status %s status got:%s", expected.Status, msg.Status)
 		}
-
+		if msg.Pid != expected.Pid {
+			t.Fatalf("expected Pid %d status got:%d", expected.Pid, msg.Pid)
+		}
+		if msg.Uptime != expected.Uptime {
+			t.Fatalf("expected Uptime %s status got:%s", expected.Uptime, msg.Uptime)
+		}
 	})
 
 	t.Run("get service status when hub and agent is running", func(t *testing.T) {
@@ -150,8 +155,14 @@ func TestGetStatus(t *testing.T) {
 			t.Fatalf("unexpected error: %#v", err)
 		}
 		expected := idl.ServiceStatus{Status: "Running", Uptime: "10ms", Pid: uint32(1234)}
-		if msg.Status != expected.Status || msg.Pid != expected.Pid || msg.Uptime != expected.Uptime {
-			t.Fatalf("expected running status found %v", msg)
+		if msg.Status != expected.Status {
+			t.Fatalf("expected status %s status got:%s", expected.Status, msg.Status)
+		}
+		if msg.Pid != expected.Pid {
+			t.Fatalf("expected Pid %d status got:%d", expected.Pid, msg.Pid)
+		}
+		if msg.Uptime != expected.Uptime {
+			t.Fatalf("expected Uptime %s status got:%s", expected.Uptime, msg.Uptime)
 		}
 	})
 

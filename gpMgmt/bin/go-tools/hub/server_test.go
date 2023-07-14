@@ -76,7 +76,7 @@ func TestStartServer(t *testing.T) {
 
 		select {
 		case err := <-errChan:
-			if err == nil || !strings.Contains(err.Error(), "Could not load credentials") {
+			if !strings.Contains(err.Error(), "Could not load credentials") {
 				t.Fatalf("want \"Could not load credentials\" but get: %q", err.Error())
 			}
 		case <-time.After(1 * time.Second):
@@ -144,7 +144,7 @@ func TestStartAgents(t *testing.T) {
 			err := hubServer.StartAllAgents()
 
 			if tc.expectedErr != "" {
-				if err == nil || !strings.Contains(err.Error(), tc.expectedErr) {
+				if !strings.Contains(err.Error(), tc.expectedErr) {
 					t.Fatalf("expected %s, but got: %#v", tc.expectedErr, err)
 				}
 			} else {
