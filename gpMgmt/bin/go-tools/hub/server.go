@@ -71,7 +71,6 @@ func (s *Server) Start() error {
 
 	listener, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", s.Port)) // TODO: make this "hostname:port" so it can be started from somewhere other than the coordinator host
 	if err != nil {
-		gplog.Error("Could not listen on port %d: %s", s.Port, err.Error())
 		return fmt.Errorf("Could not listen on port %d: %w", s.Port, err)
 	}
 
@@ -82,7 +81,6 @@ func (s *Server) Start() error {
 
 	credentials, err := s.Credentials.LoadServerCredentials()
 	if err != nil {
-		gplog.Error("Could not load credentials: %s", err.Error())
 		return fmt.Errorf("Could not load credentials: %w", err)
 	}
 	grpcServer := grpc.NewServer(
@@ -111,7 +109,6 @@ func (s *Server) Start() error {
 
 	err = grpcServer.Serve(listener)
 	if err != nil {
-		gplog.Error("Failed to serve: %s", err.Error())
 		return fmt.Errorf("Failed to serve: %w", err)
 	}
 	wg.Wait()
@@ -135,13 +132,11 @@ func (s *Server) Shutdown() {
 func (s *Server) StartAgents(ctx context.Context, in *idl.StartAgentsRequest) (*idl.StartAgentsReply, error) {
 	err := s.StartAllAgents()
 	if err != nil {
-		gplog.Error("Error in starting all agents: %s", err.Error())
-		return &idl.StartAgentsReply{}, err
+		return &idl.StartAgentsReply{}, fmt.Errorf("Could not start agents: %w", err)
 	}
 	err = s.DialAllAgents()
 	if err != nil {
-		gplog.Error("Error connecting agents: %s", err.Error())
-		return &idl.StartAgentsReply{}, err
+		return &idl.StartAgentsReply{}, fmt.Errorf("Could not dial agents: %w", err)
 	}
 
 	return &idl.StartAgentsReply{}, nil
@@ -160,7 +155,6 @@ func (s *Server) StartAllAgents() error {
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
 	if err := cmd.Run(); err != nil {
-		gplog.Error("Could not start agent: %s", err.Error())
 		return fmt.Errorf("Could not start agent: %w", err)
 	}
 	//there are chances in most of the cases the command returns nil err even if there is error in stdout.
@@ -170,7 +164,6 @@ func (s *Server) StartAllAgents() error {
 		if len(errb.String()) > 0 {
 			errString = errb.String()
 		}
-		gplog.Error("Could not start agent: %s", errString)
 		return fmt.Errorf("Could not start agent: %s", errString)
 	}
 
@@ -184,7 +177,6 @@ func (s *Server) DialAllAgents() error {
 	if s.conns != nil {
 		err := EnsureConnectionsAreReady(s.conns)
 		if err != nil {
-			gplog.Error("Could not ensure connections were ready: %s", err.Error())
 			return fmt.Errorf("Could not ensure connections were ready: %w", err)
 		}
 
@@ -197,12 +189,10 @@ func (s *Server) DialAllAgents() error {
 		credentials, err := s.Credentials.LoadClientCredentials()
 		if err != nil {
 			cancelFunc()
-			gplog.Error("Could not load credentials: %s", err.Error())
 			return fmt.Errorf("Could not load credentials: %w", err)
 		}
 
 		address := fmt.Sprintf("%s:%d", host, s.AgentPort)
-		// address := fmt.Sprintf("localhost:%d", s.AgentPort)
 		conn, err := s.grpcDialer(ctx, address,
 			grpc.WithBlock(),
 			grpc.WithTransportCredentials(credentials),
@@ -210,7 +200,6 @@ func (s *Server) DialAllAgents() error {
 		)
 		if err != nil {
 			cancelFunc()
-			gplog.Error("Could not connect to agent: %s", err.Error())
 			return fmt.Errorf("Could not connect to agent on host %s: %w", host, err)
 		}
 		s.conns = append(s.conns, &Connection{
@@ -223,7 +212,6 @@ func (s *Server) DialAllAgents() error {
 
 	err := EnsureConnectionsAreReady(s.conns)
 	if err != nil {
-		gplog.Error("Could not ensure connections were ready: %s", err.Error())
 		return fmt.Errorf("Could not ensure connections were ready: %w", err)
 	}
 
@@ -234,13 +222,11 @@ func (s *Server) StopAgents(ctx context.Context, in *idl.StopAgentsRequest) (*id
 	request := func(conn *Connection) error {
 		_, err := conn.AgentClient.Stop(context.Background(), &idl.StopAgentRequest{})
 		if err == nil { // no error -> didn't stop
-			gplog.Error("Failed to stop agent on host %s", conn.Hostname)
 			return fmt.Errorf("Failed to stop agent on host %s", conn.Hostname)
 		}
 
 		errStatus := grpcStatus.Convert(err)
 		if errStatus.Code() != codes.Unavailable {
-			gplog.Error("Failed to stop agent on host %s: %s", conn.Hostname, err.Error())
 			return fmt.Errorf("Failed to stop agent on host %s: %w", conn.Hostname, err)
 		}
 
@@ -249,14 +235,12 @@ func (s *Server) StopAgents(ctx context.Context, in *idl.StopAgentsRequest) (*id
 
 	err := s.DialAllAgents()
 	if err != nil {
-		gplog.Error("Error dialing agents:%s", err.Error())
 		return &idl.StopAgentsReply{}, err
 	}
+
 	err = ExecuteRPC(s.conns, request)
-	if err != nil {
-		gplog.Error("Error executing RPC on connection. Error:%s", err.Error())
-	}
 	s.conns = nil
+
 	return &idl.StopAgentsReply{}, err
 }
 
@@ -266,7 +250,6 @@ func (s *Server) StatusAgents(ctx context.Context, in *idl.StatusAgentsRequest) 
 	request := func(conn *Connection) error {
 		status, err := conn.AgentClient.Status(context.Background(), &idl.StatusAgentRequest{})
 		if err != nil { // no error -> didn't stop
-			gplog.Error("Failed to get agent status on host %s", conn.Hostname)
 			return fmt.Errorf("Failed to get agent status on host %s", conn.Hostname)
 		}
 		s := idl.ServiceStatus{
@@ -281,12 +264,10 @@ func (s *Server) StatusAgents(ctx context.Context, in *idl.StatusAgentsRequest) 
 
 	err := s.DialAllAgents()
 	if err != nil {
-		gplog.Error("Error while dialing all agents:%s", err.Error())
 		return &idl.StatusAgentsReply{}, err
 	}
 	err = ExecuteRPC(s.conns, request)
 	if err != nil {
-		gplog.Error("Error in executing RPC on connection: %s", err.Error())
 		return &idl.StatusAgentsReply{}, err
 	}
 	close(statusChan)
@@ -308,7 +289,6 @@ func EnsureConnectionsAreReady(conns []*Connection) error {
 	}
 
 	if len(hostnames) > 0 {
-		gplog.Error("unready hosts: %s", strings.Join(hostnames, ","))
 		return fmt.Errorf("unready hosts: %s", strings.Join(hostnames, ","))
 	}
 

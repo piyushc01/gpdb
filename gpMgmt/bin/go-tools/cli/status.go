@@ -24,10 +24,10 @@ func statusCmd() *cobra.Command {
 
 func statusHubCmd() *cobra.Command {
 	statusHubCmd := &cobra.Command{
-		Use:    "hub",
-		Short:  "Display hub status",
-		PreRun: InitializeCommand,
-		RunE:   RunStatusHub,
+		Use:     "hub",
+		Short:   "Display hub status",
+		PreRunE: InitializeCommand,
+		RunE:    RunStatusHub,
 	}
 
 	return statusHubCmd
@@ -43,10 +43,10 @@ func RunStatusHub(cmd *cobra.Command, args []string) error {
 
 func statusAgentsCmd() *cobra.Command {
 	statusAgentsCmd := &cobra.Command{
-		Use:    "agents",
-		Short:  "Display agents status",
-		PreRun: InitializeCommand,
-		RunE:   RunStatusAgent,
+		Use:     "agents",
+		Short:   "Display agents status",
+		PreRunE: InitializeCommand,
+		RunE:    RunStatusAgent,
 	}
 
 	return statusAgentsCmd

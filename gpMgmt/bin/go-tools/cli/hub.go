@@ -40,12 +40,12 @@ var (
 
 func hubCmd() *cobra.Command {
 	hubCmd := &cobra.Command{
-		Use:    "hub",
-		Short:  "Start a gp process in hub mode",
-		Long:   "Start a gp process in hub mode",
-		Hidden: true, // Should only be invoked by systemd
-		PreRun: InitializeCommand,
-		RunE:   RunHub,
+		Use:     "hub",
+		Short:   "Start a gp process in hub mode",
+		Long:    "Start a gp process in hub mode",
+		Hidden:  true, // Should only be invoked by systemd
+		PreRunE: InitializeCommand,
+		RunE:    RunHub,
 	}
 
 	return hubCmd
@@ -95,11 +95,10 @@ func RunInstall(cmd *cobra.Command, args []string) (err error) {
 		configFilePath = fmt.Sprintf(defaultConfigFilePath, gphome)
 	}
 	if cmd.Flags().Lookup("service-user").Changed && !cmd.Flags().Lookup("service-dir").Changed {
-		serviceDir = fmt.Sprintf(defaultServiceDir, os.Getenv("USER"))
+		serviceDir = fmt.Sprintf(defaultServiceDir, serviceUser)
 	}
 
 	if !cmd.Flags().Lookup("host").Changed && !cmd.Flags().Lookup("hostfile").Changed {
-		gplog.Error("At least one hostname must be provided using either --host or --hostfile")
 		return errors.New("At least one hostname must be provided using either --host or --hostfile")
 	}
 
@@ -111,14 +110,12 @@ func RunInstall(cmd *cobra.Command, args []string) (err error) {
 
 	hostnames, err := getHostnames(hostnames, hostfilePath)
 	if err != nil {
-		gplog.Error("Error while fetching the hostname from hostfile: %s\nError:%s", hostfilePath, err.Error())
-		return err
+		return fmt.Errorf("Could not get hostname from %s: %w", hostfilePath, err)
 	}
 
 	err = CreateConfigFile(caCertPath, caKeyPath, serverCertPath, serverKeyPath, hubPort, agentPort, hostnames, hubLogDir, serviceName, serviceDir)
 	if err != nil {
-		gplog.Error("Error creating config file: %s", err.Error())
-		return err
+		return fmt.Errorf("Could not create config file %s: %w", configFilePath, err)
 	}
 
 	err = platform.CreateServiceDir(hostnames, serviceDir, gphome)
@@ -128,20 +125,17 @@ func RunInstall(cmd *cobra.Command, args []string) (err error) {
 
 	err = platform.CreateAndInstallHubServiceFile(gphome, serviceDir, serviceName)
 	if err != nil {
-		gplog.Error("Error in CreateAndInstallHubServiceFile on Coordinator: %s", err.Error())
-		return err
+		return fmt.Errorf("Could not install hub service file: %w", err)
 	}
 
 	err = platform.CreateAndInstallAgentServiceFile(hostnames, gphome, serviceDir, serviceName)
 	if err != nil {
-		gplog.Error("Error in CreateAndInstallAgentServiceFile on Coordinator: %s", err.Error())
-		return err
+		return fmt.Errorf("Could not install agent service file: %w", err)
 	}
 
 	err = platform.EnableUserLingering(hostnames, gphome, serviceUser)
 	if err != nil {
-		gplog.Error("Error in EnableUserLingering on Coordinator: %s", err.Error())
-		return err
+		return fmt.Errorf("Could not enable user lingering: %w", err)
 	}
 	return nil
 }
@@ -163,19 +157,16 @@ func CreateConfigFile(caCertPath, caKeyPath, serverCertPath, serverKeyPath strin
 	conf = &hub.Config{Port: hubPort, AgentPort: agentPort, Hostnames: hostnames, LogDir: hubLogDir, ServiceName: serviceName, GpHome: gphome, Credentials: creds}
 	configContents, err := json.MarshalIndent(conf, "", "\t")
 	if err != nil {
-		gplog.Error("Could not generate configuration file: %s", err.Error())
 		return fmt.Errorf("Could not generate configuration file: %w", err)
 	}
 	configHandle, err := os.OpenFile(configFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
-		gplog.Error("Could not create configuration file %s: %s", configFilePath, err.Error())
 		return fmt.Errorf("Could not create configuration file %s: %w\n", configFilePath, err)
 	}
 	defer configHandle.Close()
 
 	_, err = configHandle.Write(configContents)
 	if err != nil {
-		gplog.Error("Could not write to configuration file %s: %s", configFilePath, err.Error())
 		return fmt.Errorf("Could not write to configuration file %s: %w\n", configFilePath, err)
 	}
 	gplog.Debug("Wrote configuration file to %s", configFilePath)
@@ -200,7 +191,6 @@ func getHostnames(hostnames []string, hostfilePath string) ([]string, error) {
 
 	contents, err := os.ReadFile(hostfilePath)
 	if err != nil {
-		gplog.Error("Could not read hostfile: %s", err.Error())
 		return []string{}, fmt.Errorf("Could not read hostfile: %w", err)
 	}
 	return strings.Fields(string(contents)), nil

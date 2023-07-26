@@ -18,7 +18,7 @@ ssh -t ccp-$(cat cluster_env_files/terraform/name)-0 "sudo bash -c '
 ssh -n cdw "
     set -eux -o pipefail
 
-    export PATH=/usr/local/go/bin:$PATH
+    export PATH=/usr/local/go/bin:\$PATH
     source /usr/local/greenplum-db-devel/greenplum_path.sh
 
     chmod +x gp
@@ -26,7 +26,7 @@ ssh -n cdw "
     cd /home/gpadmin/gpdb_src/gpMgmt/bin/go-tools
     ./ci/scripts/generate_ssl_cert_multi_host.bash
 
-    # Until we decide on a framweork for integration tests, keep it here just to make sure everything is working.
+    # Until we decide on a framework for integration tests, keep it here just to make sure everything is working.
     gp install --hostfile /tmp/hostfile_all --server-certificate /tmp/certificates/server-cert.pem --server-key /tmp/certificates/server-key.pem --ca-certificate /tmp/certificates/ca-cert.pem --ca-key /tmp/certificates/ca-key.pem
     gp start hub
     gp status hub

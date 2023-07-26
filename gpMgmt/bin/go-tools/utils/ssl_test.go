@@ -17,23 +17,12 @@ func getDefaultCredentials() *utils.GpCredentials {
 	}
 }
 
-func setup(t *testing.T) {
+func TestLoadServerCredentials(t *testing.T) {
 	err := exec.Command("bash", "-c", "../generate_test_tls_certificates.sh `hostname`").Run()
 	if err != nil {
 		t.Fatalf("Cannot generate test certificates: %v", err)
 	}
-}
 
-func teardown(t *testing.T) {
-	err := os.RemoveAll("./certificates")
-	if err != nil {
-		t.Fatalf("Cannot remove test certificates: %v", err)
-	}
-}
-
-func TestLoadServerCredentials(t *testing.T) {
-	setup(t)
-	defer teardown(t)
 	t.Run("successfully parses good certificate files", func(t *testing.T) {
 		creds := getDefaultCredentials()
 		_, err := creds.LoadServerCredentials()
@@ -53,11 +42,19 @@ func TestLoadServerCredentials(t *testing.T) {
 			t.Errorf("expected TLS error, got %v", err)
 		}
 	})
+
+	err = os.RemoveAll("./certificates")
+	if err != nil {
+		t.Fatalf("Cannot remove test certificates: %v", err)
+	}
 }
 
 func TestLoadClientCredentials(t *testing.T) {
-	setup(t)
-	defer teardown(t)
+	err := exec.Command("bash", "-c", "../generate_test_tls_certificates.sh `hostname`").Run()
+	if err != nil {
+		t.Fatalf("Cannot generate test certificates: %v", err)
+	}
+
 	t.Run("successfully parses good certificate files", func(t *testing.T) {
 		creds := getDefaultCredentials()
 		_, err := creds.LoadClientCredentials()
@@ -77,4 +74,9 @@ func TestLoadClientCredentials(t *testing.T) {
 			t.Errorf("expected TLS error, got %v", err)
 		}
 	})
+
+	err = os.RemoveAll("./certificates")
+	if err != nil {
+		t.Fatalf("Cannot remove test certificates: %v", err)
+	}
 }

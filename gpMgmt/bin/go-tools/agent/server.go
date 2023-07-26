@@ -6,7 +6,6 @@ import (
 	"net"
 	"sync"
 
-	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpdb/gp/idl"
 	"github.com/greenplum-db/gpdb/gp/utils"
 	"google.golang.org/grpc"
@@ -46,7 +45,6 @@ func (s *Server) Stop(ctx context.Context, in *idl.StopAgentRequest) (*idl.StopA
 func (s *Server) Start() error {
 	listener, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", s.Port))
 	if err != nil {
-		gplog.Error("Could not listen on port %d: %s", s.Port, err.Error())
 		return fmt.Errorf("Could not listen on port %d: %w", s.Port, err)
 	}
 
@@ -56,7 +54,6 @@ func (s *Server) Start() error {
 	}
 	credentials, err := s.Credentials.LoadServerCredentials()
 	if err != nil {
-		gplog.Error("Could not load credentials: %s", err.Error())
 		return fmt.Errorf("Could not load credentials: %w", err)
 	}
 	grpcServer := grpc.NewServer(
@@ -74,7 +71,6 @@ func (s *Server) Start() error {
 
 	err = grpcServer.Serve(listener)
 	if err != nil {
-		gplog.Error("Failed to serve: %s", err.Error())
 		return fmt.Errorf("Failed to serve: %w", err)
 	}
 	return nil
@@ -92,8 +88,7 @@ func (s *Server) Shutdown() {
 func (s *Server) Status(ctx context.Context, in *idl.StatusAgentRequest) (*idl.StatusAgentReply, error) {
 	status, err := s.GetStatus()
 	if err != nil {
-		gplog.Error("Error getting status of Agent Service:%s", err.Error())
-		return &idl.StatusAgentReply{}, err
+		return &idl.StatusAgentReply{}, fmt.Errorf("Could not get agent status: %w", err)
 	}
 	return &idl.StatusAgentReply{Status: status.Status, Uptime: status.Uptime, Pid: uint32(status.Pid)}, nil
 }
@@ -101,7 +96,6 @@ func (s *Server) Status(ctx context.Context, in *idl.StatusAgentRequest) (*idl.S
 func (s *Server) GetStatus() (*idl.ServiceStatus, error) {
 	message, err := platform.GetServiceStatusMessage(fmt.Sprintf("%s_agent", s.ServiceName))
 	if err != nil {
-		gplog.Error("Error while getting Service Status Message:%s", err.Error())
 		return nil, err
 	}
 	status := platform.ParseServiceStatusMessage(message)

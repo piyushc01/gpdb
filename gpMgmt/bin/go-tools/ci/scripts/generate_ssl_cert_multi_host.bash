@@ -18,6 +18,6 @@ while read host; do
     echo "subjectAltName=DNS:$host,DNS:localhost,IP:0.0.0.0" > ./certificates/extensions.conf
     openssl x509 -req -in ./certificates/server-request.pem -days 365 -CA ./certificates/ca-cert.pem -CAkey ./certificates/ca-key.pem -CAcreateserial -out ./certificates/server-cert.pem -extfile ./certificates/extensions.conf
 
-    echo "Copying servert cert to /tmp/certificates on $host"
+    echo "Copying server cert to /tmp/certificates on $host"
     gpsync -a -h $host certificates =:/tmp/
 done < /tmp/hostfile_all

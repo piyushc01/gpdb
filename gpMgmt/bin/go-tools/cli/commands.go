@@ -67,22 +67,24 @@ func ParseConfig(configFilePath string) (conf *hub.Config, err error) {
 
 // Performs general setup needed for most commands
 // Public, so it can be mocked out in testing
-func InitializeCommand(cmd *cobra.Command, args []string) {
-	var err error
-	conf, err = ParseConfig(configFilePath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing config file: %s\n", err.Error())
-		os.Exit(1)
-	}
-
-	// CommandPath lists the names of the called command and all of its parent commands, so this
-	// turns e.g. "gp stop hub" into "gp_stop_hub" to generate a unique log file name for each command.
+func InitializeCommand(cmd *cobra.Command, args []string) error {
 
 	// TODO: Add a new constructor to gplog to allow initializing with a custom logfile path directly
 	InitializeGplog(cmd, args)
+
+	var err error
+	conf, err = ParseConfig(configFilePath)
+	if err != nil {
+		return fmt.Errorf("Error parsing config file: %s\n", err.Error())
+	}
+
+	return nil
 }
 
 func InitializeGplog(cmd *cobra.Command, args []string) {
+
+	// CommandPath lists the names of the called command and all of its parent commands, so this
+	// turns e.g. "gp stop hub" into "gp_stop_hub" to generate a unique log file name for each command.
 	logName := strings.ReplaceAll(cmd.CommandPath(), " ", "_")
 	gplog.SetLogFileNameFunc(func(program string, logdir string) string {
 		return fmt.Sprintf("%s/%s.log", hubLogDir, logName)

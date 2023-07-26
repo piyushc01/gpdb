@@ -3,13 +3,14 @@ package cli
 import (
 	"context"
 	"errors"
+	"testing"
+
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpdb/gp/agent"
 	"github.com/greenplum-db/gpdb/gp/hub"
 	"github.com/greenplum-db/gpdb/gp/idl"
 	"github.com/greenplum-db/gpdb/gp/testutils"
 	"google.golang.org/grpc"
-	"testing"
 )
 
 func TestParseConfig(t *testing.T) {
@@ -29,7 +30,7 @@ func TestParseConfig(t *testing.T) {
 		}
 		_, err := ParseConfig("testfile.test")
 		if err != nil {
-			t.Fatalf("Got the error when no error epected in the config file parsing")
+			t.Fatalf("Got the error when no error expected in the config file parsing")
 		}
 	})
 
@@ -49,7 +50,7 @@ func TestParseConfig(t *testing.T) {
 		}
 		_, err := ParseConfig("testfile.test")
 		if err == nil {
-			t.Fatalf("Got the error when no error epected in the config file parsing")
+			t.Fatalf("Got the error when no error expected in the config file parsing")
 		}
 	})
 	t.Run("ParseConfig fails when json parsing fails to parse the config file", func(t *testing.T) {
@@ -68,7 +69,7 @@ func TestParseConfig(t *testing.T) {
 		}
 		_, err := ParseConfig("testfile.test")
 		if err == nil {
-			t.Fatalf("Got the error when no error epected in the config file parsing")
+			t.Fatalf("Got the error when no error expected in the config file parsing")
 		}
 	})
 	t.Run("ParseConfig fails when actual json parsing ", func(t *testing.T) {
@@ -80,7 +81,7 @@ func TestParseConfig(t *testing.T) {
 
 		_, err := ParseConfig("testfile.test")
 		if err == nil {
-			t.Fatalf("Got the error when no error epected in the config file parsing")
+			t.Fatalf("Got the error when no error expected in the config file parsing")
 		}
 	})
 	t.Run("ParseConfig properly populates the configuration : hub port, agent port, log dir, service name, gphome", func(t *testing.T) {
@@ -93,10 +94,10 @@ func TestParseConfig(t *testing.T) {
 
 		conf, err := ParseConfig("testfile.test")
 		if err != nil {
-			t.Fatalf("Got the error when no error epected in the config file parsing. error:%s", err.Error())
+			t.Fatalf("Got the error when no error expected in the config file parsing. error:%s", err.Error())
 		}
 		if conf.Port != 5555 {
-			t.Fatalf("Config file hub port 5555 is not matchnig with port from the parsed config:%d", conf.Port)
+			t.Fatalf("Config file hub port 5555 is not matching with port from the parsed config:%d", conf.Port)
 		}
 		if conf.AgentPort != 8888 {
 			t.Fatalf("Config file agent port 8888 is not matching with port from parsed config: %d", conf.AgentPort)
@@ -121,27 +122,27 @@ func TestParseConfig(t *testing.T) {
 
 		conf, err := ParseConfig("testfile.test")
 		if err != nil {
-			t.Fatalf("Got the error when no error epected in the config file parsing. error:%s", err.Error())
+			t.Fatalf("Got the error when no error expected in the config file parsing. error:%s", err.Error())
 		}
 		if len(conf.Hostnames) != 3 {
-			t.Fatalf("Hostnames list lenggth expected 3, got length %d", len(conf.Hostnames))
+			t.Fatalf("Hostnames list length expected 3, got length %d", len(conf.Hostnames))
 		}
 		if conf.Hostnames[0] != "sdw1" && conf.Hostnames[1] != "sdw2" && conf.Hostnames[2] != "sdw3" {
 			t.Fatalf("Hostnames from the config file not matching with the actual config. Got 1:%s, 2:%s 3:%s", conf.Hostnames[0], conf.Hostnames[1], conf.Hostnames[2])
 		}
 		// Check credentials has proper value
-		CACeterPath, CAKeyPath, ServerCertPath, ServerKeypath := conf.Credentials.GetClientServerCredsPath()
-		if CACeterPath != "/test/ca-cert.pem" {
-			t.Fatalf("CACertPath not matching with the path from the conf:%s", CACeterPath)
+		CACertPath, CAKeyPath, ServerCertPath, ServerKeyPath := conf.Credentials.GetClientServerCredsPath()
+		if CACertPath != "/test/ca-cert.pem" {
+			t.Fatalf("CACertPath not matching with the path from the conf:%s", CACertPath)
 		}
 		if CAKeyPath != "/test/ca-key.pem" {
-			t.Fatalf("CACeterPath not matching with the path from the conf:%s", CAKeyPath)
+			t.Fatalf("CACertPath not matching with the path from the conf:%s", CAKeyPath)
 		}
 		if ServerCertPath != "/test/server-cert.pem" {
 			t.Fatalf("ServerCertPath not matching with the path from the conf:%s", ServerCertPath)
 		}
-		if ServerKeypath != "/test/server-key.pem" {
-			t.Fatalf("ServerCertPath not matching with the path from the conf:%s", ServerKeypath)
+		if ServerKeyPath != "/test/server-key.pem" {
+			t.Fatalf("ServerCertPath not matching with the path from the conf:%s", ServerKeyPath)
 		}
 
 	})
@@ -195,8 +196,4 @@ func TestConnectToHub(t *testing.T) {
 			t.Fatalf("Expected load credential error error, but did not get any error")
 		}
 	})
-}
-
-func TestInitializeCommand(t *testing.T) {
-	//t.Run()
 }

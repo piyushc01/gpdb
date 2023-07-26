@@ -18,7 +18,9 @@ func main() {
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "unknown flag") || strings.HasPrefix(err.Error(), "unknown command") {
 			fmt.Println(err.Error())
-			fmt.Println("Help text goes here!")
+			err = root.Help(); if err != nil {
+				fmt.Println(err.Error())
+			}
 		} else {
 			gplog.Error(err.Error())
 		}

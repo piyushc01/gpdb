@@ -9,12 +9,12 @@ import (
 
 func agentCmd() *cobra.Command {
 	agentCmd := &cobra.Command{
-		Use:    "agent",
-		Short:  "Start a gp process in agent mode",
-		Long:   "Start a gp process in agent mode",
-		Hidden: true, // Should only be invoked by systemd
-		PreRun: InitializeCommand,
-		RunE:   RunAgent,
+		Use:     "agent",
+		Short:   "Start a gp process in agent mode",
+		Long:    "Start a gp process in agent mode",
+		Hidden:  true, // Should only be invoked by systemd
+		PreRunE: InitializeCommand,
+		RunE:    RunAgent,
 	}
 
 	return agentCmd

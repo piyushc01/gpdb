@@ -3,6 +3,7 @@ package agent_test
 import (
 	"errors"
 	"net"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -121,14 +122,8 @@ func TestGetStatus(t *testing.T) {
 			t.Fatalf("unexpected error: %#v", err)
 		}
 		expected := idl.ServiceStatus{Status: "Unknown", Pid: 0, Uptime: "Unknown"}
-		if msg.Status != expected.Status {
-			t.Fatalf("expected status %s status got:%s", expected.Status, msg.Status)
-		}
-		if msg.Pid != expected.Pid {
-			t.Fatalf("expected Pid %d status got:%d", expected.Pid, msg.Pid)
-		}
-		if msg.Uptime != expected.Uptime {
-			t.Fatalf("expected Uptime %s status got:%s", expected.Uptime, msg.Uptime)
+		if !reflect.DeepEqual(msg, &expected) {
+			t.Fatalf("expected: %s got: %s", &expected, msg)
 		}
 	})
 
@@ -150,19 +145,13 @@ func TestGetStatus(t *testing.T) {
 
 		/*start the hub and make sure it connects*/
 		msg, err := agentServer.GetStatus()
-
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
 		}
+
 		expected := idl.ServiceStatus{Status: "Running", Uptime: "10ms", Pid: uint32(1234)}
-		if msg.Status != expected.Status {
-			t.Fatalf("expected status %s status got:%s", expected.Status, msg.Status)
-		}
-		if msg.Pid != expected.Pid {
-			t.Fatalf("expected Pid %d status got:%d", expected.Pid, msg.Pid)
-		}
-		if msg.Uptime != expected.Uptime {
-			t.Fatalf("expected Uptime %s status got:%s", expected.Uptime, msg.Uptime)
+		if !reflect.DeepEqual(msg, &expected) {
+			t.Fatalf("expected: %s got: %s", &expected, msg)
 		}
 	})
 

@@ -25,10 +25,10 @@ func stopCmd() *cobra.Command {
 
 func stopHubCmd() *cobra.Command {
 	stopHubCmd := &cobra.Command{
-		Use:    "hub",
-		Short:  "Stop hub",
-		PreRun: InitializeCommand,
-		RunE:   RunStopHub,
+		Use:     "hub",
+		Short:   "Stop hub",
+		PreRunE: InitializeCommand,
+		RunE:    RunStopHub,
 	}
 
 	return stopHubCmd
@@ -60,10 +60,10 @@ func RunStopHub(cmd *cobra.Command, args []string) error {
 
 func stopAgentsCmd() *cobra.Command {
 	stopAgentsCmd := &cobra.Command{
-		Use:    "agents",
-		Short:  "Stop agents",
-		PreRun: InitializeCommand,
-		RunE:   RunStopAgents,
+		Use:     "agents",
+		Short:   "Stop agents",
+		PreRunE: InitializeCommand,
+		RunE:    RunStopAgents,
 	}
 
 	return stopAgentsCmd

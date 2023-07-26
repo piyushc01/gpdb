@@ -23,10 +23,10 @@ func startCmd() *cobra.Command {
 
 func startHubCmd() *cobra.Command {
 	startHubCmd := &cobra.Command{
-		Use:    "hub",
-		Short:  "Start the hub",
-		PreRun: InitializeCommand,
-		RunE:   RunStartHub,
+		Use:     "hub",
+		Short:   "Start the hub",
+		PreRunE: InitializeCommand,
+		RunE:    RunStartHub,
 	}
 
 	return startHubCmd
@@ -49,10 +49,10 @@ func RunStartHub(cmd *cobra.Command, args []string) error {
 
 func startAgentsCmd() *cobra.Command {
 	startAgentsCmd := &cobra.Command{
-		Use:    "agents",
-		Short:  "Start the agents",
-		PreRun: InitializeCommand,
-		RunE:   RunStartAgent,
+		Use:     "agents",
+		Short:   "Start the agents",
+		PreRunE: InitializeCommand,
+		RunE:    RunStartAgent,
 	}
 
 	return startAgentsCmd

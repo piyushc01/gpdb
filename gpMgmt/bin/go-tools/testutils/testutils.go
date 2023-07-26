@@ -2,9 +2,10 @@ package testutils
 
 import (
 	"errors"
+	"os/exec"
+
 	"github.com/greenplum-db/gpdb/gp/hub"
 	"google.golang.org/grpc/credentials"
-	"os/exec"
 
 	"github.com/greenplum-db/gpdb/gp/idl"
 )
