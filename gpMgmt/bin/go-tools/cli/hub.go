@@ -22,6 +22,9 @@ var (
 	defaultHubPort    int    = 4242
 	defaultAgentPort  int    = 8000
 	defaultServiceDir string = platform.GetDefaultServiceDir()
+	MasrshalIndent           = json.MarshalIndent
+	OpenFile                 = os.OpenFile
+	ExecCommand              = exec.Command
 
 	agentPort      int
 	caCertPath     string
@@ -155,19 +158,15 @@ func resolveAbsolutePaths(cmd *cobra.Command) error {
 func CreateConfigFile(caCertPath, caKeyPath, serverCertPath, serverKeyPath string, hubPort, agentPort int, hostnames []string, hubLogDir, serviceName string, serviceDir string) error {
 	creds := utils.GpCredentials{CACertPath: caCertPath, CAKeyPath: caKeyPath, ServerCertPath: serverCertPath, ServerKeyPath: serverKeyPath}
 	conf = &hub.Config{Port: hubPort, AgentPort: agentPort, Hostnames: hostnames, LogDir: hubLogDir, ServiceName: serviceName, GpHome: gphome, Credentials: creds}
-	configContents, err := json.MarshalIndent(conf, "", "\t")
+
+	configContents, err := MasrshalIndent(conf, "", "\t")
 	if err != nil {
 		return fmt.Errorf("Could not generate configuration file: %w", err)
 	}
-	configHandle, err := os.OpenFile(configFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-	if err != nil {
-		return fmt.Errorf("Could not create configuration file %s: %w\n", configFilePath, err)
-	}
-	defer configHandle.Close()
 
-	_, err = configHandle.Write(configContents)
+	err = writeConfigContent(configFilePath, configContents)
 	if err != nil {
-		return fmt.Errorf("Could not write to configuration file %s: %w\n", configFilePath, err)
+		return fmt.Errorf("writing config file:%s failed. Error:%w", configFilePath, err)
 	}
 	gplog.Debug("Wrote configuration file to %s", configFilePath)
 
@@ -175,13 +174,34 @@ func CreateConfigFile(caCertPath, caKeyPath, serverCertPath, serverKeyPath strin
 	for _, host := range hostnames {
 		hostList = append(hostList, "-h", host)
 	}
-	remoteCmd := append(hostList, configFilePath, fmt.Sprintf("=:%s", configFilePath))
-	err = exec.Command("/bin/bash", "-c", fmt.Sprintf("source %s/greenplum_path.sh; gpsync %s", gphome, strings.Join(remoteCmd, " "))).Run()
+	err = copyConfigFileToAgents(hostList)
 	if err != nil {
-		return fmt.Errorf("Could not copy gp.conf file to segment hosts: %w", err)
+		return err
 	}
 	gplog.Info("Copied gp.conf file to segment hosts")
 	return nil
+}
+
+var copyConfigFileToAgents = func(hostList []string) error {
+	remoteCmd := append(hostList, configFilePath, fmt.Sprintf("=:%s", configFilePath))
+	err := ExecCommand("/bin/bash", "-c", fmt.Sprintf("source %s/greenplum_path.sh; gpsync %s", gphome, strings.Join(remoteCmd, " "))).Run()
+	if err != nil {
+		return fmt.Errorf("Could not copy gp.conf file to segment hosts: %w", err)
+	}
+	return nil
+}
+
+var writeConfigContent = func(configFilePath string, configContents []byte) error {
+	configHandle, err := OpenFile(configFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return fmt.Errorf("Could not create configuration file %s: %w\n", configFilePath, err)
+	}
+	defer configHandle.Close()
+	_, err = configHandle.Write(configContents)
+	if err != nil {
+		return fmt.Errorf("Could not write to configuration file %s: %w\n", configFilePath, err)
+	}
+	return err
 }
 
 func getHostnames(hostnames []string, hostfilePath string) ([]string, error) {
@@ -189,7 +209,7 @@ func getHostnames(hostnames []string, hostfilePath string) ([]string, error) {
 		return hostnames, nil
 	}
 
-	contents, err := os.ReadFile(hostfilePath)
+	contents, err := ReadFile(hostfilePath)
 	if err != nil {
 		return []string{}, fmt.Errorf("Could not read hostfile: %w", err)
 	}

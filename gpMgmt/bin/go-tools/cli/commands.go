@@ -18,6 +18,10 @@ import (
 )
 
 var (
+	ReadFile    = os.ReadFile
+	Unmarshal   = json.Unmarshal
+	DialContext = grpc.DialContext
+
 	configFilePath        string
 	conf                  *hub.Config
 	defaultConfigFilePath string = "%s/gp.conf"
@@ -46,10 +50,6 @@ func RootCommand() *cobra.Command {
 /*
  * Various helper functions used by multiple CLI commands
  */
-
-var ReadFile = os.ReadFile
-var Unmarshal = json.Unmarshal
-var DialContext = grpc.DialContext
 
 func ParseConfig(configFilePath string) (conf *hub.Config, err error) {
 	conf = &hub.Config{}
