@@ -1,40 +1,85 @@
-### Setup environment
+## Setup environment
 
 ### Build and Install
+The basic steps required are to
+- Install dependencies and set env (one time)
+- Generate SSL certificates (optional, one time)
+- Compile the code
+- Install GP utility
+
+#### Checkout the code (if not already done)
 ```
 mkdir ~/workspace & cd ~/workspace
 git clone git@github.com:greenplum-db/gpdb.git
-cd ~/workspace/gpdb/gpMgmt/bin/go-tools
 ```
 
 #### Get dependency and set env
 ```
+cd ~/workspace/gpdb/gpMgmt/bin/go-tools
 make depend-dev    # set gobin path and fetch the protoc and mock dependency
 ```
 
-#### Build Certificate
+#### Generate Certificates
+This step generates self-signed certificates. Skip this step if you already have
+self-signed or CA issued certificates
 ```
 make cert    # generate certificates for given host
 ```
-#### Build protobuf
+
+#### Install GP utility
+```
+make install
+```
+
+## Developers options
+Advanced options are required for development purposes.
+
+#### Generate RPC bindings and protobuf
 ```
 make proto   # compile protobuf files to generate grpc code for hub and agents
 ```
 
-#### Cross-compile with:
+#### Cross-compile for other platforms
 ```
 make build_linux   # build gp binary for Linux platform
 make build_mac     # build gp binary for Mac platform
 ```
+## Running Tests
 
-#### Lint
+#### Unit tests
 ```
-make lint       # run lint
+make test     # run unit tests in verbose mode
+```
+#### Run Linter
+```
+make lint       # run linter on the code
 ```
 
-### Running gp utility
+#### Acceptance tests
+Creates a concourse pipeline on dev instance against a branch (default: current branch).
+The pipeline runs various multi-host unit/functional tests.
+```
+make pipeline
+```
+Examples:
+```
+# Runs against specific branch
+make pipeline GIT_REMOTE=<Custom Remote> GIT_BRANCH=<Custom Branch>
 
-#### gp install to generate config file
+# Creates pipeline with given name
+make pipeline PIPELINE_NAME=<Custom-Pipeline-Name> 
+```
+
+## Running gp utility
+Following are the basic steps to run gp utility:
+- Configure gp services
+- Controlling Agent and Hub services
+- Monitoring service status
+
+#### Configure gp services:
+This is one-time activity required to generate the required configuration
+for the hub and agents. Also, this command copies generated config file to all
+the hosts using gpsync followed by service registration.
 
 ```
 gp install       # to generate config file with given conf setting
@@ -44,40 +89,22 @@ example:
 gp install --host <host> --server-certificate <path/to/server-cert.pem> --server-key < path/to/server-key.pem> --ca-certificate <path/to/ca-cert.pem> --ca-key <path/to/ca-key.pem>
 ```
 
-#### Start/Stop hub
+#### Control and monitoring services:
+Agent and Hub Services can be controlled and monitored using the following command:
 ```
-gp start hub
-gp stop hub
+gp [start/stop/status] [agents/hub]
 ```
+e.g.
+- `gp start hub` starts the hub service
+- `gp start agents` starts agents on all the hosts
+- `gp stop agents` stops agent service on all hosts
 
-#### Start/Stop agents
-```
-gp start agents
-gp stop agents
-```
-
-#### Status of agent/hub
-```
-gp status hub
-gp status agents
-```
-
-### Running Tests
-
-#### Unit tests
-```
-make test     # run unit test in verbose mode
-```
-
-#### End-to-End tests
-Creates a Concourse pipeline that includes various multi-host unit/functional tests.
-```
-make pipeline
-```
-To update the pipeline edit the yaml files in the `ci` directory and run
-`make pipeline`.
-
+##### Monitoring Service Status:
+To check the status of the services you can use the following command:
+- `gp status agents` reports status of all agents service
+- `gp status hub` reports the status of the hub service
 
 #### Log Locations
-logs are located in the path provided in configuration file. by default it will be generated in `/tmp` directory.
-Logs are located on **_all hosts_**.
+Logs are located in the path provided in the configuration file.
+By default, it will be generated in `/tmp` directory.
+Logs file gets created on the local machine when the service is running. 
