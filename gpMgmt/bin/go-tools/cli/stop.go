@@ -19,6 +19,7 @@ func stopCmd() *cobra.Command {
 
 	stopCmd.AddCommand(stopHubCmd())
 	stopCmd.AddCommand(stopAgentsCmd())
+	stopCmd.AddCommand(StopServicesCmd())
 
 	return stopCmd
 }
@@ -35,11 +36,22 @@ func stopHubCmd() *cobra.Command {
 }
 
 func RunStopHub(cmd *cobra.Command, args []string) error {
+	err := StopHubService()
+	if err != nil {
+		return fmt.Errorf("Error stopping hub service:%w", err)
+	}
+	gplog.Info("Hub stopped successfully")
+	if verbose {
+		_ = ShowHubStatus(conf, false)
+	}
+	return nil
+}
+
+var StopHubService = func() error {
 	client, err := connectToHub(conf)
 	if err != nil {
 		return fmt.Errorf("Could not connect to hub; is the hub running?")
 	}
-
 	_, err = client.Stop(context.Background(), &idl.StopHubRequest{})
 	// Ignore a "hub already stopped" error
 	if err != nil {
@@ -50,10 +62,6 @@ func RunStopHub(cmd *cobra.Command, args []string) error {
 		if errCode != codes.Unavailable || errMsg != "transport is closing" {
 			return fmt.Errorf("Could not stop hub: %w", err)
 		}
-	}
-	gplog.Info("Hub stopped successfully")
-	if verbose {
-		_ = ShowHubStatus(conf)
 	}
 	return nil
 }
@@ -70,6 +78,18 @@ func stopAgentsCmd() *cobra.Command {
 }
 
 func RunStopAgents(cmd *cobra.Command, args []string) error {
+	err := StopAgentService()
+	if err != nil {
+		return fmt.Errorf("Error stopping agent service:%w", err)
+	}
+	gplog.Info("Agents stopped successfully")
+	if verbose {
+		_ = ShowAgentsStatus(conf, false)
+	}
+	return nil
+}
+
+var StopAgentService = func() error {
 	client, err := connectToHub(conf)
 	if err != nil {
 		return fmt.Errorf("Could not connect to hub; is the hub running?")
@@ -79,9 +99,30 @@ func RunStopAgents(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("Could not stop agents: %w", err)
 	}
-	gplog.Info("Agents stopped successfully")
-	if verbose {
-		_ = ShowAgentsStatus(client, conf)
+	return nil
+}
+
+func StopServicesCmd() *cobra.Command {
+	stopServicesCmd := &cobra.Command{
+		Use:     "services",
+		Short:   "Stop agents and hub services",
+		PreRunE: InitializeCommand,
+		RunE:    RunStopServices,
 	}
+
+	return stopServicesCmd
+}
+
+func RunStopServices(cmd *cobra.Command, args []string) error {
+	err := StopAgentService()
+	if err != nil {
+		return fmt.Errorf("Error while stopping Agent Service:%w", err)
+	}
+	gplog.Info("Agents stopped successfully")
+	err = StopHubService()
+	if err != nil {
+		return fmt.Errorf("Error while stopping Hub Service:%w", err)
+	}
+	gplog.Info("Hub stopped successfully")
 	return nil
 }
