@@ -357,16 +357,26 @@ func (conf *Config) Write(ConfigFilePath string) error {
 	if err != nil {
 		return fmt.Errorf("Could not write to configuration file %s: %w\n", ConfigFilePath, err)
 	}
-	err = copyConfigFileToAgents(conf, ConfigFilePath)
+	gplog.Debug("Wrote configuration file to %s", ConfigFilePath)
+
+	err = CopyConfigFileToAgents(conf, ConfigFilePath)
 	if err != nil {
 		return fmt.Errorf("Could not copy config file to hosts:%w", err)
 	}
 	return err
 }
 
-var copyConfigFileToAgents = func(conf *Config, ConfigFilePath string) error {
-	remoteCmd := append(conf.Hostnames, ConfigFilePath, fmt.Sprintf("=:%s", ConfigFilePath))
-	err := ExecCommand("/bin/bash", "-c", fmt.Sprintf("source %s/greenplum_path.sh; gpsync %s", conf.GpHome, strings.Join(remoteCmd, " "))).Run()
+var CopyConfigFileToAgents = func(conf *Config, ConfigFilePath string) error {
+	hostList := make([]string, 0)
+	for _, host := range conf.Hostnames {
+		hostList = append(hostList, "-h", host)
+	}
+	if len(hostList) < 1 {
+		return fmt.Errorf("Hostlist should not be empty. No hosts to copy files.")
+	}
+	remoteCmd := append(hostList, ConfigFilePath, fmt.Sprintf("=:%s", ConfigFilePath))
+	cmd := exec.Command("/bin/bash", "-c", fmt.Sprintf("source %s/greenplum_path.sh; gpsync %s", conf.GpHome, strings.Join(remoteCmd, " ")))
+	err := cmd.Run()
 	if err != nil {
 		return fmt.Errorf("Could not copy gp.conf file to segment hosts: %w", err)
 	}

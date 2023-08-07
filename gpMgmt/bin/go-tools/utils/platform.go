@@ -59,7 +59,7 @@ type Platform interface {
 	GetStartAgentCommandString(serviceName string) []string
 	GetServiceStatusMessage(serviceName string) (string, error)
 	ParseServiceStatusMessage(message string) idl.ServiceStatus
-	DisplayServiceStatus(statuses []*idl.ServiceStatus)
+	DisplayServiceStatus(serviceName string, statuses []*idl.ServiceStatus, skipHeader bool)
 	EnableUserLingering(hostnames []string, gphome string, serviceUser string) error
 }
 
@@ -318,12 +318,14 @@ func (p GpPlatform) ParseServiceStatusMessage(message string) idl.ServiceStatus 
 	return idl.ServiceStatus{Status: status, Uptime: uptime, Pid: uint32(pid)}
 }
 
-func (p GpPlatform) DisplayServiceStatus(statuses []*idl.ServiceStatus) {
+func (p GpPlatform) DisplayServiceStatus(serviceName string, statuses []*idl.ServiceStatus, skipHeader bool) {
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 8, 2, '\t', 0)
-	fmt.Fprintln(w, "HOST\tSTATUS\tPID\tUPTIME")
+	if !skipHeader {
+		fmt.Fprintln(w, "ROLE\tHOST\tSTATUS\tPID\tUPTIME")
+	}
 	for _, s := range statuses {
-		fmt.Fprintf(w, "%s\t%s\t%d\t%s\n", s.Host, s.Status, s.Pid, s.Uptime)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%s\n", serviceName, s.Host, s.Status, s.Pid, s.Uptime)
 	}
 	w.Flush()
 }

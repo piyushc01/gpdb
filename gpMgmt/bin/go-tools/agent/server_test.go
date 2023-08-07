@@ -130,7 +130,11 @@ func TestGetStatus(t *testing.T) {
 			Uptime: "10ms",
 			Pid:    uint32(1234),
 		}
-		platform.RetStatus = *expected
+		platform.RetStatus = idl.ServiceStatus{
+			Status: "Running",
+			Uptime: "10ms",
+			Pid:    uint32(1234),
+		}
 		platform.Err = nil
 		agent.SetPlatform(platform)
 		defer agent.ResetPlatform()
@@ -170,7 +174,7 @@ func TestConfigWrite(t *testing.T) {
 	serverKeyPath := "/tmp/test"
 	hubPort := cli.DefaultHubPort
 	agentPort := cli.DefaultAgentPort
-	hostnames := []string{"host1", "host2", "hostn"}
+	hostnames := []string{"localhost"}
 	hubLogDir := "/tmp/test"
 	serviceName := cli.DefaultServiceName
 	cli.ConfigFilePath = "/tmp/gp.test_config"
@@ -182,6 +186,11 @@ func TestConfigWrite(t *testing.T) {
 			CAKeyPath:      caKeyPath,
 			ServerCertPath: serverCertPath,
 			ServerKeyPath:  serverKeyPath,
+		}
+		origCopyConfigFileToAgents := hub.CopyConfigFileToAgents
+		defer func() { hub.CopyConfigFileToAgents = origCopyConfigFileToAgents }()
+		hub.CopyConfigFileToAgents = func(conf *hub.Config, ConfigFilePath string) error {
+			return nil
 		}
 		conf := &hub.Config{
 			Port:        hubPort,
@@ -203,6 +212,58 @@ func TestConfigWrite(t *testing.T) {
 		}
 		if reflect.DeepEqual(conf, conf2) != true {
 			t.Fatalf("Expected config:%v not same as Read Config:%v", conf, conf2)
+		}
+	})
+	t.Run("config write returns error when copying to other hosts fails ", func(t *testing.T) {
+		credentials := &utils.GpCredentials{
+			CACertPath:     caCertPath,
+			CAKeyPath:      caKeyPath,
+			ServerCertPath: serverCertPath,
+			ServerKeyPath:  serverKeyPath,
+		}
+		origCopyConfigFileToAgents := hub.CopyConfigFileToAgents
+		defer func() { hub.CopyConfigFileToAgents = origCopyConfigFileToAgents }()
+		hub.CopyConfigFileToAgents = func(conf *hub.Config, ConfigFilePath string) error {
+			return fmt.Errorf("TEST Error copying files")
+		}
+		conf := &hub.Config{
+			Port:        hubPort,
+			AgentPort:   agentPort,
+			Hostnames:   hostnames,
+			LogDir:      hubLogDir,
+			ServiceName: serviceName,
+			GpHome:      gphome,
+			Credentials: credentials,
+		}
+		err := conf.Write(cli.ConfigFilePath)
+		if err == nil {
+			t.Fatalf("Expected file copy error, got no error")
+		}
+	})
+	t.Run("config write returns error when json marshalling fails ", func(t *testing.T) {
+		credentials := &utils.GpCredentials{
+			CACertPath:     caCertPath,
+			CAKeyPath:      caKeyPath,
+			ServerCertPath: serverCertPath,
+			ServerKeyPath:  serverKeyPath,
+		}
+		origMasrshalIndent := hub.MasrshalIndent
+		defer func() { hub.MasrshalIndent = origMasrshalIndent }()
+		hub.MasrshalIndent = func(v any, prefix, indent string) ([]byte, error) {
+			return nil, fmt.Errorf("TEST Error jason marshalling")
+		}
+		conf := &hub.Config{
+			Port:        hubPort,
+			AgentPort:   agentPort,
+			Hostnames:   hostnames,
+			LogDir:      hubLogDir,
+			ServiceName: serviceName,
+			GpHome:      gphome,
+			Credentials: credentials,
+		}
+		err := conf.Write(cli.ConfigFilePath)
+		if err == nil {
+			t.Fatalf("Expected json marshalling error, got no error")
 		}
 	})
 }

@@ -82,7 +82,7 @@ func InitializeGplog(cmd *cobra.Command, args []string) {
 	}
 }
 
-func connectToHub(conf *hub.Config) (idl.HubClient, error) {
+var connectToHub = func(conf *hub.Config) (idl.HubClient, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 

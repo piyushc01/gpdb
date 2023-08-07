@@ -2,6 +2,7 @@ package testutils
 
 import (
 	"errors"
+	"os"
 	"os/exec"
 
 	"github.com/greenplum-db/gpdb/gp/hub"
@@ -20,6 +21,21 @@ type MockPlatform struct {
 	ConfigFileData       []byte
 }
 
+func InitializeTestEnv() *hub.Config {
+	host, _ := os.Hostname()
+	gpHome := os.Getenv("GPHOME")
+	credCmd := &MockCredentials{}
+	conf := &hub.Config{
+		Port:        4242,
+		AgentPort:   8000,
+		Hostnames:   []string{host},
+		LogDir:      "/tmp/logDir",
+		ServiceName: "gp",
+		GpHome:      gpHome,
+		Credentials: credCmd,
+	}
+	return conf
+}
 func (p *MockPlatform) CreateServiceDir(hostnames []string, serviceDir string, gphome string) error {
 	return nil
 }
@@ -47,13 +63,16 @@ func (p *MockPlatform) GetStartAgentCommandString(serviceName string) []string {
 func (p *MockPlatform) ParseServiceStatusMessage(message string) idl.ServiceStatus {
 	return idl.ServiceStatus{Status: p.RetStatus.Status, Pid: p.RetStatus.Pid, Uptime: p.RetStatus.Uptime}
 }
-func (p *MockPlatform) DisplayServiceStatus(statuses []*idl.ServiceStatus) {
+func (p *MockPlatform) DisplayServiceStatus(serviceName string, statuses []*idl.ServiceStatus, skipHeader bool) {
 }
 func (p *MockPlatform) EnableUserLingering(hostnames []string, gphome string, serviceUser string) error {
 	return nil
 }
 func (p *MockPlatform) ReadFile(configFilePath string) (config *hub.Config, err error) {
 	return nil, err
+}
+func (p *MockPlatform) SetServiceFileContent(content string) {
+	p.ServiceFileContent = content
 }
 
 type MockCredentials struct {
