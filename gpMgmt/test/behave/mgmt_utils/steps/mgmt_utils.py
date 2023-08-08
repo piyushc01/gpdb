@@ -4099,7 +4099,10 @@ def impl(context, command, input, delay):
 def impl(context, command):
     p = Popen(command.split(), stdout=PIPE, stdin=PIPE, stderr=PIPE)
 
-    context.execute_steps('''Then the user just waits until recovery_progress.file is created in gpAdminLogs''')
+    context.execute_steps('''
+        Then the user just waits until recovery_progress.file is created in gpAdminLogs
+        Then verify that pg_basebackup is running for host sdw5
+        ''')
     p.send_signal(signal.SIGTERM)
 
     stdout, stderr = p.communicate()
