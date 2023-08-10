@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/greenplum-db/gpdb/gp/utils"
-
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpdb/gp/hub"
 	"github.com/greenplum-db/gpdb/gp/idl"
@@ -22,7 +20,7 @@ var (
 	Unmarshal   = json.Unmarshal
 	DialContext = grpc.DialContext
 
-	configFilePath        string
+	ConfigFilePath        string
 	conf                  *hub.Config
 	defaultConfigFilePath string = "%s/gp.conf"
 
@@ -34,7 +32,7 @@ func RootCommand() *cobra.Command {
 		Use: "gp",
 	}
 
-	root.PersistentFlags().StringVar(&configFilePath, "config-file", fmt.Sprintf(defaultConfigFilePath, os.Getenv("GPHOME")), `Path to gp configuration file`)
+	root.PersistentFlags().StringVar(&ConfigFilePath, "config-file", fmt.Sprintf(defaultConfigFilePath, os.Getenv("GPHOME")), `Path to gp configuration file`)
 	root.PersistentFlags().BoolVar(&verbose, "verbose", false, `Provide verbose output`)
 
 	root.AddCommand(agentCmd())
@@ -51,29 +49,13 @@ func RootCommand() *cobra.Command {
  * Various helper functions used by multiple CLI commands
  */
 
-func ParseConfig(configFilePath string) (conf *hub.Config, err error) {
-	conf = &hub.Config{}
-	conf.Credentials = &utils.GpCredentials{}
-	contents, err := ReadFile(configFilePath)
-	if err != nil {
-		return nil, err
-	}
-	err = Unmarshal(contents, &conf)
-	if err != nil {
-		return nil, err
-	}
-	return conf, nil
-}
-
 // Performs general setup needed for most commands
 // Public, so it can be mocked out in testing
 func InitializeCommand(cmd *cobra.Command, args []string) error {
-
 	// TODO: Add a new constructor to gplog to allow initializing with a custom logfile path directly
 	InitializeGplog(cmd, args)
-
-	var err error
-	conf, err = ParseConfig(configFilePath)
+	conf = &hub.Config{}
+	err := conf.Load(ConfigFilePath)
 	if err != nil {
 		return fmt.Errorf("Error parsing config file: %s\n", err.Error())
 	}
@@ -82,7 +64,6 @@ func InitializeCommand(cmd *cobra.Command, args []string) error {
 }
 
 func InitializeGplog(cmd *cobra.Command, args []string) {
-
 	// CommandPath lists the names of the called command and all of its parent commands, so this
 	// turns e.g. "gp stop hub" into "gp_stop_hub" to generate a unique log file name for each command.
 	logName := strings.ReplaceAll(cmd.CommandPath(), " ", "_")

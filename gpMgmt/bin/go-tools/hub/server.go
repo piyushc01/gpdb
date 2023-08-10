@@ -3,8 +3,10 @@ package hub
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
@@ -21,8 +23,13 @@ import (
 )
 
 var (
-	platform    = utils.GetPlatform()
-	DialTimeout = 3 * time.Second
+	platform       = utils.GetPlatform()
+	DialTimeout    = 3 * time.Second
+	ReadFile       = os.ReadFile
+	OpenFile       = os.OpenFile
+	Unmarshal      = json.Unmarshal
+	MasrshalIndent = json.MarshalIndent
+	ExecCommand    = exec.Command
 )
 
 type Dialer func(ctx context.Context, target string, opts ...grpc.DialOption) (*grpc.ClientConn, error)
@@ -319,4 +326,49 @@ func ExecuteRPC(agentConns []*Connection, executeRequest func(conn *Connection) 
 	}
 
 	return err
+}
+
+func (conf *Config) Load(ConfigFilePath string) error {
+	//Loads config from the configFilePath
+	conf.Credentials = &utils.GpCredentials{}
+	contents, err := ReadFile(ConfigFilePath)
+	if err != nil {
+		return err
+	}
+	err = Unmarshal(contents, &conf)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (conf *Config) Write(ConfigFilePath string) error {
+	// Updates config to the conf file
+	configHandle, err := OpenFile(ConfigFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return fmt.Errorf("Could not create configuration file %s: %w\n", ConfigFilePath, err)
+	}
+	defer configHandle.Close()
+	configContents, err := MasrshalIndent(conf, "", "\t")
+	if err != nil {
+		return fmt.Errorf("Could not parse configuration file %s: %w\n", ConfigFilePath, err)
+	}
+	_, err = configHandle.Write(configContents)
+	if err != nil {
+		return fmt.Errorf("Could not write to configuration file %s: %w\n", ConfigFilePath, err)
+	}
+	err = copyConfigFileToAgents(conf, ConfigFilePath)
+	if err != nil {
+		return fmt.Errorf("Could not copy config file to hosts:%w", err)
+	}
+	return err
+}
+
+var copyConfigFileToAgents = func(conf *Config, ConfigFilePath string) error {
+	remoteCmd := append(conf.Hostnames, ConfigFilePath, fmt.Sprintf("=:%s", ConfigFilePath))
+	err := ExecCommand("/bin/bash", "-c", fmt.Sprintf("source %s/greenplum_path.sh; gpsync %s", conf.GpHome, strings.Join(remoteCmd, " "))).Run()
+	if err != nil {
+		return fmt.Errorf("Could not copy gp.conf file to segment hosts: %w", err)
+	}
+	return nil
 }

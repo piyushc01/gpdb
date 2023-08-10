@@ -54,6 +54,7 @@ func (s *Server) Start() error {
 	}
 	credentials, err := s.Credentials.LoadServerCredentials()
 	if err != nil {
+		listener.Close()
 		return fmt.Errorf("Could not load credentials: %w", err)
 	}
 	grpcServer := grpc.NewServer(

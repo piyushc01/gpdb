@@ -2,6 +2,10 @@ package agent_test
 
 import (
 	"errors"
+	"fmt"
+	"github.com/greenplum-db/gpdb/gp/cli"
+	"github.com/greenplum-db/gpdb/gp/hub"
+	"github.com/greenplum-db/gpdb/gp/utils"
 	"net"
 	"reflect"
 	"strings"
@@ -18,22 +22,17 @@ func TestStartServer(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	t.Run("successfully starts the server", func(t *testing.T) {
-
-		credCmd := &testutils.MockCredentials{}
-
+		credentials := &testutils.MockCredentials{}
 		agentServer := agent.New(agent.Config{
-			Port:        8000,
-			ServiceName: "gp",
-			Credentials: credCmd,
+			Port:        cli.DefaultAgentPort,
+			ServiceName: cli.DefaultServiceName,
+			Credentials: credentials,
 		})
-
 		errChan := make(chan error, 1)
 		go func() {
 			errChan <- agentServer.Start()
 		}()
-
 		defer agentServer.Shutdown()
-
 		select {
 		case err := <-errChan:
 			if err != nil {
@@ -42,139 +41,168 @@ func TestStartServer(t *testing.T) {
 		case <-time.After(1 * time.Second):
 			t.Log("server started listening")
 		}
-
 	})
-
 	t.Run("failed to start if the load credential fail", func(t *testing.T) {
-
-		credCmd := &testutils.MockCredentials{}
-		credCmd.SetCredsError("Test credential error")
-
+		credentials := &testutils.MockCredentials{}
+		credentials.SetCredsError("Test credential error")
 		agentServer := agent.New(agent.Config{
-			Port:        8001,
-			ServiceName: "gp",
-			Credentials: credCmd,
+			Port:        cli.DefaultAgentPort,
+			ServiceName: cli.DefaultServiceName,
+			Credentials: credentials,
 		})
-
 		errChan := make(chan error, 1)
 		go func() {
 			errChan <- agentServer.Start()
 		}()
 		defer agentServer.Shutdown()
-
 		select {
 		case err := <-errChan:
-			if !strings.Contains(err.Error(), "Could not load credentials") {
-				t.Fatalf("want \"Could not load credentials\" but get: %q", err.Error())
+			expected := "Could not load credentials"
+			if !strings.Contains(err.Error(), expected) {
+				t.Fatalf("Expected %q to contain %q", err.Error(), expected)
 			}
 		case <-time.After(1 * time.Second):
-			t.Fatalf("Failed to raise error if load credential fail")
+			t.Fatalf("Expected to fail, but the server started")
 		}
 	})
-
 	t.Run("Listen fails when starting the server", func(t *testing.T) {
-
-		credCmd := &testutils.MockCredentials{}
-		listener, err := net.Listen("tcp", "0.0.0.0:8000")
+		credentials := &testutils.MockCredentials{}
+		listener, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", cli.DefaultAgentPort))
 		if err != nil {
-
-			t.Fatal("Port 8000 already in use. Error: %w", err)
+			t.Fatalf("Port: %d already in use. Error: %q", cli.DefaultAgentPort, err.Error())
 		}
 		defer listener.Close()
-
 		agentServer := agent.New(agent.Config{
-			Port:        8000,
-			ServiceName: "gp",
-			Credentials: credCmd,
+			Port:        cli.DefaultAgentPort,
+			ServiceName: cli.DefaultServiceName,
+			Credentials: credentials,
 		})
-
 		errChan := make(chan error, 1)
 		go func() {
 			errChan <- agentServer.Start()
 		}()
-
 		defer agentServer.Shutdown()
-
 		select {
 		case err := <-errChan:
-			if !strings.Contains(err.Error(), "Could not listen on port 8000:") {
-				t.Fatalf("Expected error: %s Got:%s", "Could not listen on port 8000:", err.Error())
+			expected := fmt.Sprintf("Could not listen on port %d:", cli.DefaultAgentPort)
+			if !strings.Contains(err.Error(), expected) {
+				t.Fatalf("Expected %q to contain:%q", err.Error(), expected)
 			}
 		case <-time.After(1 * time.Second):
 			t.Log("Failed to raise error if listener fail")
 		}
-
 	})
 }
 
 func TestGetStatus(t *testing.T) {
 	testhelper.SetupTestLogger()
 
-	t.Run("get service status when no agent is running", func(t *testing.T) {
-		credCmd := &testutils.MockCredentials{}
+	t.Run("service status returns unknown when no agent is running", func(t *testing.T) {
+		credentials := &testutils.MockCredentials{}
 		agentServer := agent.New(agent.Config{
-			Port:        8000,
-			ServiceName: "gp",
-			Credentials: credCmd,
+			Port:        cli.DefaultAgentPort,
+			ServiceName: cli.DefaultServiceName,
+			Credentials: credentials,
 		})
-		msg, err := agentServer.GetStatus()
+		actualStatus, err := agentServer.GetStatus()
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
 		}
-		expected := idl.ServiceStatus{Status: "Unknown", Pid: 0, Uptime: "Unknown"}
-		if !reflect.DeepEqual(msg, &expected) {
-			t.Fatalf("expected: %s got: %s", &expected, msg)
+		expected := &idl.ServiceStatus{
+			Status: "Unknown",
+			Pid:    0,
+			Uptime: "Unknown",
+		}
+		if !reflect.DeepEqual(actualStatus, expected) {
+			t.Fatalf("expected: %v got: %v", expected, actualStatus)
 		}
 	})
-
-	t.Run("get service status when hub and agent is running", func(t *testing.T) {
-
-		credCmd := &testutils.MockCredentials{}
-
+	t.Run("service status returns running and uptime when hub and agent is running", func(t *testing.T) {
+		credentials := &testutils.MockCredentials{}
 		agentServer := agent.New(agent.Config{
-			Port:        8000,
-			ServiceName: "gp",
-			Credentials: credCmd,
+			Port:        cli.DefaultAgentPort,
+			ServiceName: cli.DefaultServiceName,
+			Credentials: credentials,
 		})
-
-		os := &testutils.MockPlatform{}
-		os.RetStatus = idl.ServiceStatus{Status: "Running", Uptime: "10ms", Pid: uint32(1234)}
-		os.Err = nil
-		agent.SetPlatform(os)
+		platform := &testutils.MockPlatform{}
+		expected := &idl.ServiceStatus{
+			Status: "Running",
+			Uptime: "10ms",
+			Pid:    uint32(1234),
+		}
+		platform.RetStatus = *expected
+		platform.Err = nil
+		agent.SetPlatform(platform)
 		defer agent.ResetPlatform()
-
 		/*start the hub and make sure it connects*/
-		msg, err := agentServer.GetStatus()
+		actualStatus, err := agentServer.GetStatus()
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
 		}
 
-		expected := idl.ServiceStatus{Status: "Running", Uptime: "10ms", Pid: uint32(1234)}
-		if !reflect.DeepEqual(msg, &expected) {
-			t.Fatalf("expected: %s got: %s", &expected, msg)
+		if !reflect.DeepEqual(actualStatus, expected) {
+			t.Fatalf("expected: %v got: %v", expected, actualStatus)
 		}
 	})
-
 	t.Run("get service status when raised error", func(t *testing.T) {
-
-		credCmd := &testutils.MockCredentials{}
-
+		credentials := &testutils.MockCredentials{}
 		agentServer := agent.New(agent.Config{
-			Port:        8000,
-			ServiceName: "gp",
-			Credentials: credCmd,
+			Port:        cli.DefaultHubPort,
+			ServiceName: cli.DefaultServiceName,
+			Credentials: credentials,
 		})
-
-		os := &testutils.MockPlatform{}
-		os.Err = errors.New("")
-		agent.SetPlatform(os)
+		platform := &testutils.MockPlatform{}
+		platform.Err = errors.New("TEST Error")
+		agent.SetPlatform(platform)
 		defer agent.ResetPlatform()
-
 		/*start the hub and make sure it connects*/
 		_, err := agentServer.GetStatus()
-
 		if err == nil {
 			t.Fatalf("Expected error but found success : %#v", err)
+		}
+	})
+}
+
+func TestConfigWrite(t *testing.T) {
+	caCertPath := "/tmp/test"
+	caKeyPath := "/tmp/test"
+	serverCertPath := "/tmp/test"
+	serverKeyPath := "/tmp/test"
+	hubPort := cli.DefaultHubPort
+	agentPort := cli.DefaultAgentPort
+	hostnames := []string{"host1", "host2", "hostn"}
+	hubLogDir := "/tmp/test"
+	serviceName := cli.DefaultServiceName
+	cli.ConfigFilePath = "/tmp/gp.test_config"
+	gphome := "/tmp/gphome"
+	testhelper.SetupTestLogger()
+	t.Run("config write followed by read returns same data", func(t *testing.T) {
+		credentials := &utils.GpCredentials{
+			CACertPath:     caCertPath,
+			CAKeyPath:      caKeyPath,
+			ServerCertPath: serverCertPath,
+			ServerKeyPath:  serverKeyPath,
+		}
+		conf := &hub.Config{
+			Port:        hubPort,
+			AgentPort:   agentPort,
+			Hostnames:   hostnames,
+			LogDir:      hubLogDir,
+			ServiceName: serviceName,
+			GpHome:      gphome,
+			Credentials: credentials,
+		}
+		err := conf.Write(cli.ConfigFilePath)
+		if err != nil {
+			t.Fatalf("Expected no error, got an error while creating config file:%v", err)
+		}
+		conf2 := &hub.Config{}
+		err = conf2.Load(cli.ConfigFilePath)
+		if err != nil {
+			t.Fatalf("Expected no error, got an error while reading config file:%v", err)
+		}
+		if reflect.DeepEqual(conf, conf2) != true {
+			t.Fatalf("Expected config:%v not same as Read Config:%v", conf, conf2)
 		}
 	})
 }

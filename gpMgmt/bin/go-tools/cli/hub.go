@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpdb/gp/hub"
 	"github.com/greenplum-db/gpdb/gp/utils"
 	"github.com/spf13/cobra"
@@ -17,14 +16,15 @@ import (
 )
 
 var (
-	platform                 = utils.GetPlatform()
-	defaultHubLogDir  string = "/tmp"
-	defaultHubPort    int    = 4242
-	defaultAgentPort  int    = 8000
-	defaultServiceDir string = platform.GetDefaultServiceDir()
-	MasrshalIndent           = json.MarshalIndent
-	OpenFile                 = os.OpenFile
-	ExecCommand              = exec.Command
+	platform                  = utils.GetPlatform()
+	DefaultHubLogDir   string = "/tmp"
+	DefaultHubPort     int    = 4242
+	DefaultAgentPort   int    = 8000
+	DefaultServiceDir  string = platform.GetDefaultServiceDir()
+	DefaultServiceName string = "gp"
+	MasrshalIndent            = json.MarshalIndent
+	OpenFile                  = os.OpenFile
+	ExecCommand               = exec.Command
 
 	agentPort      int
 	caCertPath     string
@@ -70,12 +70,12 @@ func installCmd() *cobra.Command {
 		PreRun: InitializeGplog,
 		RunE:   RunInstall,
 	}
-	installCmd.Flags().IntVar(&agentPort, "agent-port", defaultAgentPort, `Port on which the agents should listen`)
+	installCmd.Flags().IntVar(&agentPort, "agent-port", DefaultAgentPort, `Port on which the agents should listen`)
 	installCmd.Flags().StringVar(&gphome, "gphome", os.Getenv("GPHOME"), `Path to GPDB installation`)
-	installCmd.Flags().IntVar(&hubPort, "hub-port", defaultHubPort, `Port on which the hub should listen`)
-	installCmd.Flags().StringVar(&hubLogDir, "log-dir", defaultHubLogDir, `Path to gp hub log directory`)
-	installCmd.Flags().StringVar(&serviceName, "service-name", "gp", `Name for the generated systemd service file`)
-	installCmd.Flags().StringVar(&serviceDir, "service-dir", fmt.Sprintf(defaultServiceDir, os.Getenv("USER")), `Path to service file directory`)
+	installCmd.Flags().IntVar(&hubPort, "hub-port", DefaultHubPort, `Port on which the hub should listen`)
+	installCmd.Flags().StringVar(&hubLogDir, "log-dir", DefaultHubLogDir, `Path to gp hub log directory`)
+	installCmd.Flags().StringVar(&serviceName, "service-name", DefaultServiceName, `Name for the generated systemd service file`)
+	installCmd.Flags().StringVar(&serviceDir, "service-dir", fmt.Sprintf(DefaultServiceDir, os.Getenv("USER")), `Path to service file directory`)
 	installCmd.Flags().StringVar(&serviceUser, "service-user", os.Getenv("USER"), `User for whom to install the service`)
 	// TLS credentials are deliberately left blank if not provided, and need to be filled in by the user
 	installCmd.Flags().StringVar(&caCertPath, "ca-certificate", "", `Path to SSL/TLS CA certificate`)
@@ -95,10 +95,10 @@ func RunInstall(cmd *cobra.Command, args []string) (err error) {
 
 	// Regenerate default flag values if a custom GPHOME or username is passed
 	if cmd.Flags().Lookup("gphome").Changed && !cmd.Flags().Lookup("config-file").Changed {
-		configFilePath = fmt.Sprintf(defaultConfigFilePath, gphome)
+		ConfigFilePath = fmt.Sprintf(defaultConfigFilePath, gphome)
 	}
 	if cmd.Flags().Lookup("service-user").Changed && !cmd.Flags().Lookup("service-dir").Changed {
-		serviceDir = fmt.Sprintf(defaultServiceDir, serviceUser)
+		serviceDir = fmt.Sprintf(DefaultServiceDir, serviceUser)
 	}
 
 	if !cmd.Flags().Lookup("host").Changed && !cmd.Flags().Lookup("hostfile").Changed {
@@ -116,9 +116,23 @@ func RunInstall(cmd *cobra.Command, args []string) (err error) {
 		return fmt.Errorf("Could not get hostname from %s: %w", hostfilePath, err)
 	}
 
-	err = CreateConfigFile(caCertPath, caKeyPath, serverCertPath, serverKeyPath, hubPort, agentPort, hostnames, hubLogDir, serviceName, serviceDir)
+	conf = &hub.Config{
+		Port:        hubPort,
+		AgentPort:   agentPort,
+		Hostnames:   hostnames,
+		LogDir:      hubLogDir,
+		ServiceName: serviceName,
+		GpHome:      gphome,
+		Credentials: &utils.GpCredentials{
+			CACertPath:     caCertPath,
+			CAKeyPath:      caKeyPath,
+			ServerCertPath: serverCertPath,
+			ServerKeyPath:  serverKeyPath,
+		},
+	}
+	err = conf.Write(ConfigFilePath)
 	if err != nil {
-		return fmt.Errorf("Could not create config file %s: %w", configFilePath, err)
+		return fmt.Errorf("Could not create config file %s: %w", ConfigFilePath, err)
 	}
 
 	err = platform.CreateServiceDir(hostnames, serviceDir, gphome)
@@ -144,7 +158,7 @@ func RunInstall(cmd *cobra.Command, args []string) (err error) {
 }
 
 func resolveAbsolutePaths(cmd *cobra.Command) error {
-	paths := []*string{&caCertPath, &caKeyPath, &serverCertPath, &serverKeyPath, &defaultHubLogDir, &gphome}
+	paths := []*string{&caCertPath, &caKeyPath, &serverCertPath, &serverKeyPath, &DefaultHubLogDir, &gphome}
 	for _, path := range paths {
 		p, err := filepath.Abs(*path)
 		if err != nil {
@@ -153,55 +167,6 @@ func resolveAbsolutePaths(cmd *cobra.Command) error {
 		*path = p
 	}
 	return nil
-}
-
-func CreateConfigFile(caCertPath, caKeyPath, serverCertPath, serverKeyPath string, hubPort, agentPort int, hostnames []string, hubLogDir, serviceName string, serviceDir string) error {
-	creds := utils.GpCredentials{CACertPath: caCertPath, CAKeyPath: caKeyPath, ServerCertPath: serverCertPath, ServerKeyPath: serverKeyPath}
-	conf = &hub.Config{Port: hubPort, AgentPort: agentPort, Hostnames: hostnames, LogDir: hubLogDir, ServiceName: serviceName, GpHome: gphome, Credentials: creds}
-
-	configContents, err := MasrshalIndent(conf, "", "\t")
-	if err != nil {
-		return fmt.Errorf("Could not generate configuration file: %w", err)
-	}
-
-	err = writeConfigContent(configFilePath, configContents)
-	if err != nil {
-		return fmt.Errorf("writing config file:%s failed. Error:%w", configFilePath, err)
-	}
-	gplog.Debug("Wrote configuration file to %s", configFilePath)
-
-	hostList := make([]string, 0)
-	for _, host := range hostnames {
-		hostList = append(hostList, "-h", host)
-	}
-	err = copyConfigFileToAgents(hostList)
-	if err != nil {
-		return err
-	}
-	gplog.Info("Copied gp.conf file to segment hosts")
-	return nil
-}
-
-var copyConfigFileToAgents = func(hostList []string) error {
-	remoteCmd := append(hostList, configFilePath, fmt.Sprintf("=:%s", configFilePath))
-	err := ExecCommand("/bin/bash", "-c", fmt.Sprintf("source %s/greenplum_path.sh; gpsync %s", gphome, strings.Join(remoteCmd, " "))).Run()
-	if err != nil {
-		return fmt.Errorf("Could not copy gp.conf file to segment hosts: %w", err)
-	}
-	return nil
-}
-
-var writeConfigContent = func(configFilePath string, configContents []byte) error {
-	configHandle, err := OpenFile(configFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-	if err != nil {
-		return fmt.Errorf("Could not create configuration file %s: %w\n", configFilePath, err)
-	}
-	defer configHandle.Close()
-	_, err = configHandle.Write(configContents)
-	if err != nil {
-		return fmt.Errorf("Could not write to configuration file %s: %w\n", configFilePath, err)
-	}
-	return err
 }
 
 func getHostnames(hostnames []string, hostfilePath string) ([]string, error) {
