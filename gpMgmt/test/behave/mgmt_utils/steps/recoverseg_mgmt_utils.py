@@ -852,8 +852,7 @@ def impl(context, action, filter, value):
     num_retries = 6000
 
     if filter == "host":
-        host_list = [host.strip() for host in value.split(',')]
-        host_string = ",".join(["'{}'".format(host) for host in host_list])
+        host_string = ",".join(["'{}'".format(host.strip()) for host in value.split(',')])
 
         with closing(dbconn.connect(dbconn.DbURL(), unsetSearchPath=False)) as conn:
             result = dbconn.query(conn,"SELECT content FROM gp_segment_configuration WHERE hostname in ({0});".format(host_string)).fetchall()
