@@ -2,14 +2,14 @@ package testutils
 
 import (
 	"errors"
-	"github.com/greenplum-db/gpdb/gp/constants"
+	"io"
 	"os"
 	"os/exec"
 
+	"github.com/greenplum-db/gpdb/gp/constants"
 	"github.com/greenplum-db/gpdb/gp/hub"
-	"google.golang.org/grpc/credentials"
-
 	"github.com/greenplum-db/gpdb/gp/idl"
+	"google.golang.org/grpc/credentials"
 )
 
 type MockPlatform struct {
@@ -43,11 +43,17 @@ func (p *MockPlatform) CreateServiceDir(hostnames []string, serviceDir string, g
 func (p *MockPlatform) GetServiceStatusMessage(serviceName string) (string, error) {
 	return p.ServiceStatusMessage, p.Err
 }
-func (p *MockPlatform) GenerateServiceFileContents(which string, gphome string, serviceName string) string {
+func (p *MockPlatform) GenerateServiceFileContents(process string, gphome string, serviceName string) string {
 	return p.ServiceFileContent
 }
 func (p *MockPlatform) GetDefaultServiceDir() string {
 	return p.DefServiceDir
+}
+func (p *MockPlatform) ReloadHubService(servicePath string) error {
+	return p.Err
+}
+func (p *MockPlatform) ReloadAgentService(gphome string, hostList []string, servicePath string) error {
+	return p.Err
 }
 func (p *MockPlatform) CreateAndInstallHubServiceFile(gphome string, serviceDir string, serviceName string) error {
 	return p.Err
@@ -64,7 +70,7 @@ func (p *MockPlatform) GetStartAgentCommandString(serviceName string) []string {
 func (p *MockPlatform) ParseServiceStatusMessage(message string) idl.ServiceStatus {
 	return idl.ServiceStatus{Status: p.RetStatus.Status, Pid: p.RetStatus.Pid, Uptime: p.RetStatus.Uptime}
 }
-func (p *MockPlatform) DisplayServiceStatus(serviceName string, statuses []*idl.ServiceStatus, skipHeader bool) {
+func (p *MockPlatform) DisplayServiceStatus(outfile io.Writer, serviceName string, statuses []*idl.ServiceStatus, skipHeader bool) {
 }
 func (p *MockPlatform) EnableUserLingering(hostnames []string, gphome string, serviceUser string) error {
 	return nil

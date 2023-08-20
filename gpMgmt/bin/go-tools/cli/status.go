@@ -78,7 +78,7 @@ var ShowHubStatus = func(conf *hub.Config, skipHeader bool) (bool, error) {
 	}
 	status := platform.ParseServiceStatusMessage(message)
 	status.Host, _ = os.Hostname()
-	platform.DisplayServiceStatus("Hub", []*idl.ServiceStatus{&status}, skipHeader)
+	platform.DisplayServiceStatus(os.Stdout, "Hub", []*idl.ServiceStatus{&status}, skipHeader)
 	if status.Status == "Unknown" {
 		return false, nil
 	}
@@ -95,7 +95,7 @@ var ShowAgentsStatus = func(conf *hub.Config, skipHeader bool) error {
 	if err != nil {
 		return err
 	}
-	platform.DisplayServiceStatus("Agent", reply.Statuses, skipHeader)
+	platform.DisplayServiceStatus(os.Stdout, "Agent", reply.Statuses, skipHeader)
 	return nil
 }
 

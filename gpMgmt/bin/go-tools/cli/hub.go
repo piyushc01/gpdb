@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/greenplum-db/gpdb/gp/constants"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
+	"github.com/greenplum-db/gpdb/gp/constants"
 	"github.com/greenplum-db/gpdb/gp/hub"
 	"github.com/greenplum-db/gpdb/gp/utils"
 	"github.com/spf13/cobra"

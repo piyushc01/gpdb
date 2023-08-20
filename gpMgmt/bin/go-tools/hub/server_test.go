@@ -1,16 +1,15 @@
 package hub_test
 
 import (
-	"github.com/greenplum-db/gpdb/gp/constants"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/greenplum-db/gpdb/gp/testutils"
-
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
+	"github.com/greenplum-db/gpdb/gp/constants"
 	"github.com/greenplum-db/gpdb/gp/hub"
+	"github.com/greenplum-db/gpdb/gp/testutils"
 	"google.golang.org/grpc"
 )
 

@@ -3,12 +3,12 @@ package cli
 import (
 	"context"
 	"errors"
-	"github.com/greenplum-db/gpdb/gp/constants"
 	"strings"
 	"testing"
 
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpdb/gp/agent"
+	"github.com/greenplum-db/gpdb/gp/constants"
 	"github.com/greenplum-db/gpdb/gp/hub"
 	"github.com/greenplum-db/gpdb/gp/idl"
 	"github.com/greenplum-db/gpdb/gp/testutils"

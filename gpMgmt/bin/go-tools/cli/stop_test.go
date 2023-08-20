@@ -2,13 +2,14 @@ package cli
 
 import (
 	"errors"
+	"testing"
+
 	"github.com/golang/mock/gomock"
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpdb/gp/hub"
 	"github.com/greenplum-db/gpdb/gp/idl"
 	"github.com/greenplum-db/gpdb/gp/idl/mock_idl"
 	"github.com/greenplum-db/gpdb/gp/testutils"
-	"testing"
 )
 
 func TestStopAgentService(t *testing.T) {
