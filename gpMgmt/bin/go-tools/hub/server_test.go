@@ -1,6 +1,7 @@
 package hub_test
 
 import (
+	"github.com/greenplum-db/gpdb/gp/constants"
 	"os"
 	"strings"
 	"testing"
@@ -98,11 +99,11 @@ func TestStartAgents(t *testing.T) {
 		{
 			name: "successfully starts the agents from hub",
 			conf: &hub.Config{
-				1234,
-				8080,
+				constants.DefaultHubPort,
+				constants.DefaultAgentPort,
 				[]string{host},
 				"/tmp/logDir",
-				"gp",
+				constants.DefaultServiceName,
 				gpHome,
 				&testutils.MockCredentials{},
 			},
@@ -111,11 +112,11 @@ func TestStartAgents(t *testing.T) {
 		{
 			name: "failed to start if the host is not reachable",
 			conf: &hub.Config{
-				1234,
-				8080,
+				constants.DefaultHubPort,
+				constants.DefaultAgentPort,
 				[]string{"test"},
 				"/tmp/logDir",
-				"gp",
+				constants.DefaultServiceName,
 				gpHome,
 				&testutils.MockCredentials{},
 			},
@@ -124,11 +125,11 @@ func TestStartAgents(t *testing.T) {
 		{
 			name: "failed to start if the gphome is not set",
 			conf: &hub.Config{
-				1234,
-				8080,
+				constants.DefaultHubPort,
+				constants.DefaultAgentPort,
 				[]string{host},
 				"/tmp/logDir",
-				"gp",
+				constants.DefaultServiceName,
 				"gphome",
 				&testutils.MockCredentials{},
 			},

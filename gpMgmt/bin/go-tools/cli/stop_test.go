@@ -229,8 +229,8 @@ func TestRunStopHub(t *testing.T) {
 		}
 		origShowHubStatus := ShowHubStatus
 		defer func() { ShowHubStatus = origShowHubStatus }()
-		ShowHubStatus = func(conf *hub.Config, skipHeader bool) error {
-			return nil
+		ShowHubStatus = func(conf *hub.Config, skipHeader bool) (bool, error) {
+			return true, nil
 		}
 		verbose = true
 

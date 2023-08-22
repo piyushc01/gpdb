@@ -2,6 +2,7 @@ package testutils
 
 import (
 	"errors"
+	"github.com/greenplum-db/gpdb/gp/constants"
 	"os"
 	"os/exec"
 
@@ -26,11 +27,11 @@ func InitializeTestEnv() *hub.Config {
 	gpHome := os.Getenv("GPHOME")
 	credCmd := &MockCredentials{}
 	conf := &hub.Config{
-		Port:        4242,
-		AgentPort:   8000,
+		Port:        constants.DefaultHubPort,
+		AgentPort:   constants.DefaultAgentPort,
 		Hostnames:   []string{host},
 		LogDir:      "/tmp/logDir",
-		ServiceName: "gp",
+		ServiceName: constants.DefaultServiceName,
 		GpHome:      gpHome,
 		Credentials: credCmd,
 	}

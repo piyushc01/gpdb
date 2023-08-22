@@ -19,8 +19,8 @@ func TestPrintServicesStatus(t *testing.T) {
 	t.Run("returns no error when there's none", func(t *testing.T) {
 		origShowHubStatus := ShowHubStatus
 		defer func() { ShowHubStatus = origShowHubStatus }()
-		ShowHubStatus = func(conf *hub.Config, skipHeader bool) error {
-			return nil
+		ShowHubStatus = func(conf *hub.Config, skipHeader bool) (bool, error) {
+			return true, nil
 		}
 		origShowAgentsStatus := ShowAgentsStatus
 		defer func() { ShowAgentsStatus = origShowAgentsStatus }()
@@ -35,8 +35,8 @@ func TestPrintServicesStatus(t *testing.T) {
 	t.Run("returns an error when error printing Hub status", func(t *testing.T) {
 		origShowHubStatus := ShowHubStatus
 		defer func() { ShowHubStatus = origShowHubStatus }()
-		ShowHubStatus = func(conf *hub.Config, skipHeader bool) error {
-			return errors.New("TEST Error printing Hub status")
+		ShowHubStatus = func(conf *hub.Config, skipHeader bool) (bool, error) {
+			return false, errors.New("TEST Error printing Hub status")
 		}
 		err := PrintServicesStatus()
 		if err == nil {
@@ -46,8 +46,8 @@ func TestPrintServicesStatus(t *testing.T) {
 	t.Run("returns an error when error printing Agent status", func(t *testing.T) {
 		origShowHubStatus := ShowHubStatus
 		defer func() { ShowHubStatus = origShowHubStatus }()
-		ShowHubStatus = func(conf *hub.Config, skipHeader bool) error {
-			return nil
+		ShowHubStatus = func(conf *hub.Config, skipHeader bool) (bool, error) {
+			return true, nil
 		}
 		origShowAgentsStatus := ShowAgentsStatus
 		defer func() { ShowAgentsStatus = origShowAgentsStatus }()
@@ -148,7 +148,7 @@ func TestShowHubStatus(t *testing.T) {
 		platform = os
 		defer func() { platform = utils.GetPlatform() }()
 
-		err := ShowHubStatus(conf, true)
+		_, err := ShowHubStatus(conf, true)
 		if err != nil {
 			t.Fatalf("Expected no error. Got an error:%s", err.Error())
 		}
@@ -161,7 +161,7 @@ func TestShowHubStatus(t *testing.T) {
 		platform = os
 		defer func() { platform = utils.GetPlatform() }()
 
-		err := ShowHubStatus(conf, true)
+		_, err := ShowHubStatus(conf, true)
 		if err == nil {
 			t.Fatalf("Expected an error. Got no error")
 		}
@@ -204,8 +204,8 @@ func TestRunStatusHub(t *testing.T) {
 	t.Run("return no error when there is none", func(t *testing.T) {
 		origShowHubStatus := ShowHubStatus
 		defer func() { ShowHubStatus = origShowHubStatus }()
-		ShowHubStatus = func(conf *hub.Config, skipHeader bool) error {
-			return nil
+		ShowHubStatus = func(conf *hub.Config, skipHeader bool) (bool, error) {
+			return true, nil
 		}
 		err := RunStatusHub(nil, nil)
 		if err != nil {
@@ -215,8 +215,8 @@ func TestRunStatusHub(t *testing.T) {
 	t.Run("return error when there is error getting agent status", func(t *testing.T) {
 		origShowHubStatus := ShowHubStatus
 		defer func() { ShowHubStatus = origShowHubStatus }()
-		ShowHubStatus = func(conf *hub.Config, skipHeader bool) error {
-			return errors.New("TEST Error getting agent status")
+		ShowHubStatus = func(conf *hub.Config, skipHeader bool) (bool, error) {
+			return false, errors.New("TEST Error getting agent status")
 		}
 		err := RunStatusHub(nil, nil)
 		if err == nil {

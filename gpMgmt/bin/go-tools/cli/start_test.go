@@ -63,7 +63,7 @@ func TestStartAgentsAll(t *testing.T) {
 		origConnectHub := connectToHub
 		defer func() { connectToHub = origConnectHub }()
 		connectToHub = func(conf *hub.Config) (idl.HubClient, error) {
-			return nil, errors.New("Error connecting hub")
+			return nil, errors.New("error connecting hub")
 		}
 		_, err := startAgentsAll(conf)
 		if err == nil {
@@ -198,8 +198,8 @@ func TestRunStartHub(t *testing.T) {
 		}
 		origShowHubStatus := ShowHubStatus
 		defer func() { ShowHubStatus = origShowHubStatus }()
-		ShowHubStatus = func(conf *hub.Config, skipHeader bool) error {
-			return nil
+		ShowHubStatus = func(conf *hub.Config, skipHeader bool) (bool, error) {
+			return true, nil
 		}
 		err := RunStartHub(nil, nil)
 		if err != nil {
@@ -226,8 +226,8 @@ func TestRunStartHub(t *testing.T) {
 		origShowHubStatus := ShowHubStatus
 		defer func() { ShowHubStatus = origShowHubStatus }()
 		verbose = true
-		ShowHubStatus = func(conf *hub.Config, skipHeader bool) error {
-			return errors.New("Test Error in ShowHubStatus ")
+		ShowHubStatus = func(conf *hub.Config, skipHeader bool) (bool, error) {
+			return false, errors.New("Test Error in ShowHubStatus ")
 		}
 		err := RunStartHub(nil, nil)
 		if err == nil {

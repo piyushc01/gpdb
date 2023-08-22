@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/greenplum-db/gpdb/gp/constants"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -20,9 +22,8 @@ var (
 	Unmarshal   = json.Unmarshal
 	DialContext = grpc.DialContext
 
-	ConfigFilePath        string
-	conf                  *hub.Config
-	defaultConfigFilePath string = "%s/gp.conf"
+	ConfigFilePath string
+	conf           *hub.Config
 
 	verbose bool
 )
@@ -32,7 +33,7 @@ func RootCommand() *cobra.Command {
 		Use: "gp",
 	}
 
-	root.PersistentFlags().StringVar(&ConfigFilePath, "config-file", fmt.Sprintf(defaultConfigFilePath, os.Getenv("GPHOME")), `Path to gp configuration file`)
+	root.PersistentFlags().StringVar(&ConfigFilePath, "config-file", filepath.Join(os.Getenv("GPHOME"), constants.ConfigFileName), `Path to gp configuration file`)
 	root.PersistentFlags().BoolVar(&verbose, "verbose", false, `Provide verbose output`)
 
 	root.AddCommand(agentCmd())

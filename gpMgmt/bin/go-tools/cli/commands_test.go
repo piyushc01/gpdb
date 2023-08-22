@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"errors"
+	"github.com/greenplum-db/gpdb/gp/constants"
 	"strings"
 	"testing"
 
@@ -28,11 +29,11 @@ func TestConnectToHub(t *testing.T) {
 	defer agent.ResetPlatform()
 	hostlist := []string{"sdw1", "sdw2", "sdw3"}
 	config := hub.Config{
-		Port:        DefaultHubPort,
-		AgentPort:   DefaultAgentPort,
+		Port:        constants.DefaultHubPort,
+		AgentPort:   constants.DefaultAgentPort,
 		Hostnames:   hostlist,
 		LogDir:      "/tmp",
-		ServiceName: DefaultServiceName,
+		ServiceName: constants.DefaultServiceName,
 		GpHome:      "/usr/local/gpdb/",
 		Credentials: creds,
 	}

@@ -29,7 +29,6 @@ var (
 	OpenFile       = os.OpenFile
 	Unmarshal      = json.Unmarshal
 	MasrshalIndent = json.MarshalIndent
-	ExecCommand    = exec.Command
 )
 
 type Dialer func(ctx context.Context, target string, opts ...grpc.DialOption) (*grpc.ClientConn, error)
@@ -161,8 +160,10 @@ func (s *Server) StartAllAgents() error {
 	cmd := exec.Command("/bin/bash", "-c", fmt.Sprintf("source %s/greenplum_path.sh; gpssh %s", s.GpHome, strings.Join(remoteCmd, " ")))
 	cmd.Stdout = &outb
 	cmd.Stderr = &errb
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("Could not start agent: %w", err)
+	err := cmd.Run()
+	if err != nil {
+		output, _ := cmd.CombinedOutput()
+		return fmt.Errorf("%w, %s", err, string(output))
 	}
 	//there are chances in most of the cases the command returns nil err even if there is error in stdout.
 	//to overcome this we have added check to handle both
@@ -378,7 +379,8 @@ var CopyConfigFileToAgents = func(conf *Config, ConfigFilePath string) error {
 	cmd := exec.Command("/bin/bash", "-c", fmt.Sprintf("source %s/greenplum_path.sh; gpsync %s", conf.GpHome, strings.Join(remoteCmd, " ")))
 	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf("Could not copy gp.conf file to segment hosts: %w", err)
+		output, _ := cmd.CombinedOutput()
+		return fmt.Errorf("Could not copy gp.conf file to segment hosts: %w, Command Output:%s", err, string(output))
 	}
 	return nil
 }

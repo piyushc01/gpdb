@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/greenplum-db/gpdb/gp/cli"
+	"github.com/greenplum-db/gpdb/gp/constants"
 	"github.com/greenplum-db/gpdb/gp/hub"
 	"github.com/greenplum-db/gpdb/gp/utils"
 	"net"
@@ -24,8 +25,8 @@ func TestStartServer(t *testing.T) {
 	t.Run("successfully starts the server", func(t *testing.T) {
 		credentials := &testutils.MockCredentials{}
 		agentServer := agent.New(agent.Config{
-			Port:        cli.DefaultAgentPort,
-			ServiceName: cli.DefaultServiceName,
+			Port:        constants.DefaultAgentPort,
+			ServiceName: constants.DefaultServiceName,
 			Credentials: credentials,
 		})
 		errChan := make(chan error, 1)
@@ -46,8 +47,8 @@ func TestStartServer(t *testing.T) {
 		credentials := &testutils.MockCredentials{}
 		credentials.SetCredsError("Test credential error")
 		agentServer := agent.New(agent.Config{
-			Port:        cli.DefaultAgentPort,
-			ServiceName: cli.DefaultServiceName,
+			Port:        constants.DefaultAgentPort,
+			ServiceName: constants.DefaultServiceName,
 			Credentials: credentials,
 		})
 		errChan := make(chan error, 1)
@@ -67,14 +68,14 @@ func TestStartServer(t *testing.T) {
 	})
 	t.Run("Listen fails when starting the server", func(t *testing.T) {
 		credentials := &testutils.MockCredentials{}
-		listener, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", cli.DefaultAgentPort))
+		listener, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", constants.DefaultAgentPort))
 		if err != nil {
-			t.Fatalf("Port: %d already in use. Error: %q", cli.DefaultAgentPort, err.Error())
+			t.Fatalf("Port: %d already in use. Error: %q", constants.DefaultAgentPort, err.Error())
 		}
 		defer listener.Close()
 		agentServer := agent.New(agent.Config{
-			Port:        cli.DefaultAgentPort,
-			ServiceName: cli.DefaultServiceName,
+			Port:        constants.DefaultAgentPort,
+			ServiceName: constants.DefaultServiceName,
 			Credentials: credentials,
 		})
 		errChan := make(chan error, 1)
@@ -84,7 +85,7 @@ func TestStartServer(t *testing.T) {
 		defer agentServer.Shutdown()
 		select {
 		case err := <-errChan:
-			expected := fmt.Sprintf("Could not listen on port %d:", cli.DefaultAgentPort)
+			expected := fmt.Sprintf("Could not listen on port %d:", constants.DefaultAgentPort)
 			if !strings.Contains(err.Error(), expected) {
 				t.Fatalf("Expected %q to contain:%q", err.Error(), expected)
 			}
@@ -100,8 +101,8 @@ func TestGetStatus(t *testing.T) {
 	t.Run("service status returns unknown when no agent is running", func(t *testing.T) {
 		credentials := &testutils.MockCredentials{}
 		agentServer := agent.New(agent.Config{
-			Port:        cli.DefaultAgentPort,
-			ServiceName: cli.DefaultServiceName,
+			Port:        constants.DefaultAgentPort,
+			ServiceName: constants.DefaultServiceName,
 			Credentials: credentials,
 		})
 		actualStatus, err := agentServer.GetStatus()
@@ -120,8 +121,8 @@ func TestGetStatus(t *testing.T) {
 	t.Run("service status returns running and uptime when hub and agent is running", func(t *testing.T) {
 		credentials := &testutils.MockCredentials{}
 		agentServer := agent.New(agent.Config{
-			Port:        cli.DefaultAgentPort,
-			ServiceName: cli.DefaultServiceName,
+			Port:        constants.DefaultAgentPort,
+			ServiceName: constants.DefaultServiceName,
 			Credentials: credentials,
 		})
 		platform := &testutils.MockPlatform{}
@@ -151,8 +152,8 @@ func TestGetStatus(t *testing.T) {
 	t.Run("get service status when raised error", func(t *testing.T) {
 		credentials := &testutils.MockCredentials{}
 		agentServer := agent.New(agent.Config{
-			Port:        cli.DefaultHubPort,
-			ServiceName: cli.DefaultServiceName,
+			Port:        constants.DefaultHubPort,
+			ServiceName: constants.DefaultServiceName,
 			Credentials: credentials,
 		})
 		platform := &testutils.MockPlatform{}
@@ -172,11 +173,11 @@ func TestConfigWrite(t *testing.T) {
 	caKeyPath := "/tmp/test"
 	serverCertPath := "/tmp/test"
 	serverKeyPath := "/tmp/test"
-	hubPort := cli.DefaultHubPort
-	agentPort := cli.DefaultAgentPort
+	hubPort := constants.DefaultHubPort
+	agentPort := constants.DefaultAgentPort
 	hostnames := []string{"localhost"}
 	hubLogDir := "/tmp/test"
-	serviceName := cli.DefaultServiceName
+	serviceName := constants.DefaultServiceName
 	cli.ConfigFilePath = "/tmp/gp.test_config"
 	gphome := "/tmp/gphome"
 	testhelper.SetupTestLogger()

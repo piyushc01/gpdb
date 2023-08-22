@@ -48,7 +48,7 @@ var RunStartHub = func(cmd *cobra.Command, args []string) error {
 	}
 	gplog.Info("Hub %s started successfully", conf.ServiceName)
 	if verbose {
-		err = ShowHubStatus(conf, true)
+		_, err = ShowHubStatus(conf, true)
 		if err != nil {
 			return fmt.Errorf("Could not retrieve hub status: %w", err)
 		}
@@ -74,6 +74,7 @@ func startServiceCmd() *cobra.Command {
 		PreRunE: InitializeCommand,
 		RunE:    RunStartService,
 	}
+
 	return startServicesCmd
 }
 
@@ -89,6 +90,7 @@ var RunStartAgent = func(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("Could not retrieve agent status: %w", err)
 		}
 	}
+
 	return nil
 }
 
@@ -102,6 +104,7 @@ var startAgentsAll = func(hubConfig *hub.Config) (idl.HubClient, error) {
 	if err != nil {
 		return client, fmt.Errorf("Could not start agents: %w", err)
 	}
+
 	return client, nil
 }
 
@@ -129,6 +132,7 @@ var RunStartService = func(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("Could not retrieve hub status: %w", err)
 		}
 	}
+
 	return nil
 }
 
@@ -150,5 +154,6 @@ var WaitAndRetryHubConnect = func() error {
 	if !success {
 		return fmt.Errorf("Hub service started but failed to connect. Bailing out. Error:%w", err)
 	}
+
 	return nil
 }

@@ -42,7 +42,7 @@ func RunStopHub(cmd *cobra.Command, args []string) error {
 	}
 	gplog.Info("Hub stopped successfully")
 	if verbose {
-		_ = ShowHubStatus(conf, false)
+		_, _ = ShowHubStatus(conf, false)
 	}
 	return nil
 }

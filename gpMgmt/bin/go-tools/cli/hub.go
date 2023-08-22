@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/greenplum-db/gpdb/gp/constants"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,15 +17,11 @@ import (
 )
 
 var (
-	platform                  = utils.GetPlatform()
-	DefaultHubLogDir   string = "/tmp"
-	DefaultHubPort     int    = 4242
-	DefaultAgentPort   int    = 8000
-	DefaultServiceDir  string = platform.GetDefaultServiceDir()
-	DefaultServiceName string = "gp"
-	MasrshalIndent            = json.MarshalIndent
-	OpenFile                  = os.OpenFile
-	ExecCommand               = exec.Command
+	platform          = utils.GetPlatform()
+	DefaultServiceDir = platform.GetDefaultServiceDir()
+	MasrshalIndent    = json.MarshalIndent
+	OpenFile          = os.OpenFile
+	ExecCommand       = exec.Command
 
 	agentPort      int
 	caCertPath     string
@@ -70,11 +67,12 @@ func installCmd() *cobra.Command {
 		PreRun: InitializeGplog,
 		RunE:   RunInstall,
 	}
-	installCmd.Flags().IntVar(&agentPort, "agent-port", DefaultAgentPort, `Port on which the agents should listen`)
+	// TODO: Adding input validation
+	installCmd.Flags().IntVar(&agentPort, "agent-port", constants.DefaultAgentPort, `Port on which the agents should listen`)
 	installCmd.Flags().StringVar(&gphome, "gphome", os.Getenv("GPHOME"), `Path to GPDB installation`)
-	installCmd.Flags().IntVar(&hubPort, "hub-port", DefaultHubPort, `Port on which the hub should listen`)
-	installCmd.Flags().StringVar(&hubLogDir, "log-dir", DefaultHubLogDir, `Path to gp hub log directory`)
-	installCmd.Flags().StringVar(&serviceName, "service-name", DefaultServiceName, `Name for the generated systemd service file`)
+	installCmd.Flags().IntVar(&hubPort, "hub-port", constants.DefaultHubPort, `Port on which the hub should listen`)
+	installCmd.Flags().StringVar(&hubLogDir, "log-dir", constants.DefaultHubLogDir, `Path to gp hub log directory`)
+	installCmd.Flags().StringVar(&serviceName, "service-name", constants.DefaultServiceName, `Name for the generated systemd service file`)
 	installCmd.Flags().StringVar(&serviceDir, "service-dir", fmt.Sprintf(DefaultServiceDir, os.Getenv("USER")), `Path to service file directory`)
 	installCmd.Flags().StringVar(&serviceUser, "service-user", os.Getenv("USER"), `User for whom to install the service`)
 	// TLS credentials are deliberately left blank if not provided, and need to be filled in by the user
@@ -90,12 +88,15 @@ func installCmd() *cobra.Command {
 }
 func RunInstall(cmd *cobra.Command, args []string) (err error) {
 	if gphome == "" {
+		if cmd.Flags().Lookup("gphome").Changed {
+			return fmt.Errorf("gphome parameter cannot be empty")
+		}
 		return fmt.Errorf("GPHOME environment variable not set and --gphome flag not provided\n")
 	}
 
 	// Regenerate default flag values if a custom GPHOME or username is passed
 	if cmd.Flags().Lookup("gphome").Changed && !cmd.Flags().Lookup("config-file").Changed {
-		ConfigFilePath = fmt.Sprintf(defaultConfigFilePath, gphome)
+		ConfigFilePath = filepath.Join(gphome, constants.ConfigFileName)
 	}
 	if cmd.Flags().Lookup("service-user").Changed && !cmd.Flags().Lookup("service-dir").Changed {
 		serviceDir = fmt.Sprintf(DefaultServiceDir, serviceUser)
@@ -111,11 +112,20 @@ func RunInstall(cmd *cobra.Command, args []string) (err error) {
 		return err
 	}
 
-	hostnames, err := getHostnames(hostnames, hostfilePath)
-	if err != nil {
-		return fmt.Errorf("Could not get hostname from %s: %w", hostfilePath, err)
+	if cmd.Flags().Lookup("hostfile").Changed {
+		hostnames, err = getHostnames(hostfilePath)
+		if err != nil {
+			return fmt.Errorf("Could not get hostname from %s: %w", hostfilePath, err)
+		}
 	}
-
+	if len(hostnames) < 1 {
+		return fmt.Errorf("Expected at least one host or hostlist specified")
+	}
+	for _, host := range hostnames {
+		if len(host) < 1 {
+			return fmt.Errorf("Got and empty host in the input. Porvide valid input host name")
+		}
+	}
 	conf = &hub.Config{
 		Port:        hubPort,
 		AgentPort:   agentPort,
@@ -158,7 +168,7 @@ func RunInstall(cmd *cobra.Command, args []string) (err error) {
 }
 
 func resolveAbsolutePaths(cmd *cobra.Command) error {
-	paths := []*string{&caCertPath, &caKeyPath, &serverCertPath, &serverKeyPath, &DefaultHubLogDir, &gphome}
+	paths := []*string{&caCertPath, &caKeyPath, &serverCertPath, &serverKeyPath, &hubLogDir, &gphome}
 	for _, path := range paths {
 		p, err := filepath.Abs(*path)
 		if err != nil {
@@ -166,17 +176,15 @@ func resolveAbsolutePaths(cmd *cobra.Command) error {
 		}
 		*path = p
 	}
+
 	return nil
 }
 
-func getHostnames(hostnames []string, hostfilePath string) ([]string, error) {
-	if len(hostnames) > 0 {
-		return hostnames, nil
-	}
-
-	contents, err := ReadFile(hostfilePath)
+func getHostnames(hostFilePath string) ([]string, error) {
+	contents, err := ReadFile(hostFilePath)
 	if err != nil {
 		return []string{}, fmt.Errorf("Could not read hostfile: %w", err)
 	}
+
 	return strings.Fields(string(contents)), nil
 }
