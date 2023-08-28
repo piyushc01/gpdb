@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -52,7 +51,7 @@ func NewPlatform(os string) Platform {
 			ServiceCmd: "systemctl",
 			UserArg:    "--user",
 			ServiceExt: "service",
-			StatusArg:  "status",
+			StatusArg:  "show",
 		}
 	default:
 		panic("Unsupported OS")
@@ -167,7 +166,6 @@ Restart=on-failure
 Alias=%[3]s_%[1]s.service
 WantedBy=default.target
 `
-
 	return fmt.Sprintf(template, process, gphome, serviceName)
 }
 
@@ -175,6 +173,7 @@ func (p GpPlatform) GetDefaultServiceDir() string {
 	if p.OS == "darwin" {
 		return "/Users/%s/Library/LaunchAgents"
 	}
+
 	return "/home/%s/.config/systemd/user"
 }
 
@@ -197,16 +196,17 @@ func (p GpPlatform) CreateAndInstallHubServiceFile(gphome string, serviceDir str
 
 func (p GpPlatform) ReloadHubService(servicePath string) error {
 	if p.OS == "darwin" {
-
 		// launchctl does not have a single reload command. Hence unload and load the file to update the configuration.
 		err := UnloadServiceCommand(p.ServiceCmd, "unload", servicePath).Run()
 		if err != nil {
 			return fmt.Errorf("Could not unload hub service file %s: %w", servicePath, err)
 		}
+
 		err = LoadServiceCommand(p.ServiceCmd, "load", servicePath).Run()
 		if err != nil {
 			return fmt.Errorf("Could not load hub service file %s: %w", servicePath, err)
 		}
+
 		return nil
 	}
 
@@ -214,6 +214,7 @@ func (p GpPlatform) ReloadHubService(servicePath string) error {
 	if err != nil {
 		return fmt.Errorf("Could not reload hub service file %s: %w", servicePath, err)
 	}
+
 	return nil
 }
 
@@ -221,16 +222,17 @@ func (p GpPlatform) ReloadAgentService(gphome string, hostList []string, service
 	args := append(hostList, p.ServiceCmd)
 
 	if p.OS == "darwin" { // launchctl reloads a specific service, not all of them
-
 		// launchctl does not have a single reload command. Hence unload and load the file to update the configuration.
 		err := UnloadServiceCommand(fmt.Sprintf("%s/bin/gpssh", gphome), append(args, "unload", servicePath)...).Run()
 		if err != nil {
 			return fmt.Errorf("Could not unload agent service file %s on segment hosts: %w", servicePath, err)
 		}
+
 		err = LoadServiceCommand(fmt.Sprintf("%s/bin/gpssh", gphome), append(args, "load", servicePath)...).Run()
 		if err != nil {
 			return fmt.Errorf("Could not load agent service file %s on segment hosts: %w", servicePath, err)
 		}
+
 		return nil
 	}
 
@@ -238,6 +240,7 @@ func (p GpPlatform) ReloadAgentService(gphome string, hostList []string, service
 	if err != nil {
 		return fmt.Errorf("Could not reload agent service file %s on segment hosts: %w", servicePath, err)
 	}
+
 	return nil
 }
 
@@ -298,39 +301,57 @@ func (p GpPlatform) GetServiceStatusMessage(serviceName string) (string, error) 
 			return "", err
 		}
 	}
+
 	return string(output), nil
 }
 
+/*
+Example service status output
+
+Linux:
+ExecMainStartTimestamp=Sun 2023-08-20 14:43:35 UTC
+ExecMainPID=83008
+ExecMainCode=0
+ExecMainStatus=0
+
+Darwin:
+{
+	"PID" = 19909;
+	"Program" = "/usr/local/gpdb/bin/gp";
+	"ProgramArguments" = (
+		"/usr/local/gpdb/bin/gp";
+		"hub";
+	);
+};
+*/
 func (p GpPlatform) ParseServiceStatusMessage(message string) idl.ServiceStatus {
+	var status, uptime string
+	var pid int
+
 	lines := strings.Split(message, "\n")
-	status := "Unknown"
-	uptime := "Unknown"
-	pid := 0
-
-	var statusLineRegex, pidLineRegex *regexp.Regexp
-	if p.OS == "darwin" {
-		// launchctl doesn't provide status and uptime information, so we
-		// leave statusLineRegex set to nil and check for that below.
-		pidLineRegex = regexp.MustCompile(`"PID"\s*=\s*(\d+);`)
-	} else {
-		statusLineRegex = regexp.MustCompile(`Active: (.+) (since .+)`)
-		pidLineRegex = regexp.MustCompile(`Main PID: (\d+) `)
-	}
-
 	for _, line := range lines {
-		if statusLineRegex != nil && statusLineRegex.MatchString(line) {
-			results := statusLineRegex.FindStringSubmatch(line)
-			status = results[1]
-			uptime = results[2]
-		} else if pidLineRegex.MatchString(line) {
-			results := pidLineRegex.FindStringSubmatch(line)
+		line = strings.TrimSuffix(strings.TrimSpace(line), ";")
+		switch {
+		case strings.HasPrefix(line, "\"PID\" ="): // for darwin
+			results := strings.Split(line, " = ")
 			pid, _ = strconv.Atoi(results[1])
+
+		case strings.HasPrefix(line, "ExecMainPID="): // for linux
+			results := strings.Split(line, "=")
+			pid, _ = strconv.Atoi(results[1])
+
+		case strings.HasPrefix(line, "ExecMainStartTimestamp="): // for linux
+			result := strings.Split(line, "=")
+			uptime = result[1]
 		}
 	}
 
-	if status == "Unknown" && pid > 0 {
-		status = "Running"
+	if pid > 0 {
+		status = "running"
+	} else {
+		status = "not running"
 	}
+
 	return idl.ServiceStatus{Status: status, Uptime: uptime, Pid: uint32(pid)}
 }
 
@@ -357,11 +378,13 @@ func (p GpPlatform) EnableUserLingering(hostnames []string, gphome string, servi
 	for _, host := range hostnames {
 		hostList = append(hostList, "-h", host)
 	}
+
 	remoteCmd := append(hostList, "loginctl enable-linger ", serviceUser)
 	err := execCommand(fmt.Sprintf("%s/bin/gpssh", gphome), remoteCmd...).Run()
 	if err != nil {
 		return fmt.Errorf("Could not enable user lingering: %w", err)
 	}
+
 	return nil
 }
 

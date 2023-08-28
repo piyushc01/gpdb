@@ -98,7 +98,7 @@ func TestStartServer(t *testing.T) {
 func TestGetStatus(t *testing.T) {
 	testhelper.SetupTestLogger()
 
-	t.Run("service status returns unknown when no agent is running", func(t *testing.T) {
+	t.Run("returns appropriate status when no agent is running", func(t *testing.T) {
 		credentials := &testutils.MockCredentials{}
 		agentServer := agent.New(agent.Config{
 			Port:        constants.DefaultAgentPort,
@@ -110,9 +110,9 @@ func TestGetStatus(t *testing.T) {
 			t.Fatalf("unexpected error: %#v", err)
 		}
 		expected := &idl.ServiceStatus{
-			Status: "Unknown",
+			Status: "not running",
 			Pid:    0,
-			Uptime: "Unknown",
+			Uptime: "",
 		}
 		if !reflect.DeepEqual(actualStatus, expected) {
 			t.Fatalf("expected: %v got: %v", expected, actualStatus)

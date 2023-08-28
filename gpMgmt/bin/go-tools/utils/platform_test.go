@@ -117,7 +117,7 @@ func TestWriteServiceFile(t *testing.T) {
 func TestGenerateServiceFileContents(t *testing.T) {
 	testhelper.SetupTestLogger()
 
-	t.Run("GenerateServiceFileContents succesfully generates contents for darwin", func(t *testing.T) {
+	t.Run("GenerateServiceFileContents successfully generates contents for darwin", func(t *testing.T) {
 		platform := utils.NewPlatform("darwin")
 
 		expected := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
@@ -151,7 +151,7 @@ func TestGenerateServiceFileContents(t *testing.T) {
 		}
 	})
 
-	t.Run("GenerateServiceFileContents succesfully generates contents for linux", func(t *testing.T) {
+	t.Run("GenerateServiceFileContents successfully generates contents for linux", func(t *testing.T) {
 		platform := utils.NewPlatform("linux")
 
 		expected := `[Unit]
@@ -314,7 +314,7 @@ func TestReloadServices(t *testing.T) {
 func TestCreateAndInstallHubServiceFile(t *testing.T) {
 	testhelper.SetupTestLogger()
 
-	t.Run("CreateAndInstallHubServiceFile runs succesfully", func(t *testing.T) {
+	t.Run("CreateAndInstallHubServiceFile runs successfully", func(t *testing.T) {
 		platform := utils.NewPlatform("linux")
 
 		utils.SetWriteServiceFileFunc(func(filename, contents string) error {
@@ -371,7 +371,7 @@ func TestCreateAndInstallHubServiceFile(t *testing.T) {
 func TestCreateAndInstallAgentServiceFile(t *testing.T) {
 	testhelper.SetupTestLogger()
 
-	t.Run("CreateAndInstallAgentServiceFile runs sucessfully", func(t *testing.T) {
+	t.Run("CreateAndInstallAgentServiceFile runs successfully", func(t *testing.T) {
 		platform := utils.NewPlatform("linux")
 
 		utils.SetWriteServiceFileFunc(func(filename, contents string) error {
@@ -528,7 +528,7 @@ func TestGetStartAgentCommandString(t *testing.T) {
 func TestGetServiceStatusMessage(t *testing.T) {
 	testhelper.SetupTestLogger()
 
-	t.Run("GetServiceStatusMessage succesfully gets the service status for linux", func(t *testing.T) {
+	t.Run("GetServiceStatusMessage successfully gets the service status for linux", func(t *testing.T) {
 		platform := utils.NewPlatform("linux")
 
 		utils.SetExecCommand(exectest.NewCommandWithVerifier(ServiceStatusOutput, func(utility string, args ...string) {
@@ -536,7 +536,7 @@ func TestGetServiceStatusMessage(t *testing.T) {
 				t.Fatalf("got %q, want systemctl", utility)
 			}
 
-			expectedArgs := []string{"--user", "status", "gptest"}
+			expectedArgs := []string{"--user", "show", "gptest"}
 			if !reflect.DeepEqual(args, expectedArgs) {
 				t.Fatalf("got %+v, want %+v", args, expectedArgs)
 			}
@@ -550,7 +550,7 @@ func TestGetServiceStatusMessage(t *testing.T) {
 		}
 	})
 
-	t.Run("GetServiceStatusMessage succesfully gets the service status for darwin", func(t *testing.T) {
+	t.Run("GetServiceStatusMessage successfully gets the service status for darwin", func(t *testing.T) {
 		platform := utils.NewPlatform("darwin")
 
 		utils.SetExecCommand(exectest.NewCommandWithVerifier(ServiceStatusOutput, func(utility string, args ...string) {
@@ -605,76 +605,90 @@ func TestGetServiceStatusMessage(t *testing.T) {
 func TestParseServiceStatusMessage(t *testing.T) {
 	testhelper.SetupTestLogger()
 
-	t.Run("ParseServiceStatusMessage gets status for darwin when service is running", func(t *testing.T) {
-		platform := utils.NewPlatform("darwin")
-		message := `
-{
-	"StandardOutPath" = "/tmp/grpc_hub.log";
-	"LimitLoadToSessionType" = "Aqua";
-	"StandardErrorPath" = "/tmp/grpc_hub.log";
-	"Label" = "gp_hub";
-	"OnDemand" = true;
-	"LastExitStatus" = 0;
-	"PID" = 19909;
-	"Program" = "/usr/local/gpdb/bin/gp";
-	"ProgramArguments" = (
-		"/usr/local/gpdb/bin/gp";
-		"hub";
-	);
-};
-`
-		expected := &idl.ServiceStatus{Status: "Running", Uptime: "Unknown", Pid: uint32(19909)}
-		result := platform.ParseServiceStatusMessage(message)
+	cases := []struct {
+		name     string
+		os       string
+		message  string
+		expected *idl.ServiceStatus
+	}{
+		{
+			name: "ParseServiceStatusMessage gets status for darwin when service is running",
+			os:   "darwin",
+			message: `
+			{
+				"StandardOutPath" = "/tmp/grpc_hub.log";
+				"LimitLoadToSessionType" = "Aqua";
+				"StandardErrorPath" = "/tmp/grpc_hub.log";
+				"Label" = "gp_hub";
+				"OnDemand" = true;
+				"LastExitStatus" = 0;
+				"PID" = 19909;
+				"Program" = "/usr/local/gpdb/bin/gp";
+				"ProgramArguments" = (
+					"/usr/local/gpdb/bin/gp";
+					"hub";
+				);
+			};
+			`,
+			expected: &idl.ServiceStatus{Status: "running", Pid: uint32(19909)},
+		},
+		{
+			name: "ParseServiceStatusMessage gets status for darwin when service is not running",
+			os:   "darwin",
+			message: `
+			{
+				"StandardOutPath" = "/tmp/grpc_hub.log";
+				"LimitLoadToSessionType" = "Aqua";
+				"StandardErrorPath" = "/tmp/grpc_hub.log";
+				"Label" = "gp_hub";
+				"OnDemand" = true;
+				"LastExitStatus" = 0;
+				"Program" = "/usr/local/gpdb/bin/gp";
+				"ProgramArguments" = (
+					"/usr/local/gpdb/bin/gp";
+					"hub";
+				);
+			};
+			`,
+			expected: &idl.ServiceStatus{Status: "not running"},
+		},
+		{
+			name: "ParseServiceStatusMessage gets status for linux when service is running",
+			os:   "linux",
+			message: `
+			ExecMainStartTimestamp=Sun 2023-08-20 14:43:35 UTC
+			ExecMainStartTimestampMonotonic=286453245
+			ExecMainExitTimestampMonotonic=0
+			ExecMainPID=83008
+			ExecMainCode=0
+			ExecMainStatus=0
+			`,
+			expected: &idl.ServiceStatus{Status: "running", Uptime: "Sun 2023-08-20 14:43:35 UTC", Pid: uint32(83008)},
+		},
+		{
+			name: "ParseServiceStatusMessage gets status for linux when service is not running",
+			os:   "linux",
+			message: `
+			ExecMainStartTimestampMonotonic=286453245
+			ExecMainExitTimestampMonotonic=0
+			ExecMainPID=0
+			ExecMainCode=0
+			ExecMainStatus=0
+			`,
+			expected: &idl.ServiceStatus{Status: "not running", Pid: uint32(0)},
+		},
+	}
 
-		if !reflect.DeepEqual(&result, expected) {
-			t.Fatalf("got %+v, want %+v", &result, expected)
-		}
-	})
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			platform := utils.NewPlatform("darwin")
 
-	t.Run("ParseServiceStatusMessage gets status for darwin when service is not running", func(t *testing.T) {
-		platform := utils.NewPlatform("darwin")
-		message := `
-{
-	"StandardOutPath" = "/tmp/grpc_hub.log";
-	"LimitLoadToSessionType" = "Aqua";
-	"StandardErrorPath" = "/tmp/grpc_hub.log";
-	"Label" = "gp_hub";
-	"OnDemand" = true;
-	"LastExitStatus" = 0;
-	"Program" = "/usr/local/gpdb/bin/gp";
-	"ProgramArguments" = (
-		"/usr/local/gpdb/bin/gp";
-		"hub";
-	);
-};
-`
-		expected := &idl.ServiceStatus{Status: "Unknown", Uptime: "Unknown", Pid: uint32(0)}
-		result := platform.ParseServiceStatusMessage(message)
-
-		if !reflect.DeepEqual(&result, expected) {
-			t.Fatalf("got %+v, want %+v", &result, expected)
-		}
-	})
-
-	t.Run("ParseServiceStatusMessage gets status for linux when service is running", func(t *testing.T) {
-		platform := utils.NewPlatform("linux")
-		message := `
-● gp_hub.service - Greenplum Database management utility hub
-Loaded: loaded (/home/gpadmin/.config/systemd/user/gp_hub.service; disabled; vendor preset: enabled)
-Active: active (running) since Sun 2023-08-20 14:43:35 UTC; 1min 9s ago
-Main PID: 83008 (gp)
-CGroup: /user.slice/user-1019.slice/user@1019.service/gp_hub.service
-└─83008 /usr/local/greenplum-db-devel/bin/gp hub
-
-Aug 20 14:43:35 cdw systemd[79207]: Started Greenplum Database management utility hub.
-`
-		expected := &idl.ServiceStatus{Status: "active (running)", Uptime: "since Sun 2023-08-20 14:43:35 UTC; 1min 9s ago", Pid: uint32(83008)}
-		result := platform.ParseServiceStatusMessage(message)
-
-		if !reflect.DeepEqual(&result, expected) {
-			t.Fatalf("got %+v, want %+v", &result, expected)
-		}
-	})
+			result := platform.ParseServiceStatusMessage(tc.message)
+			if !reflect.DeepEqual(&result, tc.expected) {
+				t.Fatalf("got %+v, want %+v", &result, tc.expected)
+			}
+		})
+	}
 }
 
 func TestDisplayServiceStatus(t *testing.T) {
