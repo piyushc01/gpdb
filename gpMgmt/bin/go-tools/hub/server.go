@@ -1,7 +1,6 @@
 package hub
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -149,30 +148,21 @@ func (s *Server) StartAgents(ctx context.Context, in *idl.StartAgentsRequest) (*
 }
 
 func (s *Server) StartAllAgents() error {
-	var outb, errb bytes.Buffer
-
 	remoteCmd := make([]string, 0)
 	for _, host := range s.Hostnames {
 		remoteCmd = append(remoteCmd, "-h", host)
 	}
 	remoteCmd = append(remoteCmd, platform.GetStartAgentCommandString(s.ServiceName)...)
-
-	cmd := exec.Command("/bin/bash", "-c", fmt.Sprintf("source %s/greenplum_path.sh; gpssh %s", s.GpHome, strings.Join(remoteCmd, " ")))
-	cmd.Stdout = &outb
-	cmd.Stderr = &errb
-	err := cmd.Run()
+	cmd := exec.Command("/bin/bash", "-c", fmt.Sprintf("source %s/greenplum_path.sh && gpssh %s", s.GpHome, strings.Join(remoteCmd, " ")))
+	output, err := cmd.CombinedOutput()
+	strOutput := string(output)
 	if err != nil {
-		output, _ := cmd.CombinedOutput()
-		return fmt.Errorf("%w, %s", err, string(output))
+		return fmt.Errorf("ERROR:%w, %s", err, strOutput)
 	}
 	//there are chances in most of the cases the command returns nil err even if there is error in stdout.
 	//to overcome this we have added check to handle both
-	if len(errb.String()) > 0 || strings.Contains(outb.String(), "ERROR") {
-		errString := outb.String()
-		if len(errb.String()) > 0 {
-			errString = errb.String()
-		}
-		return fmt.Errorf("Could not start agent: %s", errString)
+	if strings.Contains(strOutput, "ERROR") || strings.Contains(strOutput, "No such file or directory") {
+		return fmt.Errorf("Could not start agent: %s", strOutput)
 	}
 
 	return nil
@@ -376,10 +366,9 @@ var CopyConfigFileToAgents = func(conf *Config, ConfigFilePath string) error {
 		return fmt.Errorf("Hostlist should not be empty. No hosts to copy files.")
 	}
 	remoteCmd := append(hostList, ConfigFilePath, fmt.Sprintf("=:%s", ConfigFilePath))
-	cmd := exec.Command("/bin/bash", "-c", fmt.Sprintf("source %s/greenplum_path.sh; gpsync %s", conf.GpHome, strings.Join(remoteCmd, " ")))
-	err := cmd.Run()
+	cmd := exec.Command("/bin/bash", "-c", fmt.Sprintf("source %s/greenplum_path.sh && gpsync %s", conf.GpHome, strings.Join(remoteCmd, " ")))
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		output, _ := cmd.CombinedOutput()
 		return fmt.Errorf("Could not copy gp.conf file to segment hosts: %w, Command Output:%s", err, string(output))
 	}
 	return nil

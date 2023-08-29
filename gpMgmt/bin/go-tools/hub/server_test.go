@@ -143,10 +143,9 @@ func TestStartAgents(t *testing.T) {
 			defer hubServer.Shutdown()
 
 			err := hubServer.StartAllAgents()
-
 			if tc.expectedErr != "" {
 				if !strings.Contains(err.Error(), tc.expectedErr) {
-					t.Fatalf("expected %s, but got: %#v", tc.expectedErr, err)
+					t.Fatalf("expected %s, but got: %v", tc.expectedErr, err)
 				}
 			} else {
 				if err != nil {
