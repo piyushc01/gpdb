@@ -7,9 +7,12 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/greenplum-db/gpdb/gp/constants"
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpdb/gp/idl"
@@ -153,7 +156,8 @@ func (s *Server) StartAllAgents() error {
 		remoteCmd = append(remoteCmd, "-h", host)
 	}
 	remoteCmd = append(remoteCmd, platform.GetStartAgentCommandString(s.ServiceName)...)
-	cmd := exec.Command("/bin/bash", "-c", fmt.Sprintf("source %s/greenplum_path.sh && gpssh %s", s.GpHome, strings.Join(remoteCmd, " ")))
+	greenplumPathSh := filepath.Join(s.GpHome, "greenplum_path.sh")
+	cmd := exec.Command(constants.ShellPath, "-c", fmt.Sprintf("source %s && gpssh %s", greenplumPathSh, strings.Join(remoteCmd, " ")))
 	output, err := cmd.CombinedOutput()
 	strOutput := string(output)
 	if err != nil {
@@ -257,6 +261,7 @@ func (s *Server) StatusAgents(ctx context.Context, in *idl.StatusAgentsRequest) 
 			Pid:    status.Pid,
 		}
 		statusChan <- &s
+
 		return nil
 	}
 
@@ -322,14 +327,17 @@ func ExecuteRPC(agentConns []*Connection, executeRequest func(conn *Connection) 
 func (conf *Config) Load(ConfigFilePath string) error {
 	//Loads config from the configFilePath
 	conf.Credentials = &utils.GpCredentials{}
+
 	contents, err := ReadFile(ConfigFilePath)
 	if err != nil {
 		return err
 	}
+
 	err = Unmarshal(contents, &conf)
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -340,10 +348,12 @@ func (conf *Config) Write(ConfigFilePath string) error {
 		return fmt.Errorf("Could not create configuration file %s: %w\n", ConfigFilePath, err)
 	}
 	defer configHandle.Close()
+
 	configContents, err := MasrshalIndent(conf, "", "\t")
 	if err != nil {
 		return fmt.Errorf("Could not parse configuration file %s: %w\n", ConfigFilePath, err)
 	}
+
 	_, err = configHandle.Write(configContents)
 	if err != nil {
 		return fmt.Errorf("Could not write to configuration file %s: %w\n", ConfigFilePath, err)
@@ -354,22 +364,27 @@ func (conf *Config) Write(ConfigFilePath string) error {
 	if err != nil {
 		return fmt.Errorf("Could not copy config file to hosts:%w", err)
 	}
+
 	return err
 }
 
 var CopyConfigFileToAgents = func(conf *Config, ConfigFilePath string) error {
 	hostList := make([]string, 0)
+
 	for _, host := range conf.Hostnames {
 		hostList = append(hostList, "-h", host)
 	}
+	greenplumPathSh := filepath.Join(conf.GpHome, "greenplum_path.sh")
 	if len(hostList) < 1 {
 		return fmt.Errorf("Hostlist should not be empty. No hosts to copy files.")
 	}
+
 	remoteCmd := append(hostList, ConfigFilePath, fmt.Sprintf("=:%s", ConfigFilePath))
-	cmd := exec.Command("/bin/bash", "-c", fmt.Sprintf("source %s/greenplum_path.sh && gpsync %s", conf.GpHome, strings.Join(remoteCmd, " ")))
+	cmd := exec.Command(constants.ShellPath, "-c", fmt.Sprintf("source %s && gpsync %s", greenplumPathSh, strings.Join(remoteCmd, " ")))
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("Could not copy gp.conf file to segment hosts: %w, Command Output:%s", err, string(output))
 	}
+
 	return nil
 }

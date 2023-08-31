@@ -143,10 +143,10 @@ func TestShowHubStatus(t *testing.T) {
 	conf = testutils.InitializeTestEnv()
 
 	t.Run("returns no error when there is none", func(t *testing.T) {
-		os := &testutils.MockPlatform{}
-		os.RetStatus = idl.ServiceStatus{Status: "Running", Uptime: "10ms", Pid: uint32(1234)}
-		os.Err = nil
-		platform = os
+		mockPlatform := &testutils.MockPlatform{}
+		mockPlatform.RetStatus = idl.ServiceStatus{Status: "Running", Uptime: "10ms", Pid: uint32(1234)}
+		mockPlatform.Err = nil
+		platform = mockPlatform
 		defer func() { platform = utils.GetPlatform() }()
 
 		_, err := ShowHubStatus(conf, true)
@@ -155,11 +155,11 @@ func TestShowHubStatus(t *testing.T) {
 		}
 	})
 	t.Run("returns error when error getting service status", func(t *testing.T) {
-		os := &testutils.MockPlatform{}
-		os.RetStatus = idl.ServiceStatus{Status: "Running", Uptime: "10ms", Pid: uint32(1234)}
-		os.Err = errors.New("TEST Error getting service status")
-		os.ServiceStatusMessage = ""
-		platform = os
+		mockPlatform := &testutils.MockPlatform{}
+		mockPlatform.RetStatus = idl.ServiceStatus{Status: "Running", Uptime: "10ms", Pid: uint32(1234)}
+		mockPlatform.Err = errors.New("TEST Error getting service status")
+		mockPlatform.ServiceStatusMessage = ""
+		platform = mockPlatform
 		defer func() { platform = utils.GetPlatform() }()
 
 		_, err := ShowHubStatus(conf, true)

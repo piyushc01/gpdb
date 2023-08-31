@@ -40,6 +40,7 @@ var startHubService = func(serviceName string) error {
 	if err != nil {
 		return fmt.Errorf("Could not start hub: %w", err)
 	}
+
 	return nil
 }
 var RunStartHub = func(cmd *cobra.Command, args []string) error {
@@ -54,6 +55,7 @@ var RunStartHub = func(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("Could not retrieve hub status: %w", err)
 		}
 	}
+
 	return nil
 }
 

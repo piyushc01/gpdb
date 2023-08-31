@@ -18,14 +18,14 @@ import (
 func TestConnectToHub(t *testing.T) {
 	testhelper.SetupTestLogger()
 	creds := &testutils.MockCredentials{}
-	os := &testutils.MockPlatform{}
-	os.RetStatus = idl.ServiceStatus{
+	platform := &testutils.MockPlatform{}
+	platform.RetStatus = idl.ServiceStatus{
 		Status: "",
 		Uptime: "",
 		Pid:    uint32(0),
 	}
-	os.Err = nil
-	agent.SetPlatform(os)
+	platform.Err = nil
+	agent.SetPlatform(platform)
 	defer agent.ResetPlatform()
 	hostlist := []string{"sdw1", "sdw2", "sdw3"}
 	config := hub.Config{

@@ -5,11 +5,14 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
 	"text/tabwriter"
+
+	"github.com/greenplum-db/gpdb/gp/constants"
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpdb/gp/idl"
@@ -76,6 +79,7 @@ func GetPlatform() Platform {
 	if platform == nil {
 		platform = NewPlatform(runtime.GOOS)
 	}
+
 	return platform
 }
 
@@ -87,7 +91,8 @@ func (p GpPlatform) CreateServiceDir(hostnames []string, serviceDir string, gpho
 
 	// Create service directory if it does not exist
 	args := append(hostList, "mkdir", "-p", serviceDir)
-	err := execCommand(fmt.Sprintf("%s/bin/gpssh", gphome), args...).Run()
+	cmdStr := filepath.Join(gphome, "bin", constants.GpSSH)
+	err := execCommand(cmdStr, args...).Run()
 	if err != nil {
 		return fmt.Errorf("Could not create service directory %s on hosts: %w", serviceDir, err)
 	}
@@ -107,6 +112,7 @@ func WriteServiceFile(filename string, contents string) error {
 	if err != nil {
 		return fmt.Errorf("Could not write to service file %s: %w\n", filename, err)
 	}
+
 	return nil
 }
 
@@ -114,6 +120,7 @@ func (p GpPlatform) GenerateServiceFileContents(process string, gphome string, s
 	if p.OS == "darwin" {
 		return GenerateDarwinServiceFileContents(process, gphome, serviceName)
 	}
+
 	return GenerateLinuxServiceFileContents(process, gphome, serviceName)
 }
 
@@ -173,7 +180,7 @@ func (p GpPlatform) GetDefaultServiceDir() string {
 
 func (p GpPlatform) CreateAndInstallHubServiceFile(gphome string, serviceDir string, serviceName string) error {
 	hubServiceContents := p.GenerateServiceFileContents("hub", gphome, serviceName)
-	hubServiceFilePath := fmt.Sprintf("%s/%s_hub.%s", serviceDir, serviceName, p.ServiceExt)
+	hubServiceFilePath := filepath.Join(serviceDir, fmt.Sprintf("%s_hub.%s", serviceName, p.ServiceExt))
 	err := writeServiceFileFunc(hubServiceFilePath, hubServiceContents)
 	if err != nil {
 		return err

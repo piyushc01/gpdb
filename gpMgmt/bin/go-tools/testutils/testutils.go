@@ -95,10 +95,6 @@ func (s *MockCredentials) LoadClientCredentials() (credentials.TransportCredenti
 	return s.TlsConnection, s.err
 }
 
-func (s *MockCredentials) GetClientServerCredsPath() (CACertPath string, CAKeyPath string, ServerCertPath string, ServerKeyPath string) {
-	return "test0", "test1", "test2", "test3"
-}
-
 func (s *MockCredentials) SetCredsError(errMsg string) {
 	s.err = errors.New(errMsg)
 }

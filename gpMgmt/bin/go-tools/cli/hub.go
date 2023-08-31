@@ -1,11 +1,9 @@
 package cli
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -19,9 +17,6 @@ import (
 var (
 	platform          = utils.GetPlatform()
 	DefaultServiceDir = platform.GetDefaultServiceDir()
-	MasrshalIndent    = json.MarshalIndent
-	OpenFile          = os.OpenFile
-	ExecCommand       = exec.Command
 
 	agentPort      int
 	caCertPath     string

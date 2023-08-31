@@ -6,4 +6,6 @@ const (
 	DefaultAgentPort   = 8000
 	DefaultServiceName = "gp"
 	ConfigFileName     = "gp.conf"
+	ShellPath          = "/bin/bash"
+	GpSSH              = "gpssh"
 )

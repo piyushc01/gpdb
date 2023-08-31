@@ -5,26 +5,24 @@ import (
 	"os/exec"
 	"testing"
 
+	"github.com/greenplum-db/gpdb/gp/constants"
+
 	"github.com/greenplum-db/gpdb/gp/utils"
 )
 
-func getDefaultCredentials() *utils.GpCredentials {
-	return &utils.GpCredentials{
-		CACertPath:     "./certificates/ca-cert.pem",
-		CAKeyPath:      "./certificates/ca-key.pem",
-		ServerCertPath: "./certificates/server-cert.pem",
-		ServerKeyPath:  "./certificates/server-key.pem",
-	}
-}
-
 func TestLoadServerCredentials(t *testing.T) {
-	err := exec.Command("bash", "-c", "../generate_test_tls_certificates.sh `hostname`").Run()
+	err := exec.Command(constants.ShellPath, "-c", "../generate_test_tls_certificates.sh `hostname`").Run()
 	if err != nil {
 		t.Fatalf("Cannot generate test certificates: %v", err)
 	}
 
 	t.Run("successfully parses good certificate files", func(t *testing.T) {
-		creds := getDefaultCredentials()
+		creds := &utils.GpCredentials{
+			CACertPath:     "./certificates/ca-cert.pem",
+			CAKeyPath:      "./certificates/ca-key.pem",
+			ServerCertPath: "./certificates/server-cert.pem",
+			ServerKeyPath:  "./certificates/server-key.pem",
+		}
 		_, err := creds.LoadServerCredentials()
 		if err != nil {
 			t.Errorf("unexpected error %v", err)
@@ -32,7 +30,12 @@ func TestLoadServerCredentials(t *testing.T) {
 		// TODO: What's a good way to check a "good" certificate?
 	})
 	t.Run("fails to parse a bad certificate file", func(t *testing.T) {
-		creds := getDefaultCredentials()
+		creds := &utils.GpCredentials{
+			CACertPath:     "./certificates/ca-cert.pem",
+			CAKeyPath:      "./certificates/ca-key.pem",
+			ServerCertPath: "./certificates/server-cert.pem",
+			ServerKeyPath:  "./certificates/server-key.pem",
+		}
 		creds.ServerCertPath = "/dev/null"
 		_, err := creds.LoadServerCredentials()
 		if err == nil {
@@ -50,13 +53,18 @@ func TestLoadServerCredentials(t *testing.T) {
 }
 
 func TestLoadClientCredentials(t *testing.T) {
-	err := exec.Command("bash", "-c", "../generate_test_tls_certificates.sh `hostname`").Run()
+	err := exec.Command(constants.ShellPath, "-c", "../generate_test_tls_certificates.sh `hostname`").Run()
 	if err != nil {
 		t.Fatalf("Cannot generate test certificates: %v", err)
 	}
 
 	t.Run("successfully parses good certificate files", func(t *testing.T) {
-		creds := getDefaultCredentials()
+		creds := &utils.GpCredentials{
+			CACertPath:     "./certificates/ca-cert.pem",
+			CAKeyPath:      "./certificates/ca-key.pem",
+			ServerCertPath: "./certificates/server-cert.pem",
+			ServerKeyPath:  "./certificates/server-key.pem",
+		}
 		_, err := creds.LoadClientCredentials()
 		if err != nil {
 			t.Errorf("unexpected error %v", err)
@@ -64,7 +72,12 @@ func TestLoadClientCredentials(t *testing.T) {
 		// TODO: What's a good way to check a "good" certificate?
 	})
 	t.Run("fails to parse a bad certificate file", func(t *testing.T) {
-		creds := getDefaultCredentials()
+		creds := &utils.GpCredentials{
+			CACertPath:     "./certificates/ca-cert.pem",
+			CAKeyPath:      "./certificates/ca-key.pem",
+			ServerCertPath: "./certificates/server-cert.pem",
+			ServerKeyPath:  "./certificates/server-key.pem",
+		}
 		creds.CACertPath = "/dev/null"
 		_, err := creds.LoadClientCredentials()
 		if err == nil {
