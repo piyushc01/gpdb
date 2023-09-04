@@ -50,6 +50,12 @@ make build_mac     # build gp binary for Mac platform
 ```
 make test     # run unit tests in verbose mode
 ```
+
+#### Check test coverage
+```
+make test-coverage
+```
+
 #### Run Linter
 ```
 make lint       # run linter on the code

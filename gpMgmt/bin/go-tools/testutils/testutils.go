@@ -84,20 +84,20 @@ func (p *MockPlatform) SetServiceFileContent(content string) {
 
 type MockCredentials struct {
 	TlsConnection credentials.TransportCredentials
-	err           error
+	Err           error
 }
 
 func (s *MockCredentials) LoadServerCredentials() (credentials.TransportCredentials, error) {
-	return s.TlsConnection, s.err
+	return s.TlsConnection, s.Err
 }
 
 func (s *MockCredentials) LoadClientCredentials() (credentials.TransportCredentials, error) {
-	return s.TlsConnection, s.err
+	return s.TlsConnection, s.Err
 }
 
 func (s *MockCredentials) SetCredsError(errMsg string) {
-	s.err = errors.New(errMsg)
+	s.Err = errors.New(errMsg)
 }
 func (s *MockCredentials) ResetCredsError() {
-	s.err = nil
+	s.Err = nil
 }

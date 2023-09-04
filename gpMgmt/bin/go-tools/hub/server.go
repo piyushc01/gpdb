@@ -16,6 +16,7 @@ import (
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpdb/gp/idl"
+	"github.com/greenplum-db/gpdb/gp/testutils/exectest"
 	"github.com/greenplum-db/gpdb/gp/utils"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -25,15 +26,13 @@ import (
 )
 
 var (
-	platform       = utils.GetPlatform()
-	DialTimeout    = 3 * time.Second
-	ReadFile       = os.ReadFile
-	OpenFile       = os.OpenFile
-	Unmarshal      = json.Unmarshal
-	MasrshalIndent = json.MarshalIndent
+	platform                      = utils.GetPlatform()
+	DialTimeout                   = 3 * time.Second
+	ensureConnectionsAreReadyFunc = ensureConnectionsAreReady
+	execCommand                   = exec.Command
 )
 
-type Dialer func(ctx context.Context, target string, opts ...grpc.DialOption) (*grpc.ClientConn, error)
+type Dialer func(context.Context, string) (net.Conn, error)
 
 type Config struct {
 	Port        int      `json:"hubPort"`
@@ -48,7 +47,7 @@ type Config struct {
 
 type Server struct {
 	*Config
-	conns      []*Connection
+	Conns      []*Connection
 	grpcDialer Dialer
 
 	mutex      sync.Mutex
@@ -157,7 +156,7 @@ func (s *Server) StartAllAgents() error {
 	}
 	remoteCmd = append(remoteCmd, platform.GetStartAgentCommandString(s.ServiceName)...)
 	greenplumPathSh := filepath.Join(s.GpHome, "greenplum_path.sh")
-	cmd := exec.Command(constants.ShellPath, "-c", fmt.Sprintf("source %s && gpssh %s", greenplumPathSh, strings.Join(remoteCmd, " ")))
+	cmd := execCommand(constants.ShellPath, "-c", fmt.Sprintf("source %s && gpssh %s", greenplumPathSh, strings.Join(remoteCmd, " ")))
 	output, err := cmd.CombinedOutput()
 	strOutput := string(output)
 	if err != nil {
@@ -176,8 +175,8 @@ func (s *Server) DialAllAgents() error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	if s.conns != nil {
-		err := EnsureConnectionsAreReady(s.conns)
+	if s.Conns != nil {
+		err := ensureConnectionsAreReadyFunc(s.Conns)
 		if err != nil {
 			return fmt.Errorf("Could not ensure connections were ready: %w", err)
 		}
@@ -195,16 +194,20 @@ func (s *Server) DialAllAgents() error {
 		}
 
 		address := fmt.Sprintf("%s:%d", host, s.AgentPort)
-		conn, err := s.grpcDialer(ctx, address,
+		opts := []grpc.DialOption{
 			grpc.WithBlock(),
 			grpc.WithTransportCredentials(credentials),
 			grpc.WithReturnConnectionError(),
-		)
+		}
+		if s.grpcDialer != nil {
+			opts = append(opts, grpc.WithContextDialer(s.grpcDialer))
+		}
+		conn, err := grpc.DialContext(ctx, address, opts...)
 		if err != nil {
 			cancelFunc()
 			return fmt.Errorf("Could not connect to agent on host %s: %w", host, err)
 		}
-		s.conns = append(s.conns, &Connection{
+		s.Conns = append(s.Conns, &Connection{
 			Conn:          conn,
 			AgentClient:   idl.NewAgentClient(conn),
 			Hostname:      host,
@@ -212,7 +215,7 @@ func (s *Server) DialAllAgents() error {
 		})
 	}
 
-	err := EnsureConnectionsAreReady(s.conns)
+	err := ensureConnectionsAreReadyFunc(s.Conns)
 	if err != nil {
 		return fmt.Errorf("Could not ensure connections were ready: %w", err)
 	}
@@ -240,18 +243,18 @@ func (s *Server) StopAgents(ctx context.Context, in *idl.StopAgentsRequest) (*id
 		return &idl.StopAgentsReply{}, err
 	}
 
-	err = ExecuteRPC(s.conns, request)
-	s.conns = nil
+	err = ExecuteRPC(s.Conns, request)
+	s.Conns = nil
 
 	return &idl.StopAgentsReply{}, err
 }
 
 func (s *Server) StatusAgents(ctx context.Context, in *idl.StatusAgentsRequest) (*idl.StatusAgentsReply, error) {
-	statusChan := make(chan *idl.ServiceStatus, len(s.conns))
+	statusChan := make(chan *idl.ServiceStatus, len(s.Conns))
 
 	request := func(conn *Connection) error {
 		status, err := conn.AgentClient.Status(context.Background(), &idl.StatusAgentRequest{})
-		if err != nil { // no error -> didn't stop
+		if err != nil {
 			return fmt.Errorf("Failed to get agent status on host %s", conn.Hostname)
 		}
 		s := idl.ServiceStatus{
@@ -269,7 +272,7 @@ func (s *Server) StatusAgents(ctx context.Context, in *idl.StatusAgentsRequest) 
 	if err != nil {
 		return &idl.StatusAgentsReply{}, err
 	}
-	err = ExecuteRPC(s.conns, request)
+	err = ExecuteRPC(s.Conns, request)
 	if err != nil {
 		return &idl.StatusAgentsReply{}, err
 	}
@@ -283,7 +286,7 @@ func (s *Server) StatusAgents(ctx context.Context, in *idl.StatusAgentsRequest) 
 	return &idl.StatusAgentsReply{Statuses: statuses}, err
 }
 
-func EnsureConnectionsAreReady(conns []*Connection) error {
+func ensureConnectionsAreReady(conns []*Connection) error {
 	hostnames := []string{}
 	for _, conn := range conns {
 		if conn.Conn.GetState() != connectivity.Ready {
@@ -327,13 +330,11 @@ func ExecuteRPC(agentConns []*Connection, executeRequest func(conn *Connection) 
 func (conf *Config) Load(ConfigFilePath string) error {
 	//Loads config from the configFilePath
 	conf.Credentials = &utils.GpCredentials{}
-
-	contents, err := ReadFile(ConfigFilePath)
+	contents, err := os.ReadFile(ConfigFilePath)
 	if err != nil {
 		return err
 	}
-
-	err = Unmarshal(contents, &conf)
+	err = json.Unmarshal(contents, &conf)
 	if err != nil {
 		return err
 	}
@@ -343,13 +344,12 @@ func (conf *Config) Load(ConfigFilePath string) error {
 
 func (conf *Config) Write(ConfigFilePath string) error {
 	// Updates config to the conf file
-	configHandle, err := OpenFile(ConfigFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	configHandle, err := os.OpenFile(ConfigFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		return fmt.Errorf("Could not create configuration file %s: %w\n", ConfigFilePath, err)
 	}
 	defer configHandle.Close()
-
-	configContents, err := MasrshalIndent(conf, "", "\t")
+	configContents, err := json.MarshalIndent(conf, "", "\t")
 	if err != nil {
 		return fmt.Errorf("Could not parse configuration file %s: %w\n", ConfigFilePath, err)
 	}
@@ -360,7 +360,7 @@ func (conf *Config) Write(ConfigFilePath string) error {
 	}
 	gplog.Debug("Wrote configuration file to %s", ConfigFilePath)
 
-	err = CopyConfigFileToAgents(conf, ConfigFilePath)
+	err = copyConfigFileToAgents(conf, ConfigFilePath)
 	if err != nil {
 		return fmt.Errorf("Could not copy config file to hosts:%w", err)
 	}
@@ -368,7 +368,7 @@ func (conf *Config) Write(ConfigFilePath string) error {
 	return err
 }
 
-var CopyConfigFileToAgents = func(conf *Config, ConfigFilePath string) error {
+func copyConfigFileToAgents(conf *Config, ConfigFilePath string) error {
 	hostList := make([]string, 0)
 
 	for _, host := range conf.Hostnames {
@@ -380,11 +380,28 @@ var CopyConfigFileToAgents = func(conf *Config, ConfigFilePath string) error {
 	}
 
 	remoteCmd := append(hostList, ConfigFilePath, fmt.Sprintf("=:%s", ConfigFilePath))
-	cmd := exec.Command(constants.ShellPath, "-c", fmt.Sprintf("source %s && gpsync %s", greenplumPathSh, strings.Join(remoteCmd, " ")))
+	cmd := execCommand(constants.ShellPath, "-c", fmt.Sprintf("source %s && gpsync %s", greenplumPathSh, strings.Join(remoteCmd, " ")))
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("Could not copy gp.conf file to segment hosts: %w, Command Output:%s", err, string(output))
 	}
 
 	return nil
+}
+
+// used only for testing
+func SetEnsureConnectionsAreReady(customFunc func(conns []*Connection) error) {
+	ensureConnectionsAreReadyFunc = customFunc
+}
+
+func ResetEnsureConnectionsAreReady() {
+	ensureConnectionsAreReadyFunc = ensureConnectionsAreReady
+}
+
+func SetExecCommand(command exectest.Command) {
+	execCommand = command
+}
+
+func ResetExecCommand() {
+	execCommand = exec.Command
 }

@@ -11,7 +11,6 @@ import (
 	"github.com/greenplum-db/gpdb/gp/hub"
 	"github.com/greenplum-db/gpdb/gp/utils"
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
 )
 
 var (
@@ -47,7 +46,7 @@ func hubCmd() *cobra.Command {
 }
 
 func RunHub(cmd *cobra.Command, args []string) (err error) {
-	h := hub.New(conf, grpc.DialContext)
+	h := hub.New(conf, nil)
 	err = h.Start()
 	if err != nil {
 		return fmt.Errorf("Could not start hub: %w", err)

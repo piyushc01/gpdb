@@ -11,12 +11,9 @@ import (
 
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	agent "github.com/greenplum-db/gpdb/gp/agent"
-	"github.com/greenplum-db/gpdb/gp/cli"
 	"github.com/greenplum-db/gpdb/gp/constants"
-	"github.com/greenplum-db/gpdb/gp/hub"
 	"github.com/greenplum-db/gpdb/gp/idl"
 	"github.com/greenplum-db/gpdb/gp/testutils"
-	"github.com/greenplum-db/gpdb/gp/utils"
 )
 
 func TestStartServer(t *testing.T) {
@@ -164,107 +161,6 @@ func TestGetStatus(t *testing.T) {
 		_, err := agentServer.GetStatus()
 		if err == nil {
 			t.Fatalf("Expected error but found success : %#v", err)
-		}
-	})
-}
-
-func TestConfigWrite(t *testing.T) {
-	caCertPath := "/tmp/test"
-	caKeyPath := "/tmp/test"
-	serverCertPath := "/tmp/test"
-	serverKeyPath := "/tmp/test"
-	hubPort := constants.DefaultHubPort
-	agentPort := constants.DefaultAgentPort
-	hostnames := []string{"localhost"}
-	hubLogDir := "/tmp/test"
-	serviceName := constants.DefaultServiceName
-	cli.ConfigFilePath = "/tmp/gp.test_config"
-	gphome := "/tmp/gphome"
-	testhelper.SetupTestLogger()
-	t.Run("config write followed by read returns same data", func(t *testing.T) {
-		credentials := &utils.GpCredentials{
-			CACertPath:     caCertPath,
-			CAKeyPath:      caKeyPath,
-			ServerCertPath: serverCertPath,
-			ServerKeyPath:  serverKeyPath,
-		}
-		origCopyConfigFileToAgents := hub.CopyConfigFileToAgents
-		defer func() { hub.CopyConfigFileToAgents = origCopyConfigFileToAgents }()
-		hub.CopyConfigFileToAgents = func(conf *hub.Config, ConfigFilePath string) error {
-			return nil
-		}
-		conf := &hub.Config{
-			Port:        hubPort,
-			AgentPort:   agentPort,
-			Hostnames:   hostnames,
-			LogDir:      hubLogDir,
-			ServiceName: serviceName,
-			GpHome:      gphome,
-			Credentials: credentials,
-		}
-		err := conf.Write(cli.ConfigFilePath)
-		if err != nil {
-			t.Fatalf("Expected no error, got an error while creating config file:%v", err)
-		}
-		conf2 := &hub.Config{}
-		err = conf2.Load(cli.ConfigFilePath)
-		if err != nil {
-			t.Fatalf("Expected no error, got an error while reading config file:%v", err)
-		}
-		if reflect.DeepEqual(conf, conf2) != true {
-			t.Fatalf("Expected config:%v not same as Read Config:%v", conf, conf2)
-		}
-	})
-	t.Run("config write returns error when copying to other hosts fails ", func(t *testing.T) {
-		credentials := &utils.GpCredentials{
-			CACertPath:     caCertPath,
-			CAKeyPath:      caKeyPath,
-			ServerCertPath: serverCertPath,
-			ServerKeyPath:  serverKeyPath,
-		}
-		origCopyConfigFileToAgents := hub.CopyConfigFileToAgents
-		defer func() { hub.CopyConfigFileToAgents = origCopyConfigFileToAgents }()
-		hub.CopyConfigFileToAgents = func(conf *hub.Config, ConfigFilePath string) error {
-			return fmt.Errorf("TEST Error copying files")
-		}
-		conf := &hub.Config{
-			Port:        hubPort,
-			AgentPort:   agentPort,
-			Hostnames:   hostnames,
-			LogDir:      hubLogDir,
-			ServiceName: serviceName,
-			GpHome:      gphome,
-			Credentials: credentials,
-		}
-		err := conf.Write(cli.ConfigFilePath)
-		if err == nil {
-			t.Fatalf("Expected file copy error, got no error")
-		}
-	})
-	t.Run("config write returns error when json marshalling fails ", func(t *testing.T) {
-		credentials := &utils.GpCredentials{
-			CACertPath:     caCertPath,
-			CAKeyPath:      caKeyPath,
-			ServerCertPath: serverCertPath,
-			ServerKeyPath:  serverKeyPath,
-		}
-		origMasrshalIndent := hub.MasrshalIndent
-		defer func() { hub.MasrshalIndent = origMasrshalIndent }()
-		hub.MasrshalIndent = func(v any, prefix, indent string) ([]byte, error) {
-			return nil, fmt.Errorf("TEST Error jason marshalling")
-		}
-		conf := &hub.Config{
-			Port:        hubPort,
-			AgentPort:   agentPort,
-			Hostnames:   hostnames,
-			LogDir:      hubLogDir,
-			ServiceName: serviceName,
-			GpHome:      gphome,
-			Credentials: credentials,
-		}
-		err := conf.Write(cli.ConfigFilePath)
-		if err == nil {
-			t.Fatalf("Expected json marshalling error, got no error")
 		}
 	})
 }

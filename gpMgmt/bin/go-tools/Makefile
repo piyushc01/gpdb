@@ -12,9 +12,31 @@ MAC_ENV := env GOOS=darwin GOARCH=amd64
 TEST_PACKAGES := ./...
 unit: TEST_PACKAGES := $(shell go list ./...)
 unit:
-	go test -v -count=1 $(TEST_PACKAGES) --cover
+	go test -v -count=1 $(TEST_PACKAGES) --cover -coverprofile=coverage.out;
+	@cat coverage.out | \
+	awk 'BEGIN {cov=0; stat=0;} \
+	$$3!="" { cov+=($$3==1?$$2:0); stat+=$$2; } \
+    END {printf("\n\ntotal coverage: %.2f%% of statements\n", (cov/stat)*100);}'
 
 test: unit
+
+.PHONY: test-coverage
+PACKAGE_DIRS := $(shell go list ./... | grep -vE "gp$$|constants$$|testutils|idl$$")
+coverage:
+	@for dir in $(PACKAGE_DIRS); do \
+		PACKAGE_NAME=$$(basename $$dir); \
+		COVERAGE_PERCENTAGE=$$(go test -cover $$dir | grep coverage | grep -oE '[0-9]+(\.[0-9]+)?%'); \
+		echo "$$dir: $$COVERAGE_PERCENTAGE"; \
+	done
+	@echo ""
+	@go test --count=1 -coverprofile=coverage.out ./... > /dev/null 2>&1; \
+	cat coverage.out | \
+	awk 'BEGIN {cov=0; stat=0;} \
+	$$3!="" { cov+=($$3==1?$$2:0); stat+=$$2; } \
+    END {printf("Total: %.2f%%\n", (cov/stat)*100);}'
+	@echo "----------------------"
+	@echo "Show HTML report with:"
+	@echo "$ go tool cover -html coverage.out"
 
 .PHONY: depend-dev
 depend-dev: export GOBIN := $(CURDIR)/dev-bin
