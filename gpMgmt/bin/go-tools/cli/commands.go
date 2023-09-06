@@ -22,7 +22,7 @@ var (
 	Unmarshal   = json.Unmarshal
 	DialContext = grpc.DialContext
 
-	ConfigFilePath string
+	configFilePath string
 	conf           *hub.Config
 
 	verbose bool
@@ -33,7 +33,7 @@ func RootCommand() *cobra.Command {
 		Use: "gp",
 	}
 
-	root.PersistentFlags().StringVar(&ConfigFilePath, "config-file", filepath.Join(os.Getenv("GPHOME"), constants.ConfigFileName), `Path to gp configuration file`)
+	root.PersistentFlags().StringVar(&configFilePath, "config-file", filepath.Join(os.Getenv("GPHOME"), constants.ConfigFileName), `Path to gp configuration file`)
 	root.PersistentFlags().BoolVar(&verbose, "verbose", false, `Provide verbose output`)
 
 	root.AddCommand(agentCmd())
@@ -46,20 +46,17 @@ func RootCommand() *cobra.Command {
 	return root
 }
 
-/*
- * Various helper functions used by multiple CLI commands
- */
-
 // Performs general setup needed for most commands
 // Public, so it can be mocked out in testing
 func InitializeCommand(cmd *cobra.Command, args []string) error {
 	// TODO: Add a new constructor to gplog to allow initializing with a custom logfile path directly
-	InitializeGplog(cmd, args)
 	conf = &hub.Config{}
-	err := conf.Load(ConfigFilePath)
+	err := conf.Load(configFilePath)
 	if err != nil {
 		return fmt.Errorf("Error parsing config file: %s\n", err.Error())
 	}
+	hubLogDir = conf.LogDir
+	InitializeGplog(cmd, args)
 
 	return nil
 }
@@ -69,6 +66,7 @@ func InitializeGplog(cmd *cobra.Command, args []string) {
 	// turns e.g. "gp stop hub" into "gp_stop_hub" to generate a unique log file name for each command.
 	logName := strings.ReplaceAll(cmd.CommandPath(), " ", "_")
 	gplog.SetLogFileNameFunc(func(program string, logdir string) string {
+		// TODO: Check if this path exists or not, otherwise gplog panics
 		return filepath.Join(hubLogDir, fmt.Sprintf("%s.log", logName))
 	})
 	gplog.InitializeLogging(logName, "")
@@ -79,11 +77,13 @@ func InitializeGplog(cmd *cobra.Command, args []string) {
 		return fmt.Sprintf("%s %s  [%s] ", timeFormat, hostname, level) // TODO: decide what prefix we want, assuming we want one, but we *definitely* don't want the legacy one
 	})
 	if verbose {
-		gplog.SetVerbosity(gplog.LOGVERBOSE)
+		gplog.SetVerbosity(gplog.LOGDEBUG)
 	}
 }
 
 var connectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+	var conn *grpc.ClientConn
+
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
@@ -93,7 +93,6 @@ var connectToHub = func(conf *hub.Config) (idl.HubClient, error) {
 	}
 
 	address := fmt.Sprintf("localhost:%d", conf.Port)
-	var conn *grpc.ClientConn
 	conn, err = DialContext(ctx, address,
 		grpc.WithTransportCredentials(credentials),
 		grpc.WithBlock(),

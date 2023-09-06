@@ -520,7 +520,7 @@ func TestConfig(t *testing.T) {
 
 		_, err = file.WriteString("####")
 		if err != nil {
-			t.Fatalf("%v", err)
+			t.Fatalf("unexpected error: %v", err)
 		}
 
 		config := hub.Config{}

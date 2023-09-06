@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpdb/gp/cli"
@@ -16,13 +15,16 @@ func main() {
 
 	err := root.Execute()
 	if err != nil {
-		if strings.HasPrefix(err.Error(), "unknown flag") || strings.HasPrefix(err.Error(), "unknown command") {
-			fmt.Println(err.Error())
+		// gplog is initialised in the PreRun function in cobra and sometimes when the
+		// error is due to the input flags, the cobra pkg would not run the PreRun function.
+		// In those cases directly print to the stdout instead of using gplog
+		if gplog.GetLogger() != nil {
+			gplog.Error(err.Error())
+		} else {
+			fmt.Println(err)
 			err = root.Help(); if err != nil {
 				fmt.Println(err.Error())
 			}
-		} else {
-			gplog.Error(err.Error())
 		}
 		os.Exit(1)
 	}

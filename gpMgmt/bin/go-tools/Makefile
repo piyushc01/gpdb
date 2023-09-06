@@ -22,7 +22,7 @@ test: unit
 
 .PHONY: test-coverage
 PACKAGE_DIRS := $(shell go list ./... | grep -vE "gp$$|constants$$|testutils|idl$$")
-coverage:
+test-coverage:
 	@for dir in $(PACKAGE_DIRS); do \
 		PACKAGE_NAME=$$(basename $$dir); \
 		COVERAGE_PERCENTAGE=$$(go test -cover $$dir | grep coverage | grep -oE '[0-9]+(\.[0-9]+)?%'); \

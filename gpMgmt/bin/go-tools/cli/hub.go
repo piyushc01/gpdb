@@ -82,15 +82,12 @@ func installCmd() *cobra.Command {
 }
 func RunInstall(cmd *cobra.Command, args []string) (err error) {
 	if gphome == "" {
-		if cmd.Flags().Lookup("gphome").Changed {
-			return fmt.Errorf("gphome parameter cannot be empty")
-		}
 		return fmt.Errorf("GPHOME environment variable not set and --gphome flag not provided\n")
 	}
 
 	// Regenerate default flag values if a custom GPHOME or username is passed
 	if cmd.Flags().Lookup("gphome").Changed && !cmd.Flags().Lookup("config-file").Changed {
-		ConfigFilePath = filepath.Join(gphome, constants.ConfigFileName)
+		configFilePath = filepath.Join(gphome, constants.ConfigFileName)
 	}
 	if cmd.Flags().Lookup("service-user").Changed && !cmd.Flags().Lookup("service-dir").Changed {
 		serviceDir = fmt.Sprintf(DefaultServiceDir, serviceUser)
@@ -107,7 +104,7 @@ func RunInstall(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	if cmd.Flags().Lookup("hostfile").Changed {
-		hostnames, err = getHostnames(hostfilePath)
+		hostnames, err = GetHostnames(hostfilePath)
 		if err != nil {
 			return fmt.Errorf("Could not get hostname from %s: %w", hostfilePath, err)
 		}
@@ -134,9 +131,9 @@ func RunInstall(cmd *cobra.Command, args []string) (err error) {
 			ServerKeyPath:  serverKeyPath,
 		},
 	}
-	err = conf.Write(ConfigFilePath)
+	err = conf.Write(configFilePath)
 	if err != nil {
-		return fmt.Errorf("Could not create config file %s: %w", ConfigFilePath, err)
+		return fmt.Errorf("Could not create config file %s: %w", configFilePath, err)
 	}
 
 	err = platform.CreateServiceDir(hostnames, serviceDir, gphome)
@@ -174,7 +171,7 @@ func resolveAbsolutePaths(cmd *cobra.Command) error {
 	return nil
 }
 
-func getHostnames(hostFilePath string) ([]string, error) {
+func GetHostnames(hostFilePath string) ([]string, error) {
 	contents, err := ReadFile(hostFilePath)
 	if err != nil {
 		return []string{}, fmt.Errorf("Could not read hostfile: %w", err)
