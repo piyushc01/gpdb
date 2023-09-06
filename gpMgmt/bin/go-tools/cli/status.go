@@ -86,7 +86,7 @@ var ShowHubStatus = func(conf *hub.Config, skipHeader bool) (bool, error) {
 }
 
 var ShowAgentsStatus = func(conf *hub.Config, skipHeader bool) error {
-	client, err := connectToHub(conf)
+	client, err := ConnectToHub(conf)
 	if err != nil {
 		return fmt.Errorf("Could not connect to hub; is the hub running?")
 	}

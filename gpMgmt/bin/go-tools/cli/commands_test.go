@@ -1,8 +1,9 @@
-package cli
+package cli_test
 
 import (
 	"context"
 	"errors"
+	"github.com/greenplum-db/gpdb/gp/cli"
 	"strings"
 	"testing"
 
@@ -39,40 +40,50 @@ func TestConnectToHub(t *testing.T) {
 	}
 
 	t.Run("Connect to hub succeeds and no error thrown", func(t *testing.T) {
-		origDialContext := DialContext
-		defer func() { DialContext = origDialContext }()
-		DialContext = func(ctx context.Context, target string, opts ...grpc.DialOption) (conn *grpc.ClientConn, err error) {
+
+		origDialContext := cli.DialContextFunc
+		defer func() { cli.DialContextFunc = origDialContext }()
+		cli.DialContextFunc = func(ctx context.Context, target string, opts ...grpc.DialOption) (conn *grpc.ClientConn, err error) {
 			return &grpc.ClientConn{}, nil
 		}
-		_, err := connectToHub(&config)
+		_, err := cli.ConnectToHub(&config)
 		if err != nil {
 			t.Fatalf("Unexpected error happened when connecting to hub:%v", err.Error())
 		}
 	})
 	t.Run("Connect to hub returns error when Dial context fails", func(t *testing.T) {
 		expectedErr := "TEST ERROR while dialing context"
-		origDialContext := DialContext
-		defer func() { DialContext = origDialContext }()
-		DialContext = func(ctx context.Context, target string, opts ...grpc.DialOption) (conn *grpc.ClientConn, err error) {
+		origDialContext := cli.DialContextFunc
+		defer func() { cli.DialContextFunc = origDialContext }()
+		cli.DialContextFunc = func(ctx context.Context, target string, opts ...grpc.DialOption) (conn *grpc.ClientConn, err error) {
 			return nil, errors.New(expectedErr)
 		}
-		_, err := connectToHub(&config)
+		_, err := cli.ConnectToHub(&config)
 		if err == nil || !strings.Contains(err.Error(), expectedErr) {
 			t.Fatalf("Expected %v in %v", expectedErr, err.Error())
 		}
 	})
 	t.Run("Connect to hub returns error when load client credentials fail", func(t *testing.T) {
-		origDialContext := DialContext
-		defer func() { DialContext = origDialContext }()
-		DialContext = func(ctx context.Context, target string, opts ...grpc.DialOption) (conn *grpc.ClientConn, err error) {
+
+		defer func() { resetDialContextFunc() }()
+		dialContextFunc := func(ctx context.Context, target string, opts ...grpc.DialOption) (conn *grpc.ClientConn, err error) {
 			return &grpc.ClientConn{}, nil
 		}
+		setDialContextFunc(dialContextFunc)
 		expectedErr := "Load credentials error"
 		creds.SetCredsError(expectedErr)
 		defer creds.ResetCredsError()
-		_, err := connectToHub(&config)
+		_, err := cli.ConnectToHub(&config)
 		if err == nil || !strings.Contains(err.Error(), expectedErr) {
 			t.Fatalf("Expected %v in %v", expectedErr, err.Error())
 		}
 	})
+}
+
+func setDialContextFunc(customFunc func(ctx context.Context, target string, opts ...grpc.DialOption) (conn *grpc.ClientConn, err error)) {
+	cli.DialContextFunc = customFunc
+}
+func resetDialContextFunc() {
+	cli.DialContextFunc = grpc.DialContext
+
 }

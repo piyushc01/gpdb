@@ -98,7 +98,7 @@ var RunStartAgent = func(cmd *cobra.Command, args []string) error {
 }
 
 var startAgentsAll = func(hubConfig *hub.Config) (idl.HubClient, error) {
-	client, err := connectToHub(hubConfig)
+	client, err := ConnectToHub(hubConfig)
 	if err != nil {
 		return client, fmt.Errorf("Could not connect to hub on port%d Error: %w", hubConfig.Port, err)
 	}
@@ -145,7 +145,7 @@ var WaitAndRetryHubConnect = func() error {
 
 	var err error
 	for count > 0 {
-		_, err = connectToHub(conf)
+		_, err = ConnectToHub(conf)
 		if err == nil {
 			success = true
 			break

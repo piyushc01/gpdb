@@ -18,11 +18,11 @@ import (
 )
 
 var (
-	ReadFile    = os.ReadFile
-	Unmarshal   = json.Unmarshal
-	DialContext = grpc.DialContext
+	ReadFile        = os.ReadFile
+	Unmarshal       = json.Unmarshal
+	DialContextFunc = grpc.DialContext
 
-	configFilePath string
+	ConfigFilePath string
 	conf           *hub.Config
 
 	verbose bool
@@ -33,7 +33,7 @@ func RootCommand() *cobra.Command {
 		Use: "gp",
 	}
 
-	root.PersistentFlags().StringVar(&configFilePath, "config-file", filepath.Join(os.Getenv("GPHOME"), constants.ConfigFileName), `Path to gp configuration file`)
+	root.PersistentFlags().StringVar(&ConfigFilePath, "config-file", filepath.Join(os.Getenv("GPHOME"), constants.ConfigFileName), `Path to gp configuration file`)
 	root.PersistentFlags().BoolVar(&verbose, "verbose", false, `Provide verbose output`)
 
 	root.AddCommand(agentCmd())
@@ -51,7 +51,7 @@ func RootCommand() *cobra.Command {
 func InitializeCommand(cmd *cobra.Command, args []string) error {
 	// TODO: Add a new constructor to gplog to allow initializing with a custom logfile path directly
 	conf = &hub.Config{}
-	err := conf.Load(configFilePath)
+	err := conf.Load(ConfigFilePath)
 	if err != nil {
 		return fmt.Errorf("Error parsing config file: %s\n", err.Error())
 	}
@@ -81,7 +81,7 @@ func InitializeGplog(cmd *cobra.Command, args []string) {
 	}
 }
 
-var connectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+var ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
 	var conn *grpc.ClientConn
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -93,7 +93,7 @@ var connectToHub = func(conf *hub.Config) (idl.HubClient, error) {
 	}
 
 	address := fmt.Sprintf("localhost:%d", conf.Port)
-	conn, err = DialContext(ctx, address,
+	conn, err = DialContextFunc(ctx, address,
 		grpc.WithTransportCredentials(credentials),
 		grpc.WithBlock(),
 		grpc.FailOnNonTempDialError(true),

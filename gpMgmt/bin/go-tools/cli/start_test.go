@@ -16,9 +16,9 @@ func TestWaitAndRetryHubConnect(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	t.Run("WaitAndRetryHubConnect returns success on success", func(t *testing.T) {
-		origConnectHub := connectToHub
-		defer func() { connectToHub = origConnectHub }()
-		connectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+		origConnectHub := ConnectToHub
+		defer func() { ConnectToHub = origConnectHub }()
+		ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
 			return nil, nil
 		}
 		err := WaitAndRetryHubConnect()
@@ -27,10 +27,10 @@ func TestWaitAndRetryHubConnect(t *testing.T) {
 		}
 	})
 	t.Run("WaitAndRetryHubConnect returns failure upon failure to connect", func(t *testing.T) {
-		origConnectHub := connectToHub
+		origConnectHub := ConnectToHub
 		expectedErr := "Hub service started but failed to connect. Bailing out."
-		defer func() { connectToHub = origConnectHub }()
-		connectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+		defer func() { ConnectToHub = origConnectHub }()
+		ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
 			return nil, errors.New(expectedErr)
 		}
 		err := WaitAndRetryHubConnect()
@@ -47,9 +47,9 @@ func TestStartAgentsAll(t *testing.T) {
 	defer ctrl.Finish()
 
 	t.Run("starts all agents without any error", func(t *testing.T) {
-		origConnectHub := connectToHub
-		defer func() { connectToHub = origConnectHub }()
-		connectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+		origConnectHub := ConnectToHub
+		defer func() { ConnectToHub = origConnectHub }()
+		ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
 			hubClient := mock_idl.NewMockHubClient(ctrl)
 			hubClient.EXPECT().StartAgents(gomock.Any(), gomock.Any())
 			return hubClient, nil
@@ -61,9 +61,9 @@ func TestStartAgentsAll(t *testing.T) {
 
 	})
 	t.Run("start all agents fails on error connecting hub", func(t *testing.T) {
-		origConnectHub := connectToHub
-		defer func() { connectToHub = origConnectHub }()
-		connectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+		origConnectHub := ConnectToHub
+		defer func() { ConnectToHub = origConnectHub }()
+		ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
 			return nil, errors.New("error connecting hub")
 		}
 		_, err := startAgentsAll(conf)
@@ -72,9 +72,9 @@ func TestStartAgentsAll(t *testing.T) {
 		}
 	})
 	t.Run("start all agent fails when error starting agents", func(t *testing.T) {
-		origConnectHub := connectToHub
-		defer func() { connectToHub = origConnectHub }()
-		connectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+		origConnectHub := ConnectToHub
+		defer func() { ConnectToHub = origConnectHub }()
+		ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
 			hubClient := mock_idl.NewMockHubClient(ctrl)
 			hubClient.EXPECT().StartAgents(gomock.Any(), gomock.Any()).Return(nil, errors.New("TEST: Agent Start ERROR"))
 			return hubClient, nil

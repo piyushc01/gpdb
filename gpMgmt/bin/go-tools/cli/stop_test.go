@@ -19,9 +19,9 @@ func TestStopAgentService(t *testing.T) {
 	defer ctrl.Finish()
 
 	t.Run("StopAgentService stops the agent service when theres no error", func(t *testing.T) {
-		origConnectToHub := connectToHub
-		defer func() { connectToHub = origConnectToHub }()
-		connectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+		origConnectToHub := ConnectToHub
+		defer func() { ConnectToHub = origConnectToHub }()
+		ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
 			hubClient := mock_idl.NewMockHubClient(ctrl)
 			hubClient.EXPECT().StopAgents(gomock.Any(), gomock.Any())
 			return hubClient, nil
@@ -32,9 +32,9 @@ func TestStopAgentService(t *testing.T) {
 		}
 	})
 	t.Run("StopAgentService returns an error when theres error connecting hub", func(t *testing.T) {
-		origConnectToHub := connectToHub
-		defer func() { connectToHub = origConnectToHub }()
-		connectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+		origConnectToHub := ConnectToHub
+		defer func() { ConnectToHub = origConnectToHub }()
+		ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
 			return nil, errors.New("TEST Error connecting Hub")
 		}
 		err := StopAgentService()
@@ -43,9 +43,9 @@ func TestStopAgentService(t *testing.T) {
 		}
 	})
 	t.Run("StopAgentService returns error when theres error stopping agents", func(t *testing.T) {
-		origConnectToHub := connectToHub
-		defer func() { connectToHub = origConnectToHub }()
-		connectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+		origConnectToHub := ConnectToHub
+		defer func() { ConnectToHub = origConnectToHub }()
+		ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
 			hubClient := mock_idl.NewMockHubClient(ctrl)
 			hubClient.EXPECT().StopAgents(gomock.Any(), gomock.Any()).Return(nil, errors.New("TEST Error stopping agents"))
 			return hubClient, nil
@@ -64,9 +64,9 @@ func TestStopHubService(t *testing.T) {
 	defer ctrl.Finish()
 
 	t.Run("Stops hub when theres no error", func(t *testing.T) {
-		origConnectToHub := connectToHub
-		defer func() { connectToHub = origConnectToHub }()
-		connectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+		origConnectToHub := ConnectToHub
+		defer func() { ConnectToHub = origConnectToHub }()
+		ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
 			hubClient := mock_idl.NewMockHubClient(ctrl)
 			hubClient.EXPECT().Stop(gomock.Any(), gomock.Any())
 			return hubClient, nil
@@ -78,9 +78,9 @@ func TestStopHubService(t *testing.T) {
 	})
 
 	t.Run("Stops hub when theres error connecting hub service", func(t *testing.T) {
-		origConnectToHub := connectToHub
-		defer func() { connectToHub = origConnectToHub }()
-		connectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+		origConnectToHub := ConnectToHub
+		defer func() { ConnectToHub = origConnectToHub }()
+		ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
 			return nil, errors.New("TEST Error connecting Hub")
 		}
 		err := StopHubService()
@@ -90,9 +90,9 @@ func TestStopHubService(t *testing.T) {
 	})
 
 	t.Run("Stop returns error when there's error stopping Hub", func(t *testing.T) {
-		origConnectToHub := connectToHub
-		defer func() { connectToHub = origConnectToHub }()
-		connectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+		origConnectToHub := ConnectToHub
+		defer func() { ConnectToHub = origConnectToHub }()
+		ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
 			hubClient := mock_idl.NewMockHubClient(ctrl)
 			hubClient.EXPECT().Stop(gomock.Any(), gomock.Any()).Return(nil, errors.New("TEST Error stopping Hub"))
 			return hubClient, nil

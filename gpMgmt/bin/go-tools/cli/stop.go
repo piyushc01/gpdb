@@ -48,7 +48,7 @@ func RunStopHub(cmd *cobra.Command, args []string) error {
 }
 
 var StopHubService = func() error {
-	client, err := connectToHub(conf)
+	client, err := ConnectToHub(conf)
 	if err != nil {
 		return fmt.Errorf("Could not connect to hub; is the hub running?")
 	}
@@ -90,7 +90,7 @@ func RunStopAgents(cmd *cobra.Command, args []string) error {
 }
 
 var StopAgentService = func() error {
-	client, err := connectToHub(conf)
+	client, err := ConnectToHub(conf)
 	if err != nil {
 		return fmt.Errorf("Could not connect to hub; is the hub running?")
 	}

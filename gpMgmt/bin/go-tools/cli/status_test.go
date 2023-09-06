@@ -97,9 +97,9 @@ func TestShowAgentStatys(t *testing.T) {
 	defer ctrl.Finish()
 
 	t.Run("returns no error when there's none with  header", func(t *testing.T) {
-		origConnectHub := connectToHub
-		defer func() { connectToHub = origConnectHub }()
-		connectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+		origConnectHub := ConnectToHub
+		defer func() { ConnectToHub = origConnectHub }()
+		ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
 			hubClient := mock_idl.NewMockHubClient(ctrl)
 			hubClient.EXPECT().StatusAgents(gomock.Any(), gomock.Any()).Return(&idl.StatusAgentsReply{}, nil)
 			return hubClient, nil
@@ -111,9 +111,9 @@ func TestShowAgentStatys(t *testing.T) {
 		}
 	})
 	t.Run("returns no error when there's none with no header", func(t *testing.T) {
-		origConnectHub := connectToHub
-		defer func() { connectToHub = origConnectHub }()
-		connectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+		origConnectHub := ConnectToHub
+		defer func() { ConnectToHub = origConnectHub }()
+		ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
 			hubClient := mock_idl.NewMockHubClient(ctrl)
 			hubClient.EXPECT().StatusAgents(gomock.Any(), gomock.Any()).Return(&idl.StatusAgentsReply{}, nil)
 			return hubClient, nil
@@ -125,9 +125,9 @@ func TestShowAgentStatys(t *testing.T) {
 		}
 	})
 	t.Run("returns error when there error connecting Hub", func(t *testing.T) {
-		origConnectHub := connectToHub
-		defer func() { connectToHub = origConnectHub }()
-		connectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+		origConnectHub := ConnectToHub
+		defer func() { ConnectToHub = origConnectHub }()
+		ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
 			return nil, errors.New("TEST Error connecting Hub")
 		}
 
