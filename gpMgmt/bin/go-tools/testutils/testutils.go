@@ -13,7 +13,7 @@ import (
 )
 
 type MockPlatform struct {
-	RetStatus            idl.ServiceStatus
+	RetStatus            *idl.ServiceStatus
 	ServiceStatusMessage string
 	Err                  error
 	ServiceFileContent   string

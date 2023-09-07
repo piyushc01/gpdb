@@ -52,11 +52,13 @@ func (s *Server) Start() error {
 		// handle stuff here if needed
 		return handler(ctx, req)
 	}
+
 	credentials, err := s.Credentials.LoadServerCredentials()
 	if err != nil {
 		listener.Close()
 		return fmt.Errorf("Could not load credentials: %w", err)
 	}
+
 	grpcServer := grpc.NewServer(
 		grpc.Creds(credentials),
 		grpc.UnaryInterceptor(interceptor),
@@ -74,6 +76,7 @@ func (s *Server) Start() error {
 	if err != nil {
 		return fmt.Errorf("Failed to serve: %w", err)
 	}
+
 	return nil
 }
 
@@ -91,6 +94,7 @@ func (s *Server) Status(ctx context.Context, in *idl.StatusAgentRequest) (*idl.S
 	if err != nil {
 		return &idl.StatusAgentReply{}, fmt.Errorf("Could not get agent status: %w", err)
 	}
+
 	return &idl.StatusAgentReply{Status: status.Status, Uptime: status.Uptime, Pid: uint32(status.Pid)}, nil
 }
 
@@ -99,7 +103,9 @@ func (s *Server) GetStatus() (*idl.ServiceStatus, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	status := platform.ParseServiceStatusMessage(message)
+
 	return &status, nil
 }
 

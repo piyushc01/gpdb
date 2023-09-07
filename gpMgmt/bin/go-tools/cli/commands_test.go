@@ -19,7 +19,7 @@ func TestConnectToHub(t *testing.T) {
 	testhelper.SetupTestLogger()
 	creds := &testutils.MockCredentials{}
 	platform := &testutils.MockPlatform{}
-	platform.RetStatus = idl.ServiceStatus{
+	platform.RetStatus = &idl.ServiceStatus{
 		Status: "",
 		Uptime: "",
 		Pid:    uint32(0),
