@@ -21,11 +21,12 @@ var (
 	ReadFile        = os.ReadFile
 	Unmarshal       = json.Unmarshal
 	DialContextFunc = grpc.DialContext
+	ConnectToHub    = ConnectToHubFn
 
 	ConfigFilePath string
-	conf           *hub.Config
+	Conf           *hub.Config
 
-	verbose bool
+	Verbose bool
 )
 
 func RootCommand() *cobra.Command {
@@ -34,7 +35,7 @@ func RootCommand() *cobra.Command {
 	}
 
 	root.PersistentFlags().StringVar(&ConfigFilePath, "config-file", filepath.Join(os.Getenv("GPHOME"), constants.ConfigFileName), `Path to gp configuration file`)
-	root.PersistentFlags().BoolVar(&verbose, "verbose", false, `Provide verbose output`)
+	root.PersistentFlags().BoolVar(&Verbose, "Verbose", false, `Provide Verbose output`)
 
 	root.AddCommand(agentCmd())
 	root.AddCommand(hubCmd())
@@ -50,12 +51,12 @@ func RootCommand() *cobra.Command {
 // Public, so it can be mocked out in testing
 func InitializeCommand(cmd *cobra.Command, args []string) error {
 	// TODO: Add a new constructor to gplog to allow initializing with a custom logfile path directly
-	conf = &hub.Config{}
-	err := conf.Load(ConfigFilePath)
+	Conf = &hub.Config{}
+	err := Conf.Load(ConfigFilePath)
 	if err != nil {
 		return fmt.Errorf("Error parsing config file: %s\n", err.Error())
 	}
-	hubLogDir = conf.LogDir
+	hubLogDir = Conf.LogDir
 	InitializeGplog(cmd, args)
 
 	return nil
@@ -76,12 +77,12 @@ func InitializeGplog(cmd *cobra.Command, args []string) {
 	gplog.SetLogPrefixFunc(func(level string) string {
 		return fmt.Sprintf("%s %s  [%s] ", timeFormat, hostname, level) // TODO: decide what prefix we want, assuming we want one, but we *definitely* don't want the legacy one
 	})
-	if verbose {
+	if Verbose {
 		gplog.SetVerbosity(gplog.LOGDEBUG)
 	}
 }
 
-var ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+func ConnectToHubFn(conf *hub.Config) (idl.HubClient, error) {
 	var conn *grpc.ClientConn
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -89,7 +90,7 @@ var ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
 
 	credentials, err := conf.Credentials.LoadClientCredentials()
 	if err != nil {
-		return nil, fmt.Errorf("Could not load credentials: %w", err)
+		return nil, fmt.Errorf("Could not load hub credentials: %w", err)
 	}
 
 	address := fmt.Sprintf("localhost:%d", conf.Port)

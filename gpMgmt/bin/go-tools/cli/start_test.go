@@ -1,7 +1,9 @@
-package cli
+package cli_test
 
 import (
 	"errors"
+	"github.com/greenplum-db/gpdb/gp/cli"
+	"strings"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -16,147 +18,161 @@ func TestWaitAndRetryHubConnect(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	t.Run("WaitAndRetryHubConnect returns success on success", func(t *testing.T) {
-		origConnectHub := ConnectToHub
-		defer func() { ConnectToHub = origConnectHub }()
-		ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+		defer resetConnectToHub()
+		mockConnectToHub := func(conf *hub.Config) (idl.HubClient, error) {
 			return nil, nil
 		}
-		err := WaitAndRetryHubConnect()
+		setConnectToHub(mockConnectToHub)
+		err := cli.WaitAndRetryHubConnect()
 		if err != nil {
 			t.Fatalf("Excted no error, received error:%s", err.Error())
 		}
 	})
 	t.Run("WaitAndRetryHubConnect returns failure upon failure to connect", func(t *testing.T) {
-		origConnectHub := ConnectToHub
-		expectedErr := "Hub service started but failed to connect. Bailing out."
-		defer func() { ConnectToHub = origConnectHub }()
-		ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+		expectedErr := "Hub service started but failed to connect"
+		defer resetConnectToHub()
+		mockConnectToHub := func(conf *hub.Config) (idl.HubClient, error) {
 			return nil, errors.New(expectedErr)
 		}
-		err := WaitAndRetryHubConnect()
-		if err == nil {
-			t.Fatalf("Excted an error, received no error")
+		setConnectToHub(mockConnectToHub)
+
+		err := cli.WaitAndRetryHubConnect()
+		if !strings.Contains(err.Error(), expectedErr) {
+			t.Fatalf("got: %q want:\"%s\"", err.Error(), expectedErr)
 		}
 	})
 }
 
 func TestStartAgentsAll(t *testing.T) {
 	testhelper.SetupTestLogger()
-	conf = testutils.InitializeTestEnv()
+	cli.Conf = testutils.InitializeTestEnv()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	t.Run("starts all agents without any error", func(t *testing.T) {
-		origConnectHub := ConnectToHub
-		defer func() { ConnectToHub = origConnectHub }()
-		ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+		defer resetConnectToHub()
+		mockConnectToHub := func(conf *hub.Config) (idl.HubClient, error) {
 			hubClient := mock_idl.NewMockHubClient(ctrl)
 			hubClient.EXPECT().StartAgents(gomock.Any(), gomock.Any())
 			return hubClient, nil
 		}
-		_, err := startAgentsAll(conf)
+		setConnectToHub(mockConnectToHub)
+		_, err := cli.StartAgentsAll(cli.Conf)
 		if err != nil {
 			t.Fatalf("Expected no error, got error:%s", err.Error())
 		}
-
 	})
 	t.Run("start all agents fails on error connecting hub", func(t *testing.T) {
-		origConnectHub := ConnectToHub
-		defer func() { ConnectToHub = origConnectHub }()
-		ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
-			return nil, errors.New("error connecting hub")
+		defer resetConnectToHub()
+		expectedStr := "error connecting hub"
+		mockConnectToHub := func(conf *hub.Config) (idl.HubClient, error) {
+			return nil, errors.New(expectedStr)
 		}
-		_, err := startAgentsAll(conf)
-		if err == nil {
-			t.Fatalf("Expected error, got no error:")
+		setConnectToHub(mockConnectToHub)
+
+		_, err := cli.StartAgentsAll(cli.Conf)
+		if !strings.Contains(err.Error(), expectedStr) {
+			t.Fatalf("got: %q want:\"%s\"", err.Error(), expectedStr)
 		}
 	})
 	t.Run("start all agent fails when error starting agents", func(t *testing.T) {
-		origConnectHub := ConnectToHub
-		defer func() { ConnectToHub = origConnectHub }()
-		ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+		expectedStr := "TEST: Agent Start ERROR"
+		defer resetConnectToHub()
+		mockConnectToHub := func(conf *hub.Config) (idl.HubClient, error) {
 			hubClient := mock_idl.NewMockHubClient(ctrl)
-			hubClient.EXPECT().StartAgents(gomock.Any(), gomock.Any()).Return(nil, errors.New("TEST: Agent Start ERROR"))
+			hubClient.EXPECT().StartAgents(gomock.Any(), gomock.Any()).Return(nil, errors.New(expectedStr))
 			return hubClient, nil
 		}
-		_, err := startAgentsAll(conf)
-		if err == nil {
-			t.Fatalf("Expected error, got no error:")
+		setConnectToHub(mockConnectToHub)
+
+		_, err := cli.StartAgentsAll(cli.Conf)
+		if !strings.Contains(err.Error(), expectedStr) {
+			t.Fatalf("got: %q want:\"%s\"", err.Error(), expectedStr)
 		}
 	})
 }
 
 func TestRunStartService(t *testing.T) {
 	testhelper.SetupTestLogger()
-	conf = testutils.InitializeTestEnv()
+	cli.Conf = testutils.InitializeTestEnv()
 
 	t.Run("Run services when there's no error", func(t *testing.T) {
-		origStartHubService := startHubService
-		defer func() { startHubService = origStartHubService }()
-		startHubService = func(serviceName string) error {
+		defer resetStartHubService()
+		mockStartHubService := func(serviceName string) error {
 			return nil
 		}
-		origWaitAndRetryHubConnect := WaitAndRetryHubConnect
-		defer func() { WaitAndRetryHubConnect = origWaitAndRetryHubConnect }()
-		WaitAndRetryHubConnect = func() error {
+		setStartHubService(mockStartHubService)
+
+		defer resetWaitAndRetryHubConnect()
+		mockWaitAndRetryHubConnect := func() error {
 			return nil
 		}
-		origStartAgentsAll := startAgentsAll
-		defer func() { startAgentsAll = origStartAgentsAll }()
-		startAgentsAll = func(hubConfig *hub.Config) (idl.HubClient, error) {
+		setWaitAndRetryHubConnect(mockWaitAndRetryHubConnect)
+
+		defer resetStartAgentsAll()
+		mockStartAgentsAll := func(hubConfig *hub.Config) (idl.HubClient, error) {
 			return nil, nil
 		}
-		err := RunStartService(nil, nil)
+		setStartAgentsAll(mockStartAgentsAll)
+
+		err := cli.RunStartService(nil, nil)
 		if err != nil {
 			t.Fatalf("Expected no error, got error:%s", err.Error())
 		}
 	})
 	t.Run("Run services when there's error starting hub", func(t *testing.T) {
-		origStartHubService := startHubService
-		defer func() { startHubService = origStartHubService }()
-		startHubService = func(serviceName string) error {
-			return errors.New("TEST ERROR Starting Hub service")
+		expectedStr := "TEST ERROR Starting Hub service"
+		defer resetStartHubService()
+		mockStartHubService := func(serviceName string) error {
+			return errors.New(expectedStr)
 		}
-		err := RunStartService(nil, nil)
-		if err == nil {
-			t.Fatalf("Expected an error, got no error")
+		setStartHubService(mockStartHubService)
+		err := cli.RunStartService(nil, nil)
+		if !strings.Contains(err.Error(), expectedStr) {
+			t.Fatalf("Want:\"%s\" But got: %q", expectedStr, err.Error())
 		}
 	})
 	t.Run("Run services when there's error connecting Hub", func(t *testing.T) {
-		origStartHubService := startHubService
-		defer func() { startHubService = origStartHubService }()
-		startHubService = func(serviceName string) error {
+		expectedStr := "TEST ERROR while connecting Hub service"
+		defer resetStartHubService()
+		mockStartHubService := func(serviceName string) error {
 			return nil
 		}
-		origWaitAndRetryHubConnect := WaitAndRetryHubConnect
-		defer func() { WaitAndRetryHubConnect = origWaitAndRetryHubConnect }()
-		WaitAndRetryHubConnect = func() error {
-			return errors.New("TEST ERROR while connecting Hub service")
+		setStartHubService(mockStartHubService)
+
+		defer resetWaitAndRetryHubConnect()
+		mockWaitAndRetryHubConnect := func() error {
+			return errors.New(expectedStr)
 		}
-		err := RunStartService(nil, nil)
-		if err == nil {
-			t.Fatalf("Expected an error, got no error")
+		setWaitAndRetryHubConnect(mockWaitAndRetryHubConnect)
+		err := cli.RunStartService(nil, nil)
+		if !strings.Contains(err.Error(), expectedStr) {
+			t.Fatalf("Want:\"%s\" But got: %q", expectedStr, err.Error())
 		}
 	})
 	t.Run("Run services when there's error starting agents", func(t *testing.T) {
-		origStartHubService := startHubService
-		defer func() { startHubService = origStartHubService }()
-		startHubService = func(serviceName string) error {
+		expectedStr := "TEST ERROR while starting agents"
+		defer resetStartHubService()
+		mockStartHubService := func(serviceName string) error {
 			return nil
 		}
-		origWaitAndRetryHubConnect := WaitAndRetryHubConnect
-		defer func() { WaitAndRetryHubConnect = origWaitAndRetryHubConnect }()
-		WaitAndRetryHubConnect = func() error {
+		setStartHubService(mockStartHubService)
+
+		defer resetWaitAndRetryHubConnect()
+		mockWaitAndRetryHubConnect := func() error {
 			return nil
 		}
-		origStartAgentsAll := startAgentsAll
-		defer func() { startAgentsAll = origStartAgentsAll }()
-		startAgentsAll = func(hubConfig *hub.Config) (idl.HubClient, error) {
-			return nil, errors.New("TEST ERROR while starting agents")
+		setWaitAndRetryHubConnect(mockWaitAndRetryHubConnect)
+
+		defer resetStartAgentsAll()
+		mockStartAgentsAll := func(hubConfig *hub.Config) (idl.HubClient, error) {
+			return nil, errors.New(expectedStr)
 		}
-		err := RunStartService(nil, nil)
-		if err == nil {
-			t.Fatalf("Expected an error, got no error")
+		setStartAgentsAll(mockStartAgentsAll)
+
+		err := cli.RunStartService(nil, nil)
+		if !strings.Contains(err.Error(), expectedStr) {
+			t.Fatalf("Want:\"%s\" But got: %q", expectedStr, err.Error())
 		}
 	})
 }
@@ -164,75 +180,141 @@ func TestRunStartService(t *testing.T) {
 func TestRunStartAgent(t *testing.T) {
 	testhelper.SetupTestLogger()
 	t.Run("Run start agent starts agents when no failure", func(t *testing.T) {
-		origStartAgentsAll := startAgentsAll
-		defer func() { startAgentsAll = origStartAgentsAll }()
-		startAgentsAll = func(hubConfig *hub.Config) (idl.HubClient, error) {
+		defer resetStartAgentsAll()
+		mockStartAgentsAll := func(hubConfig *hub.Config) (idl.HubClient, error) {
 			return nil, nil
 		}
-		err := RunStartAgent(nil, nil)
+		setStartAgentsAll(mockStartAgentsAll)
+
+		err := cli.RunStartAgent(nil, nil)
 		if err != nil {
 			t.Fatalf("Expected no error. Got error:%s", err.Error())
 		}
 	})
 	t.Run("Run start agent starts agents when starting agents fails", func(t *testing.T) {
-		origStartAgentsAll := startAgentsAll
-		defer func() { startAgentsAll = origStartAgentsAll }()
-		startAgentsAll = func(hubConfig *hub.Config) (idl.HubClient, error) {
-			return nil, errors.New("TEST Error when starting agents")
+		expectedStr := "TEST Error when starting agents"
+		defer resetStartAgentsAll()
+		mockStartAgentsAll := func(hubConfig *hub.Config) (idl.HubClient, error) {
+			return nil, errors.New(expectedStr)
 		}
-		err := RunStartAgent(nil, nil)
-		if err == nil {
-			t.Fatalf("Expected an error. Got no error")
+		setStartAgentsAll(mockStartAgentsAll)
+
+		err := cli.RunStartAgent(nil, nil)
+		if !strings.Contains(err.Error(), expectedStr) {
+			t.Fatalf("got: %q want:\"%s\"", err.Error(), expectedStr)
 		}
 	})
 }
 
 func TestRunStartHub(t *testing.T) {
 	testhelper.SetupTestLogger()
-	conf = testutils.InitializeTestEnv()
+	cli.Conf = testutils.InitializeTestEnv()
 
 	t.Run("Run Start Hub throws no error when there none", func(t *testing.T) {
-		origStartHubService := startHubService
-		defer func() { startHubService = origStartHubService }()
-		startHubService = func(serviceName string) error {
+		defer resetStartHubService()
+		mockStartHubService := func(serviceName string) error {
 			return nil
 		}
-		origShowHubStatus := ShowHubStatus
-		defer func() { ShowHubStatus = origShowHubStatus }()
-		ShowHubStatus = func(conf *hub.Config, skipHeader bool) (bool, error) {
+		setStartHubService(mockStartHubService)
+
+		defer func() { resetShowHubStatus() }()
+		mockShowHubStatus := func(conf *hub.Config, skipHeader bool) (bool, error) {
 			return true, nil
 		}
-		err := RunStartHub(nil, nil)
+		setShowHubStatus(mockShowHubStatus)
+
+		err := cli.RunStartHub(nil, nil)
 		if err != nil {
 			t.Fatalf("Expected no error, received error:%s", err.Error())
 		}
 	})
 	t.Run("Run Start Hub throws error when start hub service fails", func(t *testing.T) {
-		origStartHubService := startHubService
-		defer func() { startHubService = origStartHubService }()
-		startHubService = func(serviceName string) error {
-			return errors.New("TEST Error: Failed to start Hub service")
+		expectedStr := "TEST Error: Failed to start Hub service"
+		defer resetStartHubService()
+		mockStartHubService := func(serviceName string) error {
+			return errors.New(expectedStr)
 		}
-		err := RunStartHub(nil, nil)
-		if err == nil {
-			t.Fatalf("Expected an error, received no error:")
+		setStartHubService(mockStartHubService)
+
+		err := cli.RunStartHub(nil, nil)
+		if !strings.Contains(err.Error(), expectedStr) {
+			t.Fatalf("got: %q want:\"%s\"", err.Error(), expectedStr)
 		}
 	})
 	t.Run("Run Start Hub throws no error when there none", func(t *testing.T) {
-		origStartHubService := startHubService
-		defer func() { startHubService = origStartHubService }()
-		startHubService = func(serviceName string) error {
+		expectedStr := "Test Error in ShowHubStatus"
+		defer resetStartHubService()
+		mockStartHubService := func(serviceName string) error {
 			return nil
 		}
-		origShowHubStatus := ShowHubStatus
-		defer func() { ShowHubStatus = origShowHubStatus }()
-		verbose = true
-		ShowHubStatus = func(conf *hub.Config, skipHeader bool) (bool, error) {
-			return false, errors.New("Test Error in ShowHubStatus ")
+		setStartHubService(mockStartHubService)
+
+		defer resetShowHubStatus()
+		cli.Verbose = true
+		mockShowHubStatus := func(conf *hub.Config, skipHeader bool) (bool, error) {
+			return false, errors.New(expectedStr)
 		}
-		err := RunStartHub(nil, nil)
-		if err == nil {
-			t.Fatalf("Expected an error, received no error")
+		setShowHubStatus(mockShowHubStatus)
+
+		err := cli.RunStartHub(nil, nil)
+		if !strings.Contains(err.Error(), expectedStr) {
+			t.Fatalf("got: %q want:\"%s\"", err.Error(), expectedStr)
 		}
 	})
+}
+
+func setConnectToHub(customFunc func(conf *hub.Config) (idl.HubClient, error)) {
+	cli.ConnectToHub = customFunc
+}
+
+func resetConnectToHub() {
+	cli.ConnectToHub = cli.ConnectToHubFn
+}
+
+func setStartHubService(customFn func(serviceName string) error) {
+	cli.StartHubService = customFn
+}
+func resetStartHubService() {
+	cli.StartHubService = cli.StartHubServiceFn
+}
+
+func setWaitAndRetryHubConnect(customFn func() error) {
+	cli.WaitAndRetryHubConnect = customFn
+}
+
+func resetWaitAndRetryHubConnect() {
+	cli.WaitAndRetryHubConnect = cli.WaitAndRetryHubConnectFn
+}
+
+func setShowHubStatus(customFn func(conf *hub.Config, skipHeader bool) (bool, error)) {
+	cli.ShowHubStatus = customFn
+}
+func resetShowHubStatus() {
+	cli.ShowHubStatus = cli.ShowHubStatusFn
+}
+
+func setStartAgentsAll(customFn func(hubConfig *hub.Config) (idl.HubClient, error)) {
+	cli.StartAgentsAll = customFn
+}
+
+func resetStartAgentsAll() {
+	cli.StartAgentsAll = cli.StartAgentsAllFn
+}
+
+func setShowAgentsStatus(customFn func(conf *hub.Config, skipHeader bool) error) {
+	cli.ShowAgentsStatus = customFn
+}
+
+func resetShowAgentsStatus() {
+	cli.ShowAgentsStatus = cli.ShowAgentsStatusFn
+
+}
+
+func setPrintServicesStatus(customFn func() error) {
+	cli.PrintServicesStatus = customFn
+}
+
+func resetPrintServicesStatus() {
+	cli.PrintServicesStatus = cli.PrintServicesStatusFn
+
 }

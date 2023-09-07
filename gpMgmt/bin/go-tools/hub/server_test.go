@@ -276,7 +276,6 @@ func TestStatusAgents(t *testing.T) {
 			&idl.StatusAgentRequest{},
 			gomock.Any(),
 		).Return(&idl.StatusAgentReply{
-			Host:   "sdw1",
 			Status: "running",
 			Uptime: "5H",
 			Pid:    123,
@@ -288,7 +287,6 @@ func TestStatusAgents(t *testing.T) {
 			&idl.StatusAgentRequest{},
 			gomock.Any(),
 		).Return(&idl.StatusAgentReply{
-			Host:   "sdw2",
 			Status: "running",
 			Uptime: "2H",
 			Pid:    456,
@@ -326,7 +324,6 @@ func TestStatusAgents(t *testing.T) {
 			&idl.StatusAgentRequest{},
 			gomock.Any(),
 		).Return(&idl.StatusAgentReply{
-			Host:   "sdw1",
 			Status: "running",
 			Uptime: "5H",
 			Pid:    123,
@@ -338,7 +335,6 @@ func TestStatusAgents(t *testing.T) {
 			&idl.StatusAgentRequest{},
 			gomock.Any(),
 		).Return(&idl.StatusAgentReply{
-			Host:   "sdw2",
 			Status: "running",
 			Uptime: "2H",
 			Pid:    456,

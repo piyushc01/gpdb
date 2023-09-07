@@ -11,6 +11,11 @@ import (
 	grpcStatus "google.golang.org/grpc/status"
 )
 
+var (
+	StopAgentService = StopAgentServiceFn
+	StopHubService   = StopHubServiceFn
+)
+
 func stopCmd() *cobra.Command {
 	stopCmd := &cobra.Command{
 		Use:   "stop",
@@ -41,16 +46,16 @@ func RunStopHub(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Error stopping hub service:%w", err)
 	}
 	gplog.Info("Hub stopped successfully")
-	if verbose {
-		_, _ = ShowHubStatus(conf, false)
+	if Verbose {
+		_, _ = ShowHubStatus(Conf, false)
 	}
 	return nil
 }
 
-var StopHubService = func() error {
-	client, err := ConnectToHub(conf)
+func StopHubServiceFn() error {
+	client, err := ConnectToHub(Conf)
 	if err != nil {
-		return fmt.Errorf("Could not connect to hub; is the hub running?")
+		return fmt.Errorf("Could not connect to hub; is the hub running? Error:%v", err)
 	}
 	_, err = client.Stop(context.Background(), &idl.StopHubRequest{})
 	// Ignore a "hub already stopped" error
@@ -83,16 +88,16 @@ func RunStopAgents(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Error stopping agent service:%w", err)
 	}
 	gplog.Info("Agents stopped successfully")
-	if verbose {
-		_ = ShowAgentsStatus(conf, false)
+	if Verbose {
+		_ = ShowAgentsStatus(Conf, false)
 	}
 	return nil
 }
 
-var StopAgentService = func() error {
-	client, err := ConnectToHub(conf)
+func StopAgentServiceFn() error {
+	client, err := ConnectToHub(Conf)
 	if err != nil {
-		return fmt.Errorf("Could not connect to hub; is the hub running?")
+		return fmt.Errorf("Could not connect to hub; is the hub running? Error:%v", err)
 	}
 
 	_, err = client.StopAgents(context.Background(), &idl.StopAgentsRequest{})

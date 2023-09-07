@@ -19,13 +19,12 @@ import (
 func TestConnectToHub(t *testing.T) {
 	testhelper.SetupTestLogger()
 	creds := &testutils.MockCredentials{}
-	platform := &testutils.MockPlatform{}
+	platform := &testutils.MockPlatform{Err: nil}
 	platform.RetStatus = &idl.ServiceStatus{
 		Status: "",
 		Uptime: "",
 		Pid:    uint32(0),
 	}
-	platform.Err = nil
 	agent.SetPlatform(platform)
 	defer agent.ResetPlatform()
 	hostlist := []string{"sdw1", "sdw2", "sdw3"}
@@ -40,12 +39,12 @@ func TestConnectToHub(t *testing.T) {
 	}
 
 	t.Run("Connect to hub succeeds and no error thrown", func(t *testing.T) {
-
-		origDialContext := cli.DialContextFunc
-		defer func() { cli.DialContextFunc = origDialContext }()
-		cli.DialContextFunc = func(ctx context.Context, target string, opts ...grpc.DialOption) (conn *grpc.ClientConn, err error) {
+		defer resetDialContextFunc()
+		mockDialContextFunc := func(ctx context.Context, target string, opts ...grpc.DialOption) (conn *grpc.ClientConn, err error) {
 			return &grpc.ClientConn{}, nil
 		}
+		setDialContextFunc(mockDialContextFunc)
+
 		_, err := cli.ConnectToHub(&config)
 		if err != nil {
 			t.Fatalf("Unexpected error happened when connecting to hub:%v", err.Error())
@@ -53,26 +52,27 @@ func TestConnectToHub(t *testing.T) {
 	})
 	t.Run("Connect to hub returns error when Dial context fails", func(t *testing.T) {
 		expectedErr := "TEST ERROR while dialing context"
-		origDialContext := cli.DialContextFunc
-		defer func() { cli.DialContextFunc = origDialContext }()
-		cli.DialContextFunc = func(ctx context.Context, target string, opts ...grpc.DialOption) (conn *grpc.ClientConn, err error) {
+		defer resetDialContextFunc()
+		mockDialContextFunc := func(ctx context.Context, target string, opts ...grpc.DialOption) (conn *grpc.ClientConn, err error) {
 			return nil, errors.New(expectedErr)
 		}
+		setDialContextFunc(mockDialContextFunc)
+
 		_, err := cli.ConnectToHub(&config)
 		if err == nil || !strings.Contains(err.Error(), expectedErr) {
 			t.Fatalf("Expected %v in %v", expectedErr, err.Error())
 		}
 	})
 	t.Run("Connect to hub returns error when load client credentials fail", func(t *testing.T) {
-
-		defer func() { resetDialContextFunc() }()
-		dialContextFunc := func(ctx context.Context, target string, opts ...grpc.DialOption) (conn *grpc.ClientConn, err error) {
+		defer resetDialContextFunc()
+		mockDialContextFunc := func(ctx context.Context, target string, opts ...grpc.DialOption) (conn *grpc.ClientConn, err error) {
 			return &grpc.ClientConn{}, nil
 		}
-		setDialContextFunc(dialContextFunc)
+		setDialContextFunc(mockDialContextFunc)
 		expectedErr := "Load credentials error"
 		creds.SetCredsError(expectedErr)
 		defer creds.ResetCredsError()
+
 		_, err := cli.ConnectToHub(&config)
 		if err == nil || !strings.Contains(err.Error(), expectedErr) {
 			t.Fatalf("Expected %v in %v", expectedErr, err.Error())

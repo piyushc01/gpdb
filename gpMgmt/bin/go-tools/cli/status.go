@@ -10,6 +10,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	ShowHubStatus       = ShowHubStatusFn
+	ShowAgentsStatus    = ShowAgentsStatusFn
+	PrintServicesStatus = PrintServicesStatusFn
+)
+
 func statusCmd() *cobra.Command {
 	statusCmd := &cobra.Command{
 		Use:   "status",
@@ -35,10 +41,11 @@ func statusHubCmd() *cobra.Command {
 }
 
 func RunStatusHub(cmd *cobra.Command, args []string) error {
-	_, err := ShowHubStatus(conf, false)
+	_, err := ShowHubStatus(Conf, false)
 	if err != nil {
 		return fmt.Errorf("Could not retrieve hub status: %w", err)
 	}
+
 	return nil
 }
 
@@ -60,42 +67,46 @@ func statusServicesCmd() *cobra.Command {
 		PreRunE: InitializeCommand,
 		RunE:    RunServiceStatus,
 	}
+
 	return statusServicesCmd
 }
 
 func RunStatusAgent(cmd *cobra.Command, args []string) error {
-	err := ShowAgentsStatus(conf, false)
+	err := ShowAgentsStatus(Conf, false)
 	if err != nil {
 		return fmt.Errorf("Could not retrieve agents status: %w", err)
 	}
+
 	return nil
 }
 
-var ShowHubStatus = func(conf *hub.Config, skipHeader bool) (bool, error) {
-	message, err := platform.GetServiceStatusMessage(fmt.Sprintf("%s_hub", conf.ServiceName))
+func ShowHubStatusFn(conf *hub.Config, skipHeader bool) (bool, error) {
+	message, err := Platform.GetServiceStatusMessage(fmt.Sprintf("%s_hub", conf.ServiceName))
 	if err != nil {
 		return false, err
 	}
-	status := platform.ParseServiceStatusMessage(message)
+	status := Platform.ParseServiceStatusMessage(message)
 	status.Host, _ = os.Hostname()
-	platform.DisplayServiceStatus(os.Stdout, "Hub", []*idl.ServiceStatus{&status}, skipHeader)
+	Platform.DisplayServiceStatus(os.Stdout, "Hub", []*idl.ServiceStatus{&status}, skipHeader)
 	if status.Status == "Unknown" {
 		return false, nil
 	}
+
 	return true, nil
 }
 
-var ShowAgentsStatus = func(conf *hub.Config, skipHeader bool) error {
+func ShowAgentsStatusFn(conf *hub.Config, skipHeader bool) error {
 	client, err := ConnectToHub(conf)
 	if err != nil {
-		return fmt.Errorf("Could not connect to hub; is the hub running?")
+		return fmt.Errorf("Could not connect to hub; is the hub running? Error:%w", err)
 	}
 
 	reply, err := client.StatusAgents(context.Background(), &idl.StatusAgentsRequest{})
 	if err != nil {
 		return err
 	}
-	platform.DisplayServiceStatus(os.Stdout, "Agent", reply.Statuses, skipHeader)
+	Platform.DisplayServiceStatus(os.Stdout, "Agent", reply.Statuses, skipHeader)
+
 	return nil
 }
 
@@ -104,12 +115,13 @@ func RunServiceStatus(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("Error while getting the services status:%w", err)
 	}
+
 	return nil
 }
 
-var PrintServicesStatus = func() error {
+func PrintServicesStatusFn() error {
 	// TODO: Check if Hub is down, do not check for Agents
-	hubRunning, err := ShowHubStatus(conf, false)
+	hubRunning, err := ShowHubStatus(Conf, false)
 	if err != nil {
 		return fmt.Errorf("Error while showing the Hub status:%w", err)
 	}
@@ -117,9 +129,10 @@ var PrintServicesStatus = func() error {
 		fmt.Println("Hub service not running, not able to fetch agent status.")
 		return nil
 	}
-	err = ShowAgentsStatus(conf, true)
+	err = ShowAgentsStatus(Conf, true)
 	if err != nil {
 		return fmt.Errorf("Error while showing the Agent status:%w", err)
 	}
+
 	return nil
 }

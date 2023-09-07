@@ -1,7 +1,9 @@
-package cli
+package cli_test
 
 import (
 	"errors"
+	"github.com/greenplum-db/gpdb/gp/cli"
+	"strings"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -14,92 +16,102 @@ import (
 
 func TestStopAgentService(t *testing.T) {
 	testhelper.SetupTestLogger()
-	conf = testutils.InitializeTestEnv()
+	cli.Conf = testutils.InitializeTestEnv()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	t.Run("StopAgentService stops the agent service when theres no error", func(t *testing.T) {
-		origConnectToHub := ConnectToHub
-		defer func() { ConnectToHub = origConnectToHub }()
-		ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+
+		defer resetConnectToHub()
+		mockConnectToHub := func(conf *hub.Config) (idl.HubClient, error) {
 			hubClient := mock_idl.NewMockHubClient(ctrl)
 			hubClient.EXPECT().StopAgents(gomock.Any(), gomock.Any())
 			return hubClient, nil
 		}
-		err := StopAgentService()
+		setConnectToHub(mockConnectToHub)
+
+		err := cli.StopAgentService()
 		if err != nil {
 			t.Fatalf("No error expected. Got and error:%s", err.Error())
 		}
 	})
 	t.Run("StopAgentService returns an error when theres error connecting hub", func(t *testing.T) {
-		origConnectToHub := ConnectToHub
-		defer func() { ConnectToHub = origConnectToHub }()
-		ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
-			return nil, errors.New("TEST Error connecting Hub")
+		expectedStr := "TEST Error connecting Hub"
+		defer resetConnectToHub()
+		mockConnectToHub := func(conf *hub.Config) (idl.HubClient, error) {
+			return nil, errors.New(expectedStr)
 		}
-		err := StopAgentService()
-		if err == nil {
-			t.Fatalf("Expected an error. Got no error.")
+		setConnectToHub(mockConnectToHub)
+
+		err := cli.StopAgentService()
+		if !strings.Contains(err.Error(), expectedStr) {
+			t.Fatalf("Got: %q Want:\"%s\" ", err.Error(), expectedStr)
 		}
 	})
 	t.Run("StopAgentService returns error when theres error stopping agents", func(t *testing.T) {
-		origConnectToHub := ConnectToHub
-		defer func() { ConnectToHub = origConnectToHub }()
-		ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+		expectedStr := "TEST Error stopping agents"
+		defer resetConnectToHub()
+		mockConnectToHub := func(conf *hub.Config) (idl.HubClient, error) {
 			hubClient := mock_idl.NewMockHubClient(ctrl)
-			hubClient.EXPECT().StopAgents(gomock.Any(), gomock.Any()).Return(nil, errors.New("TEST Error stopping agents"))
+			hubClient.EXPECT().StopAgents(gomock.Any(), gomock.Any()).Return(nil, errors.New(expectedStr))
 			return hubClient, nil
 		}
-		err := StopAgentService()
-		if err == nil {
-			t.Fatalf("Expected an error. Got no error.")
+		setConnectToHub(mockConnectToHub)
+		err := cli.StopAgentService()
+		if !strings.Contains(err.Error(), expectedStr) {
+			t.Fatalf("Got: %q Want:\"%s\" ", err.Error(), expectedStr)
 		}
 	})
 }
 
 func TestStopHubService(t *testing.T) {
 	testhelper.SetupTestLogger()
-	conf = testutils.InitializeTestEnv()
+	cli.Conf = testutils.InitializeTestEnv()
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	t.Run("Stops hub when theres no error", func(t *testing.T) {
-		origConnectToHub := ConnectToHub
-		defer func() { ConnectToHub = origConnectToHub }()
-		ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+		defer resetConnectToHub()
+		mockConnectToHub := func(conf *hub.Config) (idl.HubClient, error) {
 			hubClient := mock_idl.NewMockHubClient(ctrl)
 			hubClient.EXPECT().Stop(gomock.Any(), gomock.Any())
 			return hubClient, nil
 		}
-		err := StopHubService()
+		setConnectToHub(mockConnectToHub)
+
+		err := cli.StopHubService()
 		if err != nil {
 			t.Fatalf("Expected no error. Got an error:%s", err.Error())
 		}
 	})
 
 	t.Run("Stops hub when theres error connecting hub service", func(t *testing.T) {
-		origConnectToHub := ConnectToHub
-		defer func() { ConnectToHub = origConnectToHub }()
-		ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
-			return nil, errors.New("TEST Error connecting Hub")
+		expectedStr := "TEST Error connecting Hub"
+		defer resetConnectToHub()
+		mockConnectToHub := func(conf *hub.Config) (idl.HubClient, error) {
+			return nil, errors.New(expectedStr)
 		}
-		err := StopHubService()
-		if err == nil {
-			t.Fatalf("Expected an error. Got no error:")
+		setConnectToHub(mockConnectToHub)
+
+		err := cli.StopHubService()
+		if !strings.Contains(err.Error(), expectedStr) {
+			t.Fatalf("Got: %q Want:\"%s\" ", err.Error(), expectedStr)
 		}
 	})
 
 	t.Run("Stop returns error when there's error stopping Hub", func(t *testing.T) {
-		origConnectToHub := ConnectToHub
-		defer func() { ConnectToHub = origConnectToHub }()
-		ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+		expectedStr := "TEST Error stopping Hub"
+		defer resetConnectToHub()
+		mockConnectToHub := func(conf *hub.Config) (idl.HubClient, error) {
 			hubClient := mock_idl.NewMockHubClient(ctrl)
-			hubClient.EXPECT().Stop(gomock.Any(), gomock.Any()).Return(nil, errors.New("TEST Error stopping Hub"))
+			hubClient.EXPECT().Stop(gomock.Any(), gomock.Any()).Return(nil, errors.New(expectedStr))
 			return hubClient, nil
 		}
-		err := StopHubService()
-		if err == nil {
-			t.Fatalf("Expected an error. Got no error:")
+		setConnectToHub(mockConnectToHub)
+
+		err := cli.StopHubService()
+		if !strings.Contains(err.Error(), expectedStr) {
+			t.Fatalf("Got: %q Want:\"%s\" ", err.Error(), expectedStr)
 		}
 	})
 }
@@ -107,150 +119,171 @@ func TestStopHubService(t *testing.T) {
 func TestRunStopServices(t *testing.T) {
 	testhelper.SetupTestLogger()
 	t.Run("Returns no error when there is none", func(t *testing.T) {
-		origStopAgentService := StopAgentService
-		defer func() { StopAgentService = origStopAgentService }()
-		StopAgentService = func() error {
+		defer resetStopAgentService()
+		mockStopAgentService := func() error {
 			return nil
 		}
-		origStopHubService := StopHubService
-		defer func() { StopHubService = origStopHubService }()
-		StopHubService = func() error {
-			return nil
-		}
+		setStopAgentService(mockStopAgentService)
 
-		err := RunStopServices(nil, nil)
+		defer func() { resetStopHubService() }()
+		mockStopHubService := func() error {
+			return nil
+		}
+		setStopHubService(mockStopHubService)
+
+		err := cli.RunStopServices(nil, nil)
 		if err != nil {
 			t.Fatalf("Expected no error. Got an error:%s", err.Error())
 		}
 	})
 
-	t.Run("Returns  error whenerror stopping Agent service", func(t *testing.T) {
-		origStopAgentService := StopAgentService
-		defer func() { StopAgentService = origStopAgentService }()
-		StopAgentService = func() error {
-			return errors.New("TEST Error stopping Agent service")
+	t.Run("Returns  error when error stopping Agent service", func(t *testing.T) {
+		expectedStr := "TEST Error stopping Agent service"
+		defer resetStopAgentService()
+		mockStopAgentService := func() error {
+			return errors.New(expectedStr)
 		}
+		setStopAgentService(mockStopAgentService)
 
-		err := RunStopServices(nil, nil)
-		if err == nil {
-			t.Fatalf("Expected an error. Got no error")
+		err := cli.RunStopServices(nil, nil)
+		if !strings.Contains(err.Error(), expectedStr) {
+			t.Fatalf("Got: %q Want:\"%s\" ", err.Error(), expectedStr)
 		}
 	})
 
 	t.Run("Returns error when error stopping hub service", func(t *testing.T) {
-		origStopAgentService := StopAgentService
-		defer func() { StopAgentService = origStopAgentService }()
-		StopAgentService = func() error {
+		expectedStr := "Error stopping Hub service"
+		defer resetStopAgentService()
+		mockStopAgentService := func() error {
 			return nil
 		}
-		origStopHubService := StopHubService
-		defer func() { StopHubService = origStopHubService }()
-		StopHubService = func() error {
-			return errors.New("Error stopping Hub service")
-		}
+		setStopAgentService(mockStopAgentService)
 
-		err := RunStopServices(nil, nil)
-		if err == nil {
-			t.Fatalf("Expected an error. Got no error")
+		defer resetStopHubService()
+		mockStopHubService := func() error {
+			return errors.New(expectedStr)
+		}
+		setStopHubService(mockStopHubService)
+
+		err := cli.RunStopServices(nil, nil)
+		if !strings.Contains(err.Error(), expectedStr) {
+			t.Fatalf("Got: %q Want:\"%s\" ", err.Error(), expectedStr)
 		}
 	})
-
 }
 
 func TestRunStopAgents(t *testing.T) {
 	testhelper.SetupTestLogger()
-	t.Run("returns no error where there none no verbose", func(t *testing.T) {
-		origStopAgentService := StopAgentService
-		defer func() { StopAgentService = origStopAgentService }()
-		StopAgentService = func() error {
+	t.Run("returns no error where there none no Verbose", func(t *testing.T) {
+
+		defer resetStopAgentService()
+		mockStopAgentService := func() error {
 			return nil
 		}
-		verbose = false
+		setStopAgentService(mockStopAgentService)
+		cli.Verbose = false
 
-		err := RunStopAgents(nil, nil)
+		err := cli.RunStopAgents(nil, nil)
 		if err != nil {
 			t.Fatalf("Expected no error. Got an error:%s", err.Error())
 		}
 
 	})
-	t.Run("returns no error where there none in verbose", func(t *testing.T) {
-		origStopAgentService := StopAgentService
-		defer func() { StopAgentService = origStopAgentService }()
-		StopAgentService = func() error {
+	t.Run("returns no error where there none in Verbose", func(t *testing.T) {
+		defer resetStopAgentService()
+		mockStopAgentService := func() error {
 			return nil
 		}
-		origShowAgentsStatus := ShowAgentsStatus
-		defer func() { ShowAgentsStatus = origShowAgentsStatus }()
-		ShowAgentsStatus = func(conf *hub.Config, skipHeader bool) error {
-			return nil
-		}
-		verbose = true
+		setStopAgentService(mockStopAgentService)
 
-		err := RunStopAgents(nil, nil)
+		defer resetShowAgentsStatus()
+		mockShowAgentsStatus := func(conf *hub.Config, skipHeader bool) error {
+			return nil
+		}
+		setShowAgentsStatus(mockShowAgentsStatus)
+		cli.Verbose = true
+
+		err := cli.RunStopAgents(nil, nil)
 		if err != nil {
 			t.Fatalf("Expected no error. Got an error:%s", err.Error())
 		}
 	})
 	t.Run("returns error where there is error stopping agent service", func(t *testing.T) {
-		origStopAgentService := StopAgentService
-		defer func() { StopAgentService = origStopAgentService }()
-		StopAgentService = func() error {
-			return errors.New("TEST Error stopping agents")
+		expectedStr := "TEST Error stopping agents"
+		defer resetStopAgentService()
+		mockStopAgentService := func() error {
+			return errors.New(expectedStr)
 		}
+		setStopAgentService(mockStopAgentService)
 
-		err := RunStopAgents(nil, nil)
-		if err == nil {
-			t.Fatalf("Expected an error. Got no error")
+		err := cli.RunStopAgents(nil, nil)
+		if !strings.Contains(err.Error(), expectedStr) {
+			t.Fatalf("Got: %q Want:\"%s\" ", err.Error(), expectedStr)
 		}
-
 	})
-
 }
 
 func TestRunStopHub(t *testing.T) {
 	testhelper.SetupTestLogger()
-	t.Run("return no error when there is none non verbose mode", func(t *testing.T) {
-		origStopHubService := StopHubService
-		defer func() { StopHubService = origStopHubService }()
-		StopHubService = func() error {
+	t.Run("return no error when there is none non Verbose mode", func(t *testing.T) {
+		defer resetStopHubService()
+		mockStopHubService := func() error {
 			return nil
 		}
-		verbose = false
+		setStopHubService(mockStopHubService)
+		cli.Verbose = false
 
-		err := RunStopHub(nil, nil)
+		err := cli.RunStopHub(nil, nil)
 		if err != nil {
 			t.Fatalf("Expected no error. Got an error: %s", err.Error())
 		}
 	})
-	t.Run("return no error when there is none verbose mode", func(t *testing.T) {
-		origStopHubService := StopHubService
-		defer func() { StopHubService = origStopHubService }()
-		StopHubService = func() error {
+	t.Run("return no error when there is none Verbose mode", func(t *testing.T) {
+
+		defer resetStopHubService()
+		mockStopHubService := func() error {
 			return nil
 		}
-		origShowHubStatus := ShowHubStatus
-		defer func() { ShowHubStatus = origShowHubStatus }()
-		ShowHubStatus = func(conf *hub.Config, skipHeader bool) (bool, error) {
+		setStopHubService(mockStopHubService)
+
+		defer resetShowHubStatus()
+		mockShowHubStatus := func(conf *hub.Config, skipHeader bool) (bool, error) {
 			return true, nil
 		}
-		verbose = true
+		setShowHubStatus(mockShowHubStatus)
+		cli.Verbose = true
 
-		err := RunStopHub(nil, nil)
+		err := cli.RunStopHub(nil, nil)
 		if err != nil {
 			t.Fatalf("Expected no error. Got an error: %s", err.Error())
 		}
 	})
 	t.Run("return error when there is error stoppig Hub service", func(t *testing.T) {
-		origStopHubService := StopHubService
-		defer func() { StopHubService = origStopHubService }()
-		StopHubService = func() error {
-			return errors.New("TEST Error while stopping Hub Service")
+		expectedStr := "TEST Error while stopping Hub Service"
+		defer resetStopHubService()
+		mockStopHubService := func() error {
+			return errors.New(expectedStr)
 		}
-		verbose = false
+		setStopHubService(mockStopHubService)
+		cli.Verbose = false
 
-		err := RunStopHub(nil, nil)
-		if err == nil {
-			t.Fatalf("Expected an error. Got no error")
+		err := cli.RunStopHub(nil, nil)
+		if !strings.Contains(err.Error(), expectedStr) {
+			t.Fatalf("Got: %q Want:\"%s\" ", err.Error(), expectedStr)
 		}
 	})
+}
+
+func setStopAgentService(customFn func() error) {
+	cli.StopAgentService = customFn
+}
+func resetStopAgentService() {
+	cli.StopAgentService = cli.StopAgentServiceFn
+}
+
+func setStopHubService(customFn func() error) {
+	cli.StopHubService = customFn
+}
+func resetStopHubService() {
+	cli.StopHubService = cli.StopHubServiceFn
 }

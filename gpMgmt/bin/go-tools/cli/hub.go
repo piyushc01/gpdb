@@ -14,8 +14,8 @@ import (
 )
 
 var (
-	platform          = utils.GetPlatform()
-	DefaultServiceDir = platform.GetDefaultServiceDir()
+	Platform          = utils.GetPlatform()
+	DefaultServiceDir = Platform.GetDefaultServiceDir()
 
 	agentPort      int
 	caCertPath     string
@@ -46,11 +46,12 @@ func hubCmd() *cobra.Command {
 }
 
 func RunHub(cmd *cobra.Command, args []string) (err error) {
-	h := hub.New(conf, nil)
+	h := hub.New(Conf, nil)
 	err = h.Start()
 	if err != nil {
 		return fmt.Errorf("Could not start hub: %w", err)
 	}
+
 	return nil
 }
 
@@ -87,8 +88,9 @@ func RunInstall(cmd *cobra.Command, args []string) (err error) {
 
 	// Regenerate default flag values if a custom GPHOME or username is passed
 	if cmd.Flags().Lookup("gphome").Changed && !cmd.Flags().Lookup("config-file").Changed {
-		configFilePath = filepath.Join(gphome, constants.ConfigFileName)
+		ConfigFilePath = filepath.Join(gphome, constants.ConfigFileName)
 	}
+
 	if cmd.Flags().Lookup("service-user").Changed && !cmd.Flags().Lookup("service-dir").Changed {
 		serviceDir = fmt.Sprintf(DefaultServiceDir, serviceUser)
 	}
@@ -97,7 +99,7 @@ func RunInstall(cmd *cobra.Command, args []string) (err error) {
 		return errors.New("At least one hostname must be provided using either --host or --hostfile")
 	}
 
-	// Convert file/directory paths to absolute path before writing to gp.conf file
+	// Convert file/directory paths to absolute path before writing to gp.Conf file
 	err = resolveAbsolutePaths(cmd)
 	if err != nil {
 		return err
@@ -117,7 +119,7 @@ func RunInstall(cmd *cobra.Command, args []string) (err error) {
 			return fmt.Errorf("Got and empty host in the input. Porvide valid input host name")
 		}
 	}
-	conf = &hub.Config{
+	Conf = &hub.Config{
 		Port:        hubPort,
 		AgentPort:   agentPort,
 		Hostnames:   hostnames,
@@ -131,30 +133,31 @@ func RunInstall(cmd *cobra.Command, args []string) (err error) {
 			ServerKeyPath:  serverKeyPath,
 		},
 	}
-	err = conf.Write(configFilePath)
+	err = Conf.Write(ConfigFilePath)
 	if err != nil {
-		return fmt.Errorf("Could not create config file %s: %w", configFilePath, err)
+		return fmt.Errorf("Could not create config file %s: %w", ConfigFilePath, err)
 	}
 
-	err = platform.CreateServiceDir(hostnames, serviceDir, gphome)
+	err = Platform.CreateServiceDir(hostnames, serviceDir, gphome)
 	if err != nil {
 		return err
 	}
 
-	err = platform.CreateAndInstallHubServiceFile(gphome, serviceDir, serviceName)
+	err = Platform.CreateAndInstallHubServiceFile(gphome, serviceDir, serviceName)
 	if err != nil {
 		return fmt.Errorf("Could not install hub service file: %w", err)
 	}
 
-	err = platform.CreateAndInstallAgentServiceFile(hostnames, gphome, serviceDir, serviceName)
+	err = Platform.CreateAndInstallAgentServiceFile(hostnames, gphome, serviceDir, serviceName)
 	if err != nil {
 		return fmt.Errorf("Could not install agent service file: %w", err)
 	}
 
-	err = platform.EnableUserLingering(hostnames, gphome, serviceUser)
+	err = Platform.EnableUserLingering(hostnames, gphome, serviceUser)
 	if err != nil {
 		return fmt.Errorf("Could not enable user lingering: %w", err)
 	}
+
 	return nil
 }
 

@@ -24,6 +24,15 @@ func startCmd() *cobra.Command {
 	return startCmd
 }
 
+var (
+	StartHubService        = StartHubServiceFn
+	RunStartHub            = RunStartHubFn
+	RunStartAgent          = RunStartAgentFn
+	StartAgentsAll         = StartAgentsAllFn
+	RunStartService        = RunStartServiceFn
+	WaitAndRetryHubConnect = WaitAndRetryHubConnectFn
+)
+
 func startHubCmd() *cobra.Command {
 	startHubCmd := &cobra.Command{
 		Use:     "hub",
@@ -35,22 +44,22 @@ func startHubCmd() *cobra.Command {
 	return startHubCmd
 }
 
-var startHubService = func(serviceName string) error {
-	err := platform.GetStartHubCommand(serviceName).Run()
+func StartHubServiceFn(serviceName string) error {
+	err := Platform.GetStartHubCommand(serviceName).Run()
 	if err != nil {
-		return fmt.Errorf("Could not start hub: %w", err)
+		return fmt.Errorf("Failed to start hub service: %s Error: %w", serviceName, err)
 	}
 
 	return nil
 }
-var RunStartHub = func(cmd *cobra.Command, args []string) error {
-	err := startHubService(conf.ServiceName)
+func RunStartHubFn(cmd *cobra.Command, args []string) error {
+	err := StartHubService(Conf.ServiceName)
 	if err != nil {
-		return fmt.Errorf("Failed to start hub service %s. Error: %w", conf.ServiceName, err)
+		return fmt.Errorf("hub service %s. Error: %w", Conf.ServiceName, err)
 	}
-	gplog.Info("Hub %s started successfully", conf.ServiceName)
-	if verbose {
-		_, err = ShowHubStatus(conf, true)
+	gplog.Info("Hub %s started successfully", Conf.ServiceName)
+	if Verbose {
+		_, err = ShowHubStatus(Conf, true)
 		if err != nil {
 			return fmt.Errorf("Could not retrieve hub status: %w", err)
 		}
@@ -81,14 +90,14 @@ func startServiceCmd() *cobra.Command {
 	return startServicesCmd
 }
 
-var RunStartAgent = func(cmd *cobra.Command, args []string) error {
-	_, err := startAgentsAll(conf)
+func RunStartAgentFn(cmd *cobra.Command, args []string) error {
+	_, err := StartAgentsAll(Conf)
 	if err != nil {
-		return fmt.Errorf("Could not start agents: %w", err)
+		return err
 	}
 	gplog.Info("Agents started successfully")
-	if verbose {
-		err = ShowAgentsStatus(conf, true)
+	if Verbose {
+		err = ShowAgentsStatus(Conf, true)
 		if err != nil {
 			return fmt.Errorf("Could not retrieve agent status: %w", err)
 		}
@@ -97,10 +106,10 @@ var RunStartAgent = func(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-var startAgentsAll = func(hubConfig *hub.Config) (idl.HubClient, error) {
+func StartAgentsAllFn(hubConfig *hub.Config) (idl.HubClient, error) {
 	client, err := ConnectToHub(hubConfig)
 	if err != nil {
-		return client, fmt.Errorf("Could not connect to hub on port%d Error: %w", hubConfig.Port, err)
+		return client, err
 	}
 
 	_, err = client.StartAgents(context.Background(), &idl.StartAgentsRequest{})
@@ -111,41 +120,40 @@ var startAgentsAll = func(hubConfig *hub.Config) (idl.HubClient, error) {
 	return client, nil
 }
 
-var RunStartService = func(cmd *cobra.Command, args []string) error {
+func RunStartServiceFn(cmd *cobra.Command, args []string) error {
 	//Starts  Hub service followed by Agent service
-	err := startHubService(conf.ServiceName)
+	err := StartHubService(Conf.ServiceName)
 	if err != nil {
-		return fmt.Errorf("Failed to start hub service %s. Error: %w", conf.ServiceName, err)
+		return err
 	}
 	err = WaitAndRetryHubConnect()
 	if err != nil {
 		return fmt.Errorf("Error while connecting hb service:%w", err)
 	}
-	gplog.Info("Hub %s started successfully", conf.ServiceName)
+	gplog.Info("Hub %s started successfully", Conf.ServiceName)
 
 	// Start agents service
-	_, err = startAgentsAll(conf)
+	_, err = StartAgentsAll(Conf)
 	if err != nil {
 		return fmt.Errorf("Failed to start agents. Error: %w", err)
 	}
-	gplog.Info("Agents %s started successfully", conf.ServiceName)
-	if verbose {
+	gplog.Info("Agents %s started successfully", Conf.ServiceName)
+	if Verbose {
 		err = PrintServicesStatus()
 		if err != nil {
-			return fmt.Errorf("Could not retrieve hub status: %w", err)
+			return err
 		}
 	}
 
 	return nil
 }
 
-var WaitAndRetryHubConnect = func() error {
+func WaitAndRetryHubConnectFn() error {
 	count := 10
 	success := false
-
 	var err error
 	for count > 0 {
-		_, err = ConnectToHub(conf)
+		_, err = ConnectToHub(Conf)
 		if err == nil {
 			success = true
 			break
