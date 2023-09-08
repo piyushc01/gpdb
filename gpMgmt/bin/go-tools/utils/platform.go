@@ -90,8 +90,8 @@ func (p GpPlatform) CreateServiceDir(hostnames []string, serviceDir string, gpho
 
 	// Create service directory if it does not exist
 	args := append(hostList, "mkdir", "-p", serviceDir)
-	cmdStr := filepath.Join(gphome, "bin", constants.GpSSH)
-	err := execCommand(cmdStr, args...).Run()
+	utility := filepath.Join(gphome, "bin", constants.GpSSH)
+	err := execCommand(utility, args...).Run()
 	if err != nil {
 		return fmt.Errorf("Could not create service directory %s on hosts: %w", serviceDir, err)
 	}
@@ -295,6 +295,7 @@ func (p GpPlatform) GetServiceStatusMessage(serviceName string) (string, error) 
 	if p.OS == "darwin" { // empty strings are also treated as arguments
 		args = args[1:]
 	}
+
 	output, err := execCommand(p.ServiceCmd, args...).Output()
 	if err != nil {
 		if err.Error() != "exit status 3" { // 3 = service is stopped
@@ -358,9 +359,11 @@ func (p GpPlatform) ParseServiceStatusMessage(message string) idl.ServiceStatus 
 func (p GpPlatform) DisplayServiceStatus(outfile io.Writer, serviceName string, statuses []*idl.ServiceStatus, skipHeader bool) {
 	w := new(tabwriter.Writer)
 	w.Init(outfile, 0, 8, 2, '\t', 0)
+
 	if !skipHeader {
 		fmt.Fprintln(w, "ROLE\tHOST\tSTATUS\tPID\tUPTIME")
 	}
+
 	for _, s := range statuses {
 		fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%s\n", serviceName, s.Host, s.Status, s.Pid, s.Uptime)
 	}

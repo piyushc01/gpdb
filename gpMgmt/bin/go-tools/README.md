@@ -16,7 +16,7 @@ git clone git@github.com:greenplum-db/gpdb.git
 #### Get dependency and set env
 ```
 cd ~/workspace/gpdb/gpMgmt/bin/go-tools
-make depend-dev    # set gobin path and fetch the protoc and mock dependency
+make depend-dev    # set GOBIN path and fetch the protoc and mock dependency
 ```
 
 #### Generate Certificates
@@ -98,17 +98,18 @@ gp install --host <host> --server-certificate <path/to/server-cert.pem> --server
 #### Control and monitoring services:
 Agent and Hub Services can be controlled and monitored using the following command:
 ```
-gp [start/stop/status] [agents/hub]
+gp [start/stop/status] [agents/hub/services]
 ```
 e.g.
 - `gp start hub` starts the hub service
-- `gp start agents` starts agents on all the hosts
-- `gp stop agents` stops agent service on all hosts
+- `gp start services` starts both hub and agent services
+- `gp stop services` stops both hub and agent services
 
 ##### Monitoring Service Status:
 To check the status of the services you can use the following command:
 - `gp status agents` reports status of all agents service
 - `gp status hub` reports the status of the hub service
+- `gp status services` reports the status of the hub and agent services
 
 #### Log Locations
 Logs are located in the path provided in the configuration file.
