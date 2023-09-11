@@ -28,13 +28,13 @@ func TestMain(m *testing.M) {
 	os.Exit(exectest.Run(m))
 }
 
-func setup(t *testing.T) {
+func setMocks(t *testing.T) {
 	utils.GpsyncCommand = nil
 	utils.LoadServiceCommand = nil
 	utils.UnloadServiceCommand = nil
 }
 
-func teardown(t *testing.T) {
+func resetMocks(t *testing.T) {
 	utils.GpsyncCommand = exec.Command
 	utils.LoadServiceCommand = exec.Command
 	utils.UnloadServiceCommand = exec.Command
@@ -44,7 +44,7 @@ func TestCreateServiceDir(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	t.Run("CreateServiceDir returns error", func(t *testing.T) {
-		platform := utils.NewPlatform("linux")
+		platform := GetPlatform("linux", t)
 
 		utils.SetExecCommand(exectest.NewCommand(exectest.Failure))
 		defer utils.ResetExecCommand()
@@ -56,7 +56,7 @@ func TestCreateServiceDir(t *testing.T) {
 	})
 
 	t.Run("CreateServiceDir runs successfully", func(t *testing.T) {
-		platform := utils.NewPlatform("linux")
+		platform := GetPlatform("linux", t)
 
 		utils.SetExecCommand(exectest.NewCommand(exectest.Success))
 		defer utils.ResetExecCommand()
@@ -118,7 +118,7 @@ func TestGenerateServiceFileContents(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	t.Run("GenerateServiceFileContents successfully generates contents for darwin", func(t *testing.T) {
-		platform := utils.NewPlatform("darwin")
+		platform := GetPlatform("darwin", t)
 
 		expected := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -152,7 +152,7 @@ func TestGenerateServiceFileContents(t *testing.T) {
 	})
 
 	t.Run("GenerateServiceFileContents successfully generates contents for linux", func(t *testing.T) {
-		platform := utils.NewPlatform("linux")
+		platform := GetPlatform("linux", t)
 
 		expected := `[Unit]
 Description=Greenplum Database management utility hub
@@ -178,7 +178,7 @@ func TestGetDefaultServiceDir(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	t.Run("GetDefaultServiceDir returns the correct directory path", func(t *testing.T) {
-		platform := utils.NewPlatform("linux")
+		platform := GetPlatform("linux", t)
 
 		expected := "/home/%s/.config/systemd/user"
 		result := platform.GetDefaultServiceDir()
@@ -186,7 +186,7 @@ func TestGetDefaultServiceDir(t *testing.T) {
 			t.Fatalf("got %q, want %q", result, expected)
 		}
 
-		platform = utils.NewPlatform("darwin")
+		platform = GetPlatform("darwin", t)
 
 		expected = "/Users/%s/Library/LaunchAgents"
 		result = platform.GetDefaultServiceDir()
@@ -214,10 +214,10 @@ func TestReloadServices(t *testing.T) {
 	for _, tc := range success_tests {
 		t.Run(fmt.Sprintf("reloading of %s service succeeds on %s", tc.service, tc.os), func(t *testing.T) {
 			var err error
-			platform := utils.NewPlatform(tc.os)
+			platform := GetPlatform(tc.os, t)
 
-			setup(t)
-			defer teardown(t)
+			setMocks(t)
+			defer resetMocks(t)
 			utils.UnloadServiceCommand = exectest.NewCommand(exectest.Success)
 			utils.LoadServiceCommand = exectest.NewCommand(exectest.Success)
 
@@ -243,10 +243,10 @@ func TestReloadServices(t *testing.T) {
 	for _, tc := range failure_tests_darwin {
 		t.Run(fmt.Sprintf("reloading of %s service returns error when not able to unload the file on darwin", tc.service), func(t *testing.T) {
 			var err error
-			platform := utils.NewPlatform(tc.os)
+			platform := GetPlatform(tc.os, t)
 
-			setup(t)
-			defer teardown(t)
+			setMocks(t)
+			defer resetMocks(t)
 			utils.UnloadServiceCommand = exectest.NewCommand(exectest.Failure)
 			utils.LoadServiceCommand = exectest.NewCommand(exectest.Success)
 
@@ -264,10 +264,10 @@ func TestReloadServices(t *testing.T) {
 
 		t.Run(fmt.Sprintf("reloading of %s service returns error when not able to load the file on darwin", tc.service), func(t *testing.T) {
 			var err error
-			platform := utils.NewPlatform("darwin")
+			platform := GetPlatform("darwin", t)
 
-			setup(t)
-			defer teardown(t)
+			setMocks(t)
+			defer resetMocks(t)
 			utils.UnloadServiceCommand = exectest.NewCommand(exectest.Success)
 			utils.LoadServiceCommand = exectest.NewCommand(exectest.Failure)
 
@@ -292,7 +292,7 @@ func TestReloadServices(t *testing.T) {
 	for _, tc := range failure_tests_linux {
 		t.Run(fmt.Sprintf("reloading of %s service returns error when not able to reload the file on linux", tc.service), func(t *testing.T) {
 			var err error
-			platform := utils.NewPlatform("linux")
+			platform := GetPlatform("linux", t)
 
 			utils.SetExecCommand(exectest.NewCommand(exectest.Failure))
 			defer utils.ResetExecCommand()
@@ -315,7 +315,7 @@ func TestCreateAndInstallHubServiceFile(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	t.Run("CreateAndInstallHubServiceFile runs successfully", func(t *testing.T) {
-		platform := utils.NewPlatform("linux")
+		platform := GetPlatform("linux", t)
 
 		utils.SetWriteServiceFileFunc(func(filename, contents string) error {
 			return nil
@@ -332,7 +332,7 @@ func TestCreateAndInstallHubServiceFile(t *testing.T) {
 	})
 
 	t.Run("CreateAndInstallHubServiceFile errors when not able to write to a file", func(t *testing.T) {
-		platform := utils.NewPlatform("linux")
+		platform := GetPlatform("linux", t)
 
 		utils.SetWriteServiceFileFunc(func(filename, contents string) error {
 			return os.ErrPermission
@@ -350,7 +350,7 @@ func TestCreateAndInstallHubServiceFile(t *testing.T) {
 	})
 
 	t.Run("CreateAndInstallHubServiceFile errors when not able to reload the service", func(t *testing.T) {
-		platform := utils.NewPlatform("linux")
+		platform := GetPlatform("linux", t)
 
 		utils.SetWriteServiceFileFunc(func(filename, contents string) error {
 			return nil
@@ -372,15 +372,15 @@ func TestCreateAndInstallAgentServiceFile(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	t.Run("CreateAndInstallAgentServiceFile runs successfully", func(t *testing.T) {
-		platform := utils.NewPlatform("linux")
+		platform := GetPlatform("linux", t)
 
 		utils.SetWriteServiceFileFunc(func(filename, contents string) error {
 			return nil
 		})
 		defer utils.ResetWriteServiceFileFunc()
 
-		setup(t)
-		defer teardown(t)
+		setMocks(t)
+		defer resetMocks(t)
 		utils.GpsyncCommand = exectest.NewCommandWithVerifier(exectest.Success, func(utility string, args ...string) {
 			if !strings.HasSuffix(utility, "gpsync") {
 				t.Fatalf("got %q, want gpsync", utility)
@@ -402,15 +402,15 @@ func TestCreateAndInstallAgentServiceFile(t *testing.T) {
 	})
 
 	t.Run("CreateAndInstallAgentServiceFile errors when gpsync fails", func(t *testing.T) {
-		platform := utils.NewPlatform("linux")
+		platform := GetPlatform("linux", t)
 
 		utils.SetWriteServiceFileFunc(func(filename, contents string) error {
 			return nil
 		})
 		defer utils.ResetWriteServiceFileFunc()
 
-		setup(t)
-		defer teardown(t)
+		setMocks(t)
+		defer resetMocks(t)
 		utils.GpsyncCommand = exectest.NewCommandWithVerifier(exectest.Failure, func(utility string, args ...string) {
 			if !strings.HasSuffix(utility, "gpsync") {
 				t.Fatalf("got %q, want gpsync", utility)
@@ -433,15 +433,15 @@ func TestCreateAndInstallAgentServiceFile(t *testing.T) {
 	})
 
 	t.Run("CreateAndInstallAgentServiceFile errors when not able to write to a file", func(t *testing.T) {
-		platform := utils.NewPlatform("linux")
+		platform := GetPlatform("linux", t)
 
 		utils.SetWriteServiceFileFunc(func(filename, contents string) error {
 			return os.ErrPermission
 		})
 		defer utils.ResetWriteServiceFileFunc()
 
-		setup(t)
-		defer teardown(t)
+		setMocks(t)
+		defer resetMocks(t)
 		utils.GpsyncCommand = exectest.NewCommand(exectest.Success)
 
 		utils.SetExecCommand(exectest.NewCommand(exectest.Success))
@@ -455,15 +455,15 @@ func TestCreateAndInstallAgentServiceFile(t *testing.T) {
 	})
 
 	t.Run("CreateAndInstallAgentServiceFile errors when not able to reload the service", func(t *testing.T) {
-		platform := utils.NewPlatform("linux")
+		platform := GetPlatform("linux", t)
 
 		utils.SetWriteServiceFileFunc(func(filename, contents string) error {
 			return nil
 		})
 		defer utils.ResetWriteServiceFileFunc()
 
-		setup(t)
-		defer teardown(t)
+		setMocks(t)
+		defer resetMocks(t)
 		utils.GpsyncCommand = exectest.NewCommand(exectest.Success)
 
 		utils.SetExecCommand(exectest.NewCommand(exectest.Failure))
@@ -481,7 +481,7 @@ func TestGetStartHubCommand(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	t.Run("GetStartHubCommand returns the correct command for linux", func(t *testing.T) {
-		platform := utils.NewPlatform("linux")
+		platform := GetPlatform("linux", t)
 
 		result := platform.GetStartHubCommand("gptest").Args
 		expected := []string{"systemctl", "--user", "start", "gptest_hub"}
@@ -491,7 +491,7 @@ func TestGetStartHubCommand(t *testing.T) {
 	})
 
 	t.Run("GetStartHubCommand returns the correct command for darwin", func(t *testing.T) {
-		platform := utils.NewPlatform("darwin")
+		platform := GetPlatform("darwin", t)
 
 		result := platform.GetStartHubCommand("gptest").Args
 		expected := []string{"launchctl", "start", "gptest_hub"}
@@ -505,7 +505,7 @@ func TestGetStartAgentCommandString(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	t.Run("GetStartAgentCommandString returns the correct string for linux", func(t *testing.T) {
-		platform := utils.NewPlatform("linux")
+		platform := GetPlatform("linux", t)
 
 		result := platform.GetStartAgentCommandString("gptest")
 		expected := []string{"systemctl", "--user", "start", "gptest_agent"}
@@ -515,7 +515,7 @@ func TestGetStartAgentCommandString(t *testing.T) {
 	})
 
 	t.Run("GetStartAgentCommandString returns the correct string for darwin", func(t *testing.T) {
-		platform := utils.NewPlatform("darwin")
+		platform := GetPlatform("darwin", t)
 
 		result := platform.GetStartAgentCommandString("gptest")
 		expected := []string{"launchctl", "", "start", "gptest_agent"}
@@ -529,7 +529,7 @@ func TestGetServiceStatusMessage(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	t.Run("GetServiceStatusMessage successfully gets the service status for linux", func(t *testing.T) {
-		platform := utils.NewPlatform("linux")
+		platform := GetPlatform("linux", t)
 
 		utils.SetExecCommand(exectest.NewCommandWithVerifier(ServiceStatusOutput, func(utility string, args ...string) {
 			if utility != "systemctl" {
@@ -551,7 +551,7 @@ func TestGetServiceStatusMessage(t *testing.T) {
 	})
 
 	t.Run("GetServiceStatusMessage successfully gets the service status for darwin", func(t *testing.T) {
-		platform := utils.NewPlatform("darwin")
+		platform := GetPlatform("darwin", t)
 
 		utils.SetExecCommand(exectest.NewCommandWithVerifier(ServiceStatusOutput, func(utility string, args ...string) {
 			if utility != "launchctl" {
@@ -573,7 +573,7 @@ func TestGetServiceStatusMessage(t *testing.T) {
 	})
 
 	t.Run("GetServiceStatusMessage does not throw error when service is stopped", func(t *testing.T) {
-		platform := utils.NewPlatform("linux")
+		platform := GetPlatform("linux", t)
 
 		utils.SetExecCommand(exectest.NewCommand(ServiceStopped))
 		defer utils.ResetExecCommand()
@@ -585,7 +585,7 @@ func TestGetServiceStatusMessage(t *testing.T) {
 	})
 
 	t.Run("GetServiceStatusMessage errors when not able to get the service status", func(t *testing.T) {
-		platform := utils.NewPlatform("linux")
+		platform := GetPlatform("linux", t)
 
 		utils.SetExecCommand(exectest.NewCommand(exectest.Failure))
 		defer utils.ResetExecCommand()
@@ -681,7 +681,7 @@ func TestParseServiceStatusMessage(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			platform := utils.NewPlatform("darwin")
+			platform := GetPlatform("darwin", t)
 
 			result := platform.ParseServiceStatusMessage(tc.message)
 			if !reflect.DeepEqual(&result, tc.expected) {
@@ -696,7 +696,7 @@ func TestDisplayServiceStatus(t *testing.T) {
 
 	t.Run("DisplayServiceStatus displays the service message", func(t *testing.T) {
 		var output bytes.Buffer
-		platform := utils.NewPlatform("linux")
+		platform := GetPlatform("linux", t)
 		statuses := []*idl.ServiceStatus{
 			{
 				Host:   "sdw1",
@@ -716,7 +716,7 @@ func TestDisplayServiceStatus(t *testing.T) {
 
 	t.Run("DisplayServiceStatus displays the service message with header", func(t *testing.T) {
 		var output bytes.Buffer
-		platform := utils.NewPlatform("linux")
+		platform := GetPlatform("linux", t)
 		statuses := []*idl.ServiceStatus{
 			{
 				Host:   "sdw1",
@@ -739,7 +739,7 @@ func TestEnableUserLingering(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	t.Run("EnableUserLingering run successfully for linux", func(t *testing.T) {
-		platform := utils.NewPlatform("linux")
+		platform := GetPlatform("linux", t)
 
 		utils.SetExecCommand(exectest.NewCommand(exectest.Success))
 		defer utils.ResetExecCommand()
@@ -751,7 +751,7 @@ func TestEnableUserLingering(t *testing.T) {
 	})
 
 	t.Run("EnableUserLingering runs successfully for other platforms", func(t *testing.T) {
-		platform := utils.NewPlatform("darwin")
+		platform := GetPlatform("darwin", t)
 
 		err := platform.EnableUserLingering([]string{"host1", "host2"}, "path/to/gphome", "serviceUser")
 		if err != nil {
@@ -760,7 +760,7 @@ func TestEnableUserLingering(t *testing.T) {
 	})
 
 	t.Run("EnableUserLingering returns error on failure", func(t *testing.T) {
-		platform := utils.NewPlatform("linux")
+		platform := GetPlatform("linux", t)
 
 		utils.SetExecCommand(exectest.NewCommand(exectest.Failure))
 		defer utils.ResetExecCommand()
@@ -780,4 +780,15 @@ func ServiceStatusOutput() {
 
 func ServiceStopped() {
 	os.Exit(3)
+}
+
+func GetPlatform(os string, t *testing.T) utils.Platform {
+	t.Helper()
+
+	platform, err := utils.NewPlatform(os)
+	if err != nil {
+		t.Fatalf("unexpected error: %#v", err)
+	}
+
+	return platform
 }

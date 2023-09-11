@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -35,7 +36,7 @@ type GpPlatform struct {
 	StatusArg  string // Argument passed to ServiceCmd to get status of a service
 }
 
-func NewPlatform(os string) Platform {
+func NewPlatform(os string) (Platform, error) {
 	switch os {
 	case "darwin":
 		return GpPlatform{
@@ -44,7 +45,8 @@ func NewPlatform(os string) Platform {
 			UserArg:    "",
 			ServiceExt: "plist",
 			StatusArg:  "list",
-		}
+		}, nil
+
 	case "linux":
 		return GpPlatform{
 			OS:         "linux",
@@ -52,9 +54,10 @@ func NewPlatform(os string) Platform {
 			UserArg:    "--user",
 			ServiceExt: "service",
 			StatusArg:  "show",
-		}
+		}, nil
+
 	default:
-		panic("Unsupported OS")
+		return nil, errors.New("unsupported OS")
 	}
 }
 
@@ -75,8 +78,14 @@ type Platform interface {
 }
 
 func GetPlatform() Platform {
+	var err error
+
 	if platform == nil {
-		platform = NewPlatform(runtime.GOOS)
+		platform, err = NewPlatform(runtime.GOOS)
+		if err != nil {
+			fmt.Printf("error: %s\n", err)
+			os.Exit(1)
+		}
 	}
 
 	return platform
