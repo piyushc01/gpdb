@@ -144,7 +144,7 @@ func TestGetStatus(t *testing.T) {
 		}
 		platform := &testutils.MockPlatform{
 			RetStatus: expected,
-			Err: nil,
+			Err:       nil,
 		}
 		agent.SetPlatform(platform)
 		defer agent.ResetPlatform()

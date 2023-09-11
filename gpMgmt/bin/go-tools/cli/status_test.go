@@ -2,12 +2,12 @@ package cli_test
 
 import (
 	"errors"
-	"github.com/greenplum-db/gpdb/gp/cli"
 	"strings"
 	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
+	"github.com/greenplum-db/gpdb/gp/cli"
 	"github.com/greenplum-db/gpdb/gp/hub"
 	"github.com/greenplum-db/gpdb/gp/idl"
 	"github.com/greenplum-db/gpdb/gp/idl/mock_idl"

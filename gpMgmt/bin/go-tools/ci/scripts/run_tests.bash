@@ -27,7 +27,7 @@ ssh -n cdw "
     ./ci/scripts/generate_ssl_cert_multi_host.bash
 
     # Until we decide on a framework for integration tests, keep it here just to make sure everything is working.
-    gp install --hostfile /tmp/hostfile_all --server-certificate /tmp/certificates/server-cert.pem --server-key /tmp/certificates/server-key.pem --ca-certificate /tmp/certificates/ca-cert.pem --ca-key /tmp/certificates/ca-key.pem
+    gp configure --hostfile /tmp/hostfile_all --server-certificate /tmp/certificates/server-cert.pem --server-key /tmp/certificates/server-key.pem --ca-certificate /tmp/certificates/ca-cert.pem --ca-key /tmp/certificates/ca-key.pem
     gp start hub
     gp status hub
     gp start agents

@@ -2,9 +2,10 @@ package cli_test
 
 import (
 	"errors"
-	"github.com/greenplum-db/gpdb/gp/cli"
 	"strings"
 	"testing"
+
+	"github.com/greenplum-db/gpdb/gp/cli"
 
 	"github.com/golang/mock/gomock"
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
@@ -174,7 +175,7 @@ func TestRunStopServices(t *testing.T) {
 
 func TestRunStopAgents(t *testing.T) {
 	testhelper.SetupTestLogger()
-	t.Run("returns no error where there none no Verbose", func(t *testing.T) {
+	t.Run("returns no error where there none no verbose", func(t *testing.T) {
 
 		defer resetStopAgentService()
 		mockStopAgentService := func() error {
@@ -189,7 +190,7 @@ func TestRunStopAgents(t *testing.T) {
 		}
 
 	})
-	t.Run("returns no error where there none in Verbose", func(t *testing.T) {
+	t.Run("returns no error where there none in verbose", func(t *testing.T) {
 		defer resetStopAgentService()
 		mockStopAgentService := func() error {
 			return nil
@@ -225,7 +226,7 @@ func TestRunStopAgents(t *testing.T) {
 
 func TestRunStopHub(t *testing.T) {
 	testhelper.SetupTestLogger()
-	t.Run("return no error when there is none non Verbose mode", func(t *testing.T) {
+	t.Run("return no error when there is none non verbose mode", func(t *testing.T) {
 		defer resetStopHubService()
 		mockStopHubService := func() error {
 			return nil
@@ -238,7 +239,7 @@ func TestRunStopHub(t *testing.T) {
 			t.Fatalf("Expected no error. Got an error: %s", err.Error())
 		}
 	})
-	t.Run("return no error when there is none Verbose mode", func(t *testing.T) {
+	t.Run("return no error when there is none verbose mode", func(t *testing.T) {
 
 		defer resetStopHubService()
 		mockStopHubService := func() error {

@@ -55,33 +55,33 @@ func RunHub(cmd *cobra.Command, args []string) (err error) {
 	return nil
 }
 
-func installCmd() *cobra.Command {
-	installCmd := &cobra.Command{
-		Use:    "install",
-		Short:  "Install gp as a systemd daemon",
+func configureCmd() *cobra.Command {
+	configureCmd := &cobra.Command{
+		Use:    "configure",
+		Short:  "Configure gp as a systemd daemon",
 		PreRun: InitializeGplog,
-		RunE:   RunInstall,
+		RunE:   RunConfigure,
 	}
 	// TODO: Adding input validation
-	installCmd.Flags().IntVar(&agentPort, "agent-port", constants.DefaultAgentPort, `Port on which the agents should listen`)
-	installCmd.Flags().StringVar(&gphome, "gphome", os.Getenv("GPHOME"), `Path to GPDB installation`)
-	installCmd.Flags().IntVar(&hubPort, "hub-port", constants.DefaultHubPort, `Port on which the hub should listen`)
-	installCmd.Flags().StringVar(&hubLogDir, "log-dir", constants.DefaultHubLogDir, `Path to gp hub log directory`)
-	installCmd.Flags().StringVar(&serviceName, "service-name", constants.DefaultServiceName, `Name for the generated systemd service file`)
-	installCmd.Flags().StringVar(&serviceDir, "service-dir", fmt.Sprintf(DefaultServiceDir, os.Getenv("USER")), `Path to service file directory`)
-	installCmd.Flags().StringVar(&serviceUser, "service-user", os.Getenv("USER"), `User for whom to install the service`)
+	configureCmd.Flags().IntVar(&agentPort, "agent-port", constants.DefaultAgentPort, `Port on which the agents should listen`)
+	configureCmd.Flags().StringVar(&gphome, "gphome", os.Getenv("GPHOME"), `Path to GPDB installation`)
+	configureCmd.Flags().IntVar(&hubPort, "hub-port", constants.DefaultHubPort, `Port on which the hub should listen`)
+	configureCmd.Flags().StringVar(&hubLogDir, "log-dir", constants.DefaultHubLogDir, `Path to gp hub log directory`)
+	configureCmd.Flags().StringVar(&serviceName, "service-name", constants.DefaultServiceName, `Name for the generated systemd service file`)
+	configureCmd.Flags().StringVar(&serviceDir, "service-dir", fmt.Sprintf(DefaultServiceDir, os.Getenv("USER")), `Path to service file directory`)
+	configureCmd.Flags().StringVar(&serviceUser, "service-user", os.Getenv("USER"), `User for whom to configure the service`)
 	// TLS credentials are deliberately left blank if not provided, and need to be filled in by the user
-	installCmd.Flags().StringVar(&caCertPath, "ca-certificate", "", `Path to SSL/TLS CA certificate`)
-	installCmd.Flags().StringVar(&caKeyPath, "ca-key", "", `Path to SSL/TLS CA private key`)
-	installCmd.Flags().StringVar(&serverCertPath, "server-certificate", "", `Path to hub SSL/TLS server certificate`)
-	installCmd.Flags().StringVar(&serverKeyPath, "server-key", "", `Path to hub SSL/TLS server private key`)
+	configureCmd.Flags().StringVar(&caCertPath, "ca-certificate", "", `Path to SSL/TLS CA certificate`)
+	configureCmd.Flags().StringVar(&caKeyPath, "ca-key", "", `Path to SSL/TLS CA private key`)
+	configureCmd.Flags().StringVar(&serverCertPath, "server-certificate", "", `Path to hub SSL/TLS server certificate`)
+	configureCmd.Flags().StringVar(&serverKeyPath, "server-key", "", `Path to hub SSL/TLS server private key`)
 	// Allow passing a hostfile for "real" use cases or a few host names for tests, but not both
-	installCmd.Flags().StringArrayVar(&hostnames, "host", []string{}, `Segment hostname`)
-	installCmd.Flags().StringVar(&hostfilePath, "hostfile", "", `Path to file containing a list of segment hostnames`)
-	installCmd.MarkFlagsMutuallyExclusive("host", "hostfile")
-	return installCmd
+	configureCmd.Flags().StringArrayVar(&hostnames, "host", []string{}, `Segment hostname`)
+	configureCmd.Flags().StringVar(&hostfilePath, "hostfile", "", `Path to file containing a list of segment hostnames`)
+	configureCmd.MarkFlagsMutuallyExclusive("host", "hostfile")
+	return configureCmd
 }
-func RunInstall(cmd *cobra.Command, args []string) (err error) {
+func RunConfigure(cmd *cobra.Command, args []string) (err error) {
 	if gphome == "" {
 		return fmt.Errorf("GPHOME environment variable not set and --gphome flag not provided\n")
 	}

@@ -88,11 +88,11 @@ for the hub and agents. Also, this command copies generated config file to all
 the hosts using gpsync followed by service registration.
 
 ```
-gp install       # to generate config file with given conf setting
-gp install --help  # to view the config options
+gp configure       # to generate config file with given conf setting
+gp configure --help  # to view the config options
 
 example:
-gp install --host <host> --server-certificate <path/to/server-cert.pem> --server-key < path/to/server-key.pem> --ca-certificate <path/to/ca-cert.pem> --ca-key <path/to/ca-key.pem>
+gp configure --host <host> --server-certificate <path/to/server-cert.pem> --server-key < path/to/server-key.pem> --ca-certificate <path/to/ca-cert.pem> --ca-key <path/to/ca-key.pem>
 ```
 
 #### Control and monitoring services:
