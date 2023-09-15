@@ -42,12 +42,12 @@ func (c GpCredentials) LoadClientCredentials() (credentials.TransportCredentials
 	}
 	certPool := x509.NewCertPool()
 	if !certPool.AppendCertsFromPEM(caCert) {
-		return nil, fmt.Errorf("Failed to add server CA's certificate")
+		return nil, fmt.Errorf("failed to add server CA's certificate")
 	}
 
 	clientCert, err := tls.LoadX509KeyPair(c.ServerCertPath, c.ServerKeyPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error while loading server certificate:%v", err)
 	}
 
 	config := &tls.Config{

@@ -54,7 +54,7 @@ func InitializeCommand(cmd *cobra.Command, args []string) error {
 	Conf = &hub.Config{}
 	err := Conf.Load(ConfigFilePath)
 	if err != nil {
-		return fmt.Errorf("Error parsing config file: %s\n", err.Error())
+		return err
 	}
 	hubLogDir = Conf.LogDir
 	InitializeGplog(cmd, args)
@@ -90,7 +90,7 @@ func ConnectToHubFn(conf *hub.Config) (idl.HubClient, error) {
 
 	credentials, err := conf.Credentials.LoadClientCredentials()
 	if err != nil {
-		return nil, fmt.Errorf("Could not load hub credentials: %w", err)
+		return nil, err
 	}
 
 	address := fmt.Sprintf("localhost:%d", conf.Port)
@@ -101,7 +101,7 @@ func ConnectToHubFn(conf *hub.Config) (idl.HubClient, error) {
 		grpc.WithReturnConnectionError(),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("Could not connect to hub on port %d: %w", conf.Port, err)
+		return nil, fmt.Errorf("could not connect to hub on port %d: %w", conf.Port, err)
 	}
 
 	return idl.NewHubClient(conn), nil

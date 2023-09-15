@@ -1,8 +1,6 @@
 package cli
 
 import (
-	"fmt"
-
 	"github.com/greenplum-db/gpdb/gp/agent"
 	"github.com/spf13/cobra"
 )
@@ -25,7 +23,7 @@ func RunAgent(cmd *cobra.Command, args []string) (err error) {
 	a := agent.New(agentConf)
 	err = a.Start()
 	if err != nil {
-		return fmt.Errorf("Could not start agent: %w", err)
+		return err
 	}
 	return nil
 }

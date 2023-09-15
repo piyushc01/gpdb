@@ -83,7 +83,7 @@ func TestLoadClientCredentials(t *testing.T) {
 		if err == nil {
 			t.Fatalf("expected TLS error, did not receive one")
 		}
-		if err.Error() != "Failed to add server CA's certificate" {
+		if err.Error() != "failed to add server CA's certificate" {
 			t.Errorf("expected TLS error, got %v", err)
 		}
 	})

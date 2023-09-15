@@ -141,11 +141,12 @@ func (s *Server) StartAgents(ctx context.Context, in *idl.StartAgentsRequest) (*
 	if err != nil {
 		return &idl.StartAgentsReply{}, fmt.Errorf("Could not start agents: %w", err)
 	}
+
+	// Make sure service has started :
 	err = s.DialAllAgents()
 	if err != nil {
 		return &idl.StartAgentsReply{}, fmt.Errorf("Could not dial agents: %w", err)
 	}
-
 	return &idl.StartAgentsReply{}, nil
 }
 
@@ -332,11 +333,12 @@ func (conf *Config) Load(ConfigFilePath string) error {
 	conf.Credentials = &utils.GpCredentials{}
 	contents, err := os.ReadFile(ConfigFilePath)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error opening config file: %w", err)
 	}
+
 	err = json.Unmarshal(contents, &conf)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error parsing config file: %w", err)
 	}
 
 	return nil

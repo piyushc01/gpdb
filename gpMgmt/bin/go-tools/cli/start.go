@@ -47,7 +47,7 @@ func startHubCmd() *cobra.Command {
 func StartHubServiceFn(serviceName string) error {
 	err := Platform.GetStartHubCommand(serviceName).Run()
 	if err != nil {
-		return fmt.Errorf("Failed to start hub service: %s Error: %w", serviceName, err)
+		return fmt.Errorf("failed to start hub service: %s Error: %w", serviceName, err)
 	}
 
 	return nil
@@ -55,13 +55,13 @@ func StartHubServiceFn(serviceName string) error {
 func RunStartHubFn(cmd *cobra.Command, args []string) error {
 	err := StartHubService(Conf.ServiceName)
 	if err != nil {
-		return fmt.Errorf("hub service %s. Error: %w", Conf.ServiceName, err)
+		return err
 	}
 	gplog.Info("Hub %s started successfully", Conf.ServiceName)
 	if Verbose {
 		_, err = ShowHubStatus(Conf, true)
 		if err != nil {
-			return fmt.Errorf("Could not retrieve hub status: %w", err)
+			return fmt.Errorf("could not retrieve hub status: %w", err)
 		}
 	}
 
@@ -99,7 +99,7 @@ func RunStartAgentFn(cmd *cobra.Command, args []string) error {
 	if Verbose {
 		err = ShowAgentsStatus(Conf, true)
 		if err != nil {
-			return fmt.Errorf("Could not retrieve agent status: %w", err)
+			return fmt.Errorf("could not retrieve agent status: %w", err)
 		}
 	}
 
@@ -114,7 +114,7 @@ func StartAgentsAllFn(hubConfig *hub.Config) (idl.HubClient, error) {
 
 	_, err = client.StartAgents(context.Background(), &idl.StartAgentsRequest{})
 	if err != nil {
-		return client, fmt.Errorf("Could not start agents: %w", err)
+		return client, fmt.Errorf("could not start agents: %w", err)
 	}
 
 	return client, nil
@@ -128,14 +128,14 @@ func RunStartServiceFn(cmd *cobra.Command, args []string) error {
 	}
 	err = WaitAndRetryHubConnect()
 	if err != nil {
-		return fmt.Errorf("Error while connecting hb service:%w", err)
+		return fmt.Errorf("error while connecting hub service:%w", err)
 	}
 	gplog.Info("Hub %s started successfully", Conf.ServiceName)
 
 	// Start agents service
 	_, err = StartAgentsAll(Conf)
 	if err != nil {
-		return fmt.Errorf("Failed to start agents. Error: %w", err)
+		return fmt.Errorf("failed to start agents. Error: %w", err)
 	}
 	gplog.Info("Agents %s started successfully", Conf.ServiceName)
 	if Verbose {
@@ -163,7 +163,7 @@ func WaitAndRetryHubConnectFn() error {
 		count--
 	}
 	if !success {
-		return fmt.Errorf("Hub service started but failed to connect. Bailing out. Error:%w", err)
+		return fmt.Errorf("failed connecting Hub service. Bailing out. Error:%w", err)
 	}
 
 	return nil

@@ -43,7 +43,7 @@ func statusHubCmd() *cobra.Command {
 func RunStatusHub(cmd *cobra.Command, args []string) error {
 	_, err := ShowHubStatus(Conf, false)
 	if err != nil {
-		return fmt.Errorf("Could not retrieve hub status: %w", err)
+		return err
 	}
 
 	return nil
@@ -74,7 +74,7 @@ func statusServicesCmd() *cobra.Command {
 func RunStatusAgent(cmd *cobra.Command, args []string) error {
 	err := ShowAgentsStatus(Conf, false)
 	if err != nil {
-		return fmt.Errorf("Could not retrieve agents status: %w", err)
+		return err
 	}
 
 	return nil
@@ -98,7 +98,7 @@ func ShowHubStatusFn(conf *hub.Config, skipHeader bool) (bool, error) {
 func ShowAgentsStatusFn(conf *hub.Config, skipHeader bool) error {
 	client, err := ConnectToHub(conf)
 	if err != nil {
-		return fmt.Errorf("Could not connect to hub; is the hub running? Error:%w", err)
+		return err
 	}
 
 	reply, err := client.StatusAgents(context.Background(), &idl.StatusAgentsRequest{})
@@ -113,7 +113,7 @@ func ShowAgentsStatusFn(conf *hub.Config, skipHeader bool) error {
 func RunServiceStatus(cmd *cobra.Command, args []string) error {
 	err := PrintServicesStatus()
 	if err != nil {
-		return fmt.Errorf("Error while getting the services status:%w", err)
+		return err
 	}
 
 	return nil
@@ -123,7 +123,7 @@ func PrintServicesStatusFn() error {
 	// TODO: Check if Hub is down, do not check for Agents
 	hubRunning, err := ShowHubStatus(Conf, false)
 	if err != nil {
-		return fmt.Errorf("Error while showing the Hub status:%w", err)
+		return err
 	}
 	if !hubRunning {
 		fmt.Println("Hub service not running, not able to fetch agent status.")
@@ -131,7 +131,7 @@ func PrintServicesStatusFn() error {
 	}
 	err = ShowAgentsStatus(Conf, true)
 	if err != nil {
-		return fmt.Errorf("Error while showing the Agent status:%w", err)
+		return err
 	}
 
 	return nil

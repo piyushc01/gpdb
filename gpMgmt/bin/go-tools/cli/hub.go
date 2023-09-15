@@ -49,7 +49,7 @@ func RunHub(cmd *cobra.Command, args []string) (err error) {
 	h := hub.New(Conf, nil)
 	err = h.Start()
 	if err != nil {
-		return fmt.Errorf("Could not start hub: %w", err)
+		return err
 	}
 
 	return nil
@@ -83,7 +83,7 @@ func configureCmd() *cobra.Command {
 }
 func RunConfigure(cmd *cobra.Command, args []string) (err error) {
 	if gphome == "" {
-		return fmt.Errorf("GPHOME environment variable not set and --gphome flag not provided\n")
+		return fmt.Errorf("not a valid gphome found\n")
 	}
 
 	// Regenerate default flag values if a custom GPHOME or username is passed
@@ -96,7 +96,7 @@ func RunConfigure(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	if !cmd.Flags().Lookup("host").Changed && !cmd.Flags().Lookup("hostfile").Changed {
-		return errors.New("At least one hostname must be provided using either --host or --hostfile")
+		return errors.New("at least one hostname must be provided using either --host or --hostfile")
 	}
 
 	// Convert file/directory paths to absolute path before writing to gp.Conf file
@@ -108,15 +108,15 @@ func RunConfigure(cmd *cobra.Command, args []string) (err error) {
 	if cmd.Flags().Lookup("hostfile").Changed {
 		hostnames, err = GetHostnames(hostfilePath)
 		if err != nil {
-			return fmt.Errorf("Could not get hostname from %s: %w", hostfilePath, err)
+			return err
 		}
 	}
 	if len(hostnames) < 1 {
-		return fmt.Errorf("Expected at least one host or hostlist specified")
+		return fmt.Errorf("expected at least one host or hostlist specified")
 	}
 	for _, host := range hostnames {
 		if len(host) < 1 {
-			return fmt.Errorf("Got and empty host in the input. Porvide valid input host name")
+			return fmt.Errorf("got and empty host in the input. Porvide valid input host name")
 		}
 	}
 	Conf = &hub.Config{
@@ -135,7 +135,7 @@ func RunConfigure(cmd *cobra.Command, args []string) (err error) {
 	}
 	err = Conf.Write(ConfigFilePath)
 	if err != nil {
-		return fmt.Errorf("Could not create config file %s: %w", ConfigFilePath, err)
+		return err
 	}
 
 	err = Platform.CreateServiceDir(hostnames, serviceDir, gphome)
@@ -145,17 +145,17 @@ func RunConfigure(cmd *cobra.Command, args []string) (err error) {
 
 	err = Platform.CreateAndInstallHubServiceFile(gphome, serviceDir, serviceName)
 	if err != nil {
-		return fmt.Errorf("Could not install hub service file: %w", err)
+		return err
 	}
 
 	err = Platform.CreateAndInstallAgentServiceFile(hostnames, gphome, serviceDir, serviceName)
 	if err != nil {
-		return fmt.Errorf("Could not install agent service file: %w", err)
+		return err
 	}
 
 	err = Platform.EnableUserLingering(hostnames, gphome, serviceUser)
 	if err != nil {
-		return fmt.Errorf("Could not enable user lingering: %w", err)
+		return err
 	}
 
 	return nil
@@ -166,7 +166,7 @@ func resolveAbsolutePaths(cmd *cobra.Command) error {
 	for _, path := range paths {
 		p, err := filepath.Abs(*path)
 		if err != nil {
-			return fmt.Errorf("Error resolving absolute path for %s: %w", *path, err)
+			return fmt.Errorf("error resolving absolute path for %s: %w", *path, err)
 		}
 		*path = p
 	}
@@ -177,7 +177,7 @@ func resolveAbsolutePaths(cmd *cobra.Command) error {
 func GetHostnames(hostFilePath string) ([]string, error) {
 	contents, err := ReadFile(hostFilePath)
 	if err != nil {
-		return []string{}, fmt.Errorf("Could not read hostfile: %w", err)
+		return []string{}, fmt.Errorf("could not read hostfile: %w", err)
 	}
 
 	return strings.Fields(string(contents)), nil

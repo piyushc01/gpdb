@@ -8,4 +8,5 @@ const (
 	ConfigFileName     = "gp.conf"
 	ShellPath          = "/bin/bash"
 	GpSSH              = "gpssh"
+	MaxRetries         = 10
 )
