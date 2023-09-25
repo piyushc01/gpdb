@@ -24,7 +24,7 @@ type GpCredentials struct {
 func (c GpCredentials) LoadServerCredentials() (credentials.TransportCredentials, error) {
 	serverCert, err := tls.LoadX509KeyPair(c.ServerCertPath, c.ServerKeyPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not load server credentials: %w", err)
 	}
 
 	config := &tls.Config{
@@ -47,7 +47,7 @@ func (c GpCredentials) LoadClientCredentials() (credentials.TransportCredentials
 
 	clientCert, err := tls.LoadX509KeyPair(c.ServerCertPath, c.ServerKeyPath)
 	if err != nil {
-		return nil, fmt.Errorf("error while loading server certificate:%v", err)
+		return nil, fmt.Errorf("error while loading server certificate: %v", err)
 	}
 
 	config := &tls.Config{

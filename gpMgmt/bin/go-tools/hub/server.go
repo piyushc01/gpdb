@@ -78,7 +78,7 @@ func (s *Server) Start() error {
 
 	listener, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", s.Port)) // TODO: make this "hostname:port" so it can be started from somewhere other than the coordinator host
 	if err != nil {
-		return fmt.Errorf("Could not listen on port %d: %w", s.Port, err)
+		return fmt.Errorf("could not listen on port %d: %w", s.Port, err)
 	}
 
 	interceptor := func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
@@ -88,7 +88,7 @@ func (s *Server) Start() error {
 
 	credentials, err := s.Credentials.LoadServerCredentials()
 	if err != nil {
-		return fmt.Errorf("Could not load credentials: %w", err)
+		return err
 	}
 	grpcServer := grpc.NewServer(
 		grpc.Creds(credentials),
@@ -116,7 +116,7 @@ func (s *Server) Start() error {
 
 	err = grpcServer.Serve(listener)
 	if err != nil {
-		return fmt.Errorf("Failed to serve: %w", err)
+		return fmt.Errorf("failed to serve: %w", err)
 	}
 	wg.Wait()
 	return nil
@@ -139,13 +139,13 @@ func (s *Server) Shutdown() {
 func (s *Server) StartAgents(ctx context.Context, in *idl.StartAgentsRequest) (*idl.StartAgentsReply, error) {
 	err := s.StartAllAgents()
 	if err != nil {
-		return &idl.StartAgentsReply{}, fmt.Errorf("Could not start agents: %w", err)
+		return &idl.StartAgentsReply{}, err
 	}
 
 	// Make sure service has started :
 	err = s.DialAllAgents()
 	if err != nil {
-		return &idl.StartAgentsReply{}, fmt.Errorf("Could not dial agents: %w", err)
+		return &idl.StartAgentsReply{}, err
 	}
 	return &idl.StartAgentsReply{}, nil
 }
@@ -161,12 +161,12 @@ func (s *Server) StartAllAgents() error {
 	output, err := cmd.CombinedOutput()
 	strOutput := string(output)
 	if err != nil {
-		return fmt.Errorf("ERROR:%w, %s", err, strOutput)
+		return fmt.Errorf("could not start agents: %s", output)
 	}
-	//there are chances in most of the cases the command returns nil err even if there is error in stdout.
-	//to overcome this we have added check to handle both
+	// there are chances in most of the cases the command returns nil err even if there is error in stdout.
+	// to overcome this we have added check to handle both
 	if strings.Contains(strOutput, "ERROR") || strings.Contains(strOutput, "No such file or directory") {
-		return fmt.Errorf("Could not start agent: %s", strOutput)
+		return fmt.Errorf("could not start agents: %s", strOutput)
 	}
 
 	return nil
@@ -179,7 +179,7 @@ func (s *Server) DialAllAgents() error {
 	if s.Conns != nil {
 		err := ensureConnectionsAreReadyFunc(s.Conns)
 		if err != nil {
-			return fmt.Errorf("Could not ensure connections were ready: %w", err)
+			return err
 		}
 
 		return nil
@@ -191,7 +191,7 @@ func (s *Server) DialAllAgents() error {
 		credentials, err := s.Credentials.LoadClientCredentials()
 		if err != nil {
 			cancelFunc()
-			return fmt.Errorf("Could not load credentials: %w", err)
+			return err
 		}
 
 		address := fmt.Sprintf("%s:%d", host, s.AgentPort)
@@ -206,7 +206,7 @@ func (s *Server) DialAllAgents() error {
 		conn, err := grpc.DialContext(ctx, address, opts...)
 		if err != nil {
 			cancelFunc()
-			return fmt.Errorf("Could not connect to agent on host %s: %w", host, err)
+			return fmt.Errorf("could not connect to agent on host %s: %w", host, err)
 		}
 		s.Conns = append(s.Conns, &Connection{
 			Conn:          conn,
@@ -218,7 +218,7 @@ func (s *Server) DialAllAgents() error {
 
 	err := ensureConnectionsAreReadyFunc(s.Conns)
 	if err != nil {
-		return fmt.Errorf("Could not ensure connections were ready: %w", err)
+		return err
 	}
 
 	return nil
@@ -228,12 +228,12 @@ func (s *Server) StopAgents(ctx context.Context, in *idl.StopAgentsRequest) (*id
 	request := func(conn *Connection) error {
 		_, err := conn.AgentClient.Stop(context.Background(), &idl.StopAgentRequest{})
 		if err == nil { // no error -> didn't stop
-			return fmt.Errorf("Failed to stop agent on host %s", conn.Hostname)
+			return fmt.Errorf("failed to stop agent on host %s", conn.Hostname)
 		}
 
 		errStatus := grpcStatus.Convert(err)
 		if errStatus.Code() != codes.Unavailable {
-			return fmt.Errorf("Failed to stop agent on host %s: %w", conn.Hostname, err)
+			return fmt.Errorf("failed to stop agent on host %s: %w", conn.Hostname, err)
 		}
 
 		return nil
@@ -256,7 +256,7 @@ func (s *Server) StatusAgents(ctx context.Context, in *idl.StatusAgentsRequest) 
 	request := func(conn *Connection) error {
 		status, err := conn.AgentClient.Status(context.Background(), &idl.StatusAgentRequest{})
 		if err != nil {
-			return fmt.Errorf("Failed to get agent status on host %s", conn.Hostname)
+			return fmt.Errorf("failed to get agent status on host %s", conn.Hostname)
 		}
 		s := idl.ServiceStatus{
 			Host:   conn.Hostname,
@@ -296,7 +296,7 @@ func ensureConnectionsAreReady(conns []*Connection) error {
 	}
 
 	if len(hostnames) > 0 {
-		return fmt.Errorf("unready hosts: %s", strings.Join(hostnames, ","))
+		return fmt.Errorf("could not ensure connections were ready: unready hosts: %s", strings.Join(hostnames, ","))
 	}
 
 	return nil
@@ -333,12 +333,12 @@ func (conf *Config) Load(ConfigFilePath string) error {
 	conf.Credentials = &utils.GpCredentials{}
 	contents, err := os.ReadFile(ConfigFilePath)
 	if err != nil {
-		return fmt.Errorf("Error opening config file: %w", err)
+		return fmt.Errorf("could not open config file: %w", err)
 	}
 
 	err = json.Unmarshal(contents, &conf)
 	if err != nil {
-		return fmt.Errorf("Error parsing config file: %w", err)
+		return fmt.Errorf("could not parse config file: %w", err)
 	}
 
 	return nil
@@ -348,23 +348,23 @@ func (conf *Config) Write(ConfigFilePath string) error {
 	// Updates config to the conf file
 	configHandle, err := os.OpenFile(ConfigFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
-		return fmt.Errorf("Could not create configuration file %s: %w\n", ConfigFilePath, err)
+		return fmt.Errorf("could not create configuration file %s: %w\n", ConfigFilePath, err)
 	}
 	defer configHandle.Close()
 	configContents, err := json.MarshalIndent(conf, "", "\t")
 	if err != nil {
-		return fmt.Errorf("Could not parse configuration file %s: %w\n", ConfigFilePath, err)
+		return fmt.Errorf("could not parse configuration file %s: %w\n", ConfigFilePath, err)
 	}
 
 	_, err = configHandle.Write(configContents)
 	if err != nil {
-		return fmt.Errorf("Could not write to configuration file %s: %w\n", ConfigFilePath, err)
+		return fmt.Errorf("could not write to configuration file %s: %w\n", ConfigFilePath, err)
 	}
 	gplog.Debug("Wrote configuration file to %s", ConfigFilePath)
 
 	err = copyConfigFileToAgents(conf, ConfigFilePath)
 	if err != nil {
-		return fmt.Errorf("Could not copy config file to hosts:%w", err)
+		return err
 	}
 
 	return err
@@ -378,14 +378,14 @@ func copyConfigFileToAgents(conf *Config, ConfigFilePath string) error {
 	}
 	greenplumPathSh := filepath.Join(conf.GpHome, "greenplum_path.sh")
 	if len(hostList) < 1 {
-		return fmt.Errorf("Hostlist should not be empty. No hosts to copy files.")
+		return fmt.Errorf("hostlist should not be empty. No hosts to copy files.")
 	}
 
 	remoteCmd := append(hostList, ConfigFilePath, fmt.Sprintf("=:%s", ConfigFilePath))
 	cmd := execCommand(constants.ShellPath, "-c", fmt.Sprintf("source %s && gpsync %s", greenplumPathSh, strings.Join(remoteCmd, " ")))
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("Could not copy gp.conf file to segment hosts: %w, Command Output:%s", err, string(output))
+		return fmt.Errorf("could not copy gp.conf file to segment hosts: %w, Command Output: %s", err, string(output))
 	}
 
 	return nil

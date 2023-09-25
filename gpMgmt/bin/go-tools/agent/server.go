@@ -45,7 +45,7 @@ func (s *Server) Stop(ctx context.Context, in *idl.StopAgentRequest) (*idl.StopA
 func (s *Server) Start() error {
 	listener, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", s.Port))
 	if err != nil {
-		return fmt.Errorf("Could not listen on port %d: %w", s.Port, err)
+		return fmt.Errorf("could not listen on port %d: %w", s.Port, err)
 	}
 
 	interceptor := func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
@@ -56,7 +56,7 @@ func (s *Server) Start() error {
 	credentials, err := s.Credentials.LoadServerCredentials()
 	if err != nil {
 		listener.Close()
-		return fmt.Errorf("Could not load credentials: %w", err)
+		return err
 	}
 
 	grpcServer := grpc.NewServer(
@@ -74,7 +74,7 @@ func (s *Server) Start() error {
 
 	err = grpcServer.Serve(listener)
 	if err != nil {
-		return fmt.Errorf("Failed to serve: %w", err)
+		return fmt.Errorf("failed to serve: %w", err)
 	}
 
 	return nil
@@ -92,7 +92,7 @@ func (s *Server) Shutdown() {
 func (s *Server) Status(ctx context.Context, in *idl.StatusAgentRequest) (*idl.StatusAgentReply, error) {
 	status, err := s.GetStatus()
 	if err != nil {
-		return &idl.StatusAgentReply{}, fmt.Errorf("Could not get agent status: %w", err)
+		return &idl.StatusAgentReply{}, fmt.Errorf("could not get agent status: %w", err)
 	}
 
 	return &idl.StatusAgentReply{Status: status.Status, Uptime: status.Uptime, Pid: uint32(status.Pid)}, nil

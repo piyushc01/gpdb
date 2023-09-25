@@ -82,9 +82,9 @@ func TestStartServer(t *testing.T) {
 	})
 
 	t.Run("failed to start if the load credential fail", func(t *testing.T) {
-
+		expected := errors.New("error")
 		credentials := &testutils.MockCredentials{
-			Err: errors.New("error"),
+			Err: expected,
 		}
 
 		hubConfig := &hub.Config{
@@ -106,7 +106,7 @@ func TestStartServer(t *testing.T) {
 
 		select {
 		case err := <-errChan:
-			if !strings.Contains(err.Error(), "Could not load credentials") {
+			if !errors.Is(err, expected) {
 				t.Fatalf("want \"Could not load credentials\" but get: %q", err.Error())
 			}
 		case <-time.After(1 * time.Second):
@@ -222,7 +222,7 @@ func TestDialAllAgents(t *testing.T) {
 		}
 
 		err = hubServer.DialAllAgents()
-		expectedErr := "Could not ensure connections were ready: unready hosts: sdw2"
+		expectedErr := "could not ensure connections were ready: unready hosts: sdw2"
 		if err.Error() != expectedErr {
 			t.Fatalf("got %v, want %v", err.Error(), expectedErr)
 		}
@@ -239,7 +239,7 @@ func TestDialAllAgents(t *testing.T) {
 
 		hubServer := hub.New(hubConfig, dialer)
 		err := hubServer.DialAllAgents()
-		expectedErr := "Could not connect to agent on host sdw2:"
+		expectedErr := "could not connect to agent on host sdw2:"
 		if !strings.HasPrefix(err.Error(), expectedErr) {
 			t.Fatalf("got %s, want %s", err.Error(), expectedErr)
 		}
@@ -347,7 +347,7 @@ func TestStatusAgents(t *testing.T) {
 		hubServer.Conns = agentConns
 
 		_, err := hubServer.StatusAgents(context.Background(), &idl.StatusAgentsRequest{})
-		expectedErr := "Failed to get agent status on host sdw2"
+		expectedErr := "failed to get agent status on host sdw2"
 		if err.Error() != expectedErr {
 			t.Fatalf("got %v, want %v", err, expectedErr)
 		}
@@ -429,7 +429,7 @@ func TestStopAgents(t *testing.T) {
 		hubServer.Conns = agentConns
 
 		_, err := hubServer.StopAgents(context.Background(), &idl.StopAgentsRequest{})
-		expectedErr := "Failed to stop agent on host sdw2: error"
+		expectedErr := "failed to stop agent on host sdw2: error"
 		if err.Error() != expectedErr {
 			t.Fatalf("got %v, want %v", err, expectedErr)
 		}
@@ -489,9 +489,11 @@ func TestConfig(t *testing.T) {
 		hub.SetExecCommand(exectest.NewCommand(exectest.Failure))
 		defer hub.ResetExecCommand()
 
-		config := hub.Config{}
+		config := hub.Config{
+			Hostnames: []string{"sdw1", "sdw2"},
+		}
 		err = config.Write(file.Name())
-		expectedErrPrefix := "Could not copy config file to hosts"
+		expectedErrPrefix := "could not copy gp.conf file to segment hosts: exit status 1"
 		if !strings.HasPrefix(err.Error(), expectedErrPrefix) {
 			t.Fatalf("got %v, want %v", err, expectedErrPrefix)
 		}

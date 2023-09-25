@@ -35,7 +35,7 @@ func TestPrintServicesStatus(t *testing.T) {
 
 		err := cli.PrintServicesStatus()
 		if err != nil {
-			t.Fatalf("Expected no error. Got an error:%s", err.Error())
+			t.Fatalf("unexpected error: %#v", err)
 		}
 	})
 	t.Run("returns an error when error printing Hub status", func(t *testing.T) {
@@ -47,7 +47,7 @@ func TestPrintServicesStatus(t *testing.T) {
 		setShowHubStatus(mockShowHubStatus)
 		err := cli.PrintServicesStatus()
 		if !strings.Contains(err.Error(), expectedStr) {
-			t.Fatalf("got: %q want:\"%s\"", err.Error(), expectedStr)
+			t.Fatalf("got %v, want %v", err, expectedStr)
 		}
 	})
 	t.Run("returns an error when error printing Agent status", func(t *testing.T) {
@@ -66,7 +66,7 @@ func TestPrintServicesStatus(t *testing.T) {
 
 		err := cli.PrintServicesStatus()
 		if !strings.Contains(err.Error(), expectedStr) {
-			t.Fatalf("got: %q want:\"%s\"", err.Error(), expectedStr)
+			t.Fatalf("got %v, want %v", err, expectedStr)
 		}
 	})
 }
@@ -84,7 +84,7 @@ func TestRunServiceStatus(t *testing.T) {
 
 		err := cli.RunServiceStatus(nil, nil)
 		if err != nil {
-			t.Fatalf("Expected no error. Got an error:%s", err.Error())
+			t.Fatalf("unexpected error: %#v", err)
 		}
 	})
 	t.Run("returns error when print service status fails", func(t *testing.T) {
@@ -97,7 +97,7 @@ func TestRunServiceStatus(t *testing.T) {
 
 		err := cli.RunServiceStatus(nil, nil)
 		if !strings.Contains(err.Error(), expectedStr) {
-			t.Fatalf("got: %q want:\"%s\"", err.Error(), expectedStr)
+			t.Fatalf("got %v, want %v", err, expectedStr)
 		}
 	})
 }
@@ -119,7 +119,7 @@ func TestShowAgentStatys(t *testing.T) {
 
 		err := cli.ShowAgentsStatus(cli.Conf, false)
 		if err != nil {
-			t.Fatalf("Expected no error. Got an error:%s", err.Error())
+			t.Fatalf("unexpected error: %#v", err)
 		}
 	})
 	t.Run("returns no error when there's none with no header", func(t *testing.T) {
@@ -133,7 +133,7 @@ func TestShowAgentStatys(t *testing.T) {
 
 		err := cli.ShowAgentsStatus(cli.Conf, true)
 		if err != nil {
-			t.Fatalf("Expected no error. Got an error:%s", err.Error())
+			t.Fatalf("unexpected error: %#v", err)
 		}
 	})
 	t.Run("returns error when there error connecting Hub", func(t *testing.T) {
@@ -146,7 +146,7 @@ func TestShowAgentStatys(t *testing.T) {
 
 		err := cli.ShowAgentsStatus(cli.Conf, true)
 		if !strings.Contains(err.Error(), expectedStr) {
-			t.Fatalf("got: %q want:\"%s\"", err.Error(), expectedStr)
+			t.Fatalf("got %v, want %v", err, expectedStr)
 		}
 	})
 }
@@ -163,7 +163,7 @@ func TestShowHubStatus(t *testing.T) {
 
 		_, err := cli.ShowHubStatus(cli.Conf, true)
 		if err != nil {
-			t.Fatalf("Expected no error. Got an error:%s", err.Error())
+			t.Fatalf("unexpected error: %#v", err)
 		}
 	})
 	t.Run("returns error when error getting service status", func(t *testing.T) {
@@ -175,7 +175,7 @@ func TestShowHubStatus(t *testing.T) {
 
 		_, err := cli.ShowHubStatus(cli.Conf, true)
 		if !strings.Contains(err.Error(), expectedStr) {
-			t.Fatalf("got: %q want:\"%s\"", err.Error(), expectedStr)
+			t.Fatalf("got %v, want %v", err, expectedStr)
 		}
 	})
 }
@@ -193,7 +193,7 @@ func TestRunStatusAgent(t *testing.T) {
 
 		err := cli.RunStatusAgent(nil, nil)
 		if err != nil {
-			t.Fatalf("Expected no error. Got an error:%s", err.Error())
+			t.Fatalf("unexpected error: %#v", err)
 		}
 	})
 	t.Run("return error when there is error getting agent status", func(t *testing.T) {
@@ -206,7 +206,7 @@ func TestRunStatusAgent(t *testing.T) {
 
 		err := cli.RunStatusAgent(nil, nil)
 		if !strings.Contains(err.Error(), expectedStr) {
-			t.Fatalf("got: %q want:\"%s\"", err.Error(), expectedStr)
+			t.Fatalf("got %v, want %v", err, expectedStr)
 		}
 	})
 }
@@ -225,7 +225,7 @@ func TestRunStatusHub(t *testing.T) {
 
 		err := cli.RunStatusHub(nil, nil)
 		if err != nil {
-			t.Fatalf("Expected no error. Got an error:%s", err.Error())
+			t.Fatalf("unexpected error: %#v", err)
 		}
 	})
 	t.Run("return error when there is error getting agent status", func(t *testing.T) {
@@ -238,7 +238,7 @@ func TestRunStatusHub(t *testing.T) {
 
 		err := cli.RunStatusHub(nil, nil)
 		if !strings.Contains(err.Error(), expectedStr) {
-			t.Fatalf("got: %q want:\"%s\"", err.Error(), expectedStr)
+			t.Fatalf("got %v, want %v", err, expectedStr)
 		}
 	})
 }

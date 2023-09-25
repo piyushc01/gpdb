@@ -128,7 +128,7 @@ func RunStartServiceFn(cmd *cobra.Command, args []string) error {
 	}
 	err = WaitAndRetryHubConnect()
 	if err != nil {
-		return fmt.Errorf("error while connecting hub service:%w", err)
+		return fmt.Errorf("error while connecting hub service: %w", err)
 	}
 	gplog.Info("Hub %s started successfully", Conf.ServiceName)
 
@@ -149,22 +149,14 @@ func RunStartServiceFn(cmd *cobra.Command, args []string) error {
 }
 
 func WaitAndRetryHubConnectFn() error {
-	count := 10
-	success := false
 	var err error
-	for count > 0 {
+	for try := 0; try < 10; try++ {
 		_, err = ConnectToHub(Conf)
 		if err == nil {
-			success = true
-			break
+			return nil
 		}
-		// Wait for half second before next retry
-		time.Sleep(time.Second / 2)
-		count--
-	}
-	if !success {
-		return fmt.Errorf("failed connecting Hub service. Bailing out. Error:%w", err)
-	}
 
-	return nil
+		time.Sleep(time.Second / 2)
+	}
+	return fmt.Errorf("hub service started but failed to connect. Bailing out. Error: %w", err)
 }

@@ -11,7 +11,7 @@ scp gp cdw:/home/gpadmin/
 
 # Install patchelf. We need to SSH as root, hence the use of
 # cluster_env_files.
-ssh -t ccp-$(cat cluster_env_files/terraform/name)-0 "sudo bash -c '
+ssh -t "ccp-$(cat cluster_env_files/terraform/name)-0" "sudo bash -c '
     source /home/gpadmin/gpdb_src/concourse/scripts/common.bash
 '"
 

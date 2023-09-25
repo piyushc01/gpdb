@@ -97,4 +97,6 @@ clean:
 	rm -rf ./certificates
 	rm -rf /tmp/go-build*
 	rm -rf /tmp/gexec_artifacts*
+
+uninstall:
 	rm -rf $(GPHOME)/bin/gp

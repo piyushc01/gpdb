@@ -50,7 +50,7 @@ func TestCreateServiceDir(t *testing.T) {
 		defer utils.ResetExecCommand()
 
 		err := platform.CreateServiceDir([]string{"host1"}, "path/to/serviceDir", "gphome")
-		if err.Error() != "Could not create service directory path/to/serviceDir on hosts: exit status 1" {
+		if err.Error() != "could not create service directory path/to/serviceDir on hosts: exit status 1" {
 			t.Fatalf("unexpected error: %#v", err)
 		}
 	})
@@ -84,7 +84,7 @@ func TestWriteServiceFile(t *testing.T) {
 		}
 
 		err = utils.WriteServiceFile(file.Name(), "abc")
-		if !strings.HasPrefix(err.Error(), "Could not create service file") {
+		if !strings.HasPrefix(err.Error(), "could not create service file") {
 			t.Fatalf("unexpected error: %#v", err)
 		}
 	})
@@ -256,7 +256,7 @@ func TestReloadServices(t *testing.T) {
 				err = platform.ReloadAgentService("gphome", []string{"host1"}, "/path/to/service/file")
 			}
 
-			expectedErr := fmt.Sprintf("Could not unload %s service file /path/to/service/file%s: exit status 1", tc.service, tc.errSuffix)
+			expectedErr := fmt.Sprintf("could not unload %s service file /path/to/service/file%s: exit status 1", tc.service, tc.errSuffix)
 			if err.Error() != expectedErr {
 				t.Fatalf("got %q, want %q", err, expectedErr)
 			}
@@ -277,7 +277,7 @@ func TestReloadServices(t *testing.T) {
 				err = platform.ReloadAgentService("gphome", []string{"host1"}, "/path/to/service/file")
 			}
 
-			expectedErr := fmt.Sprintf("Could not load %s service file /path/to/service/file%s: exit status 1", tc.service, tc.errSuffix)
+			expectedErr := fmt.Sprintf("could not load %s service file /path/to/service/file%s: exit status 1", tc.service, tc.errSuffix)
 			if err.Error() != expectedErr {
 				t.Fatalf("got %q, want %q", err, expectedErr)
 			}
@@ -303,7 +303,7 @@ func TestReloadServices(t *testing.T) {
 				err = platform.ReloadAgentService("gphome", []string{"host1"}, "/path/to/service/file")
 			}
 
-			expectedErr := fmt.Sprintf("Could not reload %s service file /path/to/service/file%s: exit status 1", tc.service, tc.errSuffix)
+			expectedErr := fmt.Sprintf("could not reload %s service file /path/to/service/file%s: exit status 1", tc.service, tc.errSuffix)
 			if err.Error() != expectedErr {
 				t.Fatalf("got %q, want %q", err, expectedErr)
 			}
@@ -361,7 +361,7 @@ func TestCreateAndInstallHubServiceFile(t *testing.T) {
 		defer utils.ResetExecCommand()
 
 		err := platform.CreateAndInstallHubServiceFile("gphome", "testdir", "gptest")
-		expectedErr := "Could not reload hub service file testdir/gptest_hub.service: exit status 1"
+		expectedErr := "could not reload hub service file testdir/gptest_hub.service: exit status 1"
 		if err.Error() != expectedErr {
 			t.Fatalf("got %q, want %q", err, expectedErr)
 		}
@@ -426,7 +426,7 @@ func TestCreateAndInstallAgentServiceFile(t *testing.T) {
 		defer utils.ResetExecCommand()
 
 		err := platform.CreateAndInstallAgentServiceFile([]string{"host1", "host2"}, "gphome", "testdir", "gptest")
-		expectedErr := "Could not copy agent service files to segment hosts: exit status 1"
+		expectedErr := "could not copy agent service files to segment hosts: exit status 1"
 		if err.Error() != expectedErr {
 			t.Fatalf("got %q, want %q", err, expectedErr)
 		}
@@ -470,7 +470,7 @@ func TestCreateAndInstallAgentServiceFile(t *testing.T) {
 		defer utils.ResetExecCommand()
 
 		err := platform.CreateAndInstallAgentServiceFile([]string{"host1", "host2"}, "gphome", "testdir", "gptest")
-		expectedErr := "Could not reload agent service file testdir/gptest_agent.service on segment hosts: exit status 1"
+		expectedErr := "could not reload agent service file testdir/gptest_agent.service on segment hosts: exit status 1"
 		if err.Error() != expectedErr {
 			t.Fatalf("got %q, want %q", err, expectedErr)
 		}
@@ -766,7 +766,7 @@ func TestEnableUserLingering(t *testing.T) {
 		defer utils.ResetExecCommand()
 
 		err := platform.EnableUserLingering([]string{"host1", "host2"}, "path/to/gphome", "serviceUser")
-		expected := "Could not enable user lingering: exit status 1"
+		expected := "could not enable user lingering: exit status 1"
 		if err.Error() != expected {
 			t.Fatalf("got %q, want %q", err, expected)
 		}

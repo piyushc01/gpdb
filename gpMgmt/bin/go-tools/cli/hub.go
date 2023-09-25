@@ -116,7 +116,7 @@ func RunConfigure(cmd *cobra.Command, args []string) (err error) {
 	}
 	for _, host := range hostnames {
 		if len(host) < 1 {
-			return fmt.Errorf("got and empty host in the input. Porvide valid input host name")
+			return fmt.Errorf("empty host name found -- please provide a valid input host name")
 		}
 	}
 	Conf = &hub.Config{

@@ -37,12 +37,14 @@ func RootCommand() *cobra.Command {
 	root.PersistentFlags().StringVar(&ConfigFilePath, "config-file", filepath.Join(os.Getenv("GPHOME"), constants.ConfigFileName), `Path to gp configuration file`)
 	root.PersistentFlags().BoolVar(&Verbose, "verbose", false, `Provide verbose output`)
 
-	root.AddCommand(agentCmd())
-	root.AddCommand(hubCmd())
-	root.AddCommand(configureCmd())
-	root.AddCommand(startCmd())
-	root.AddCommand(statusCmd())
-	root.AddCommand(stopCmd())
+	root.AddCommand(
+		agentCmd(),
+		configureCmd(),
+		hubCmd(),
+		startCmd(),
+		statusCmd(),
+		stopCmd(),
+	)
 
 	return root
 }

@@ -33,7 +33,7 @@ func TestStopAgentService(t *testing.T) {
 
 		err := cli.StopAgentService()
 		if err != nil {
-			t.Fatalf("No error expected. Got and error:%s", err.Error())
+			t.Fatalf("unexpected error: %#v", err)
 		}
 	})
 	t.Run("StopAgentService returns an error when theres error connecting hub", func(t *testing.T) {
@@ -46,7 +46,7 @@ func TestStopAgentService(t *testing.T) {
 
 		err := cli.StopAgentService()
 		if !strings.Contains(err.Error(), expectedStr) {
-			t.Fatalf("Got: %q Want:\"%s\" ", err.Error(), expectedStr)
+			t.Fatalf("got %v, want %v", err, expectedStr)
 		}
 	})
 	t.Run("StopAgentService returns error when theres error stopping agents", func(t *testing.T) {
@@ -60,7 +60,7 @@ func TestStopAgentService(t *testing.T) {
 		setConnectToHub(mockConnectToHub)
 		err := cli.StopAgentService()
 		if !strings.Contains(err.Error(), expectedStr) {
-			t.Fatalf("Got: %q Want:\"%s\" ", err.Error(), expectedStr)
+			t.Fatalf("got %v, want %v", err, expectedStr)
 		}
 	})
 }
@@ -82,7 +82,7 @@ func TestStopHubService(t *testing.T) {
 
 		err := cli.StopHubService()
 		if err != nil {
-			t.Fatalf("Expected no error. Got an error:%s", err.Error())
+			t.Fatalf("unexpected error: %#v", err)
 		}
 	})
 
@@ -96,7 +96,7 @@ func TestStopHubService(t *testing.T) {
 
 		err := cli.StopHubService()
 		if !strings.Contains(err.Error(), expectedStr) {
-			t.Fatalf("Got: %q Want:\"%s\" ", err.Error(), expectedStr)
+			t.Fatalf("got %v, want %v", err, expectedStr)
 		}
 	})
 
@@ -112,7 +112,7 @@ func TestStopHubService(t *testing.T) {
 
 		err := cli.StopHubService()
 		if !strings.Contains(err.Error(), expectedStr) {
-			t.Fatalf("Got: %q Want:\"%s\" ", err.Error(), expectedStr)
+			t.Fatalf("got %v, want %v", err, expectedStr)
 		}
 	})
 }
@@ -134,7 +134,7 @@ func TestRunStopServices(t *testing.T) {
 
 		err := cli.RunStopServices(nil, nil)
 		if err != nil {
-			t.Fatalf("Expected no error. Got an error:%s", err.Error())
+			t.Fatalf("unexpected error: %#v", err)
 		}
 	})
 
@@ -148,7 +148,7 @@ func TestRunStopServices(t *testing.T) {
 
 		err := cli.RunStopServices(nil, nil)
 		if !strings.Contains(err.Error(), expectedStr) {
-			t.Fatalf("Got: %q Want:\"%s\" ", err.Error(), expectedStr)
+			t.Fatalf("got %v, want %v", err, expectedStr)
 		}
 	})
 
@@ -168,7 +168,7 @@ func TestRunStopServices(t *testing.T) {
 
 		err := cli.RunStopServices(nil, nil)
 		if !strings.Contains(err.Error(), expectedStr) {
-			t.Fatalf("Got: %q Want:\"%s\" ", err.Error(), expectedStr)
+			t.Fatalf("got %v, want %v", err, expectedStr)
 		}
 	})
 }
@@ -186,7 +186,7 @@ func TestRunStopAgents(t *testing.T) {
 
 		err := cli.RunStopAgents(nil, nil)
 		if err != nil {
-			t.Fatalf("Expected no error. Got an error:%s", err.Error())
+			t.Fatalf("unexpected error: %#v", err)
 		}
 
 	})
@@ -206,7 +206,7 @@ func TestRunStopAgents(t *testing.T) {
 
 		err := cli.RunStopAgents(nil, nil)
 		if err != nil {
-			t.Fatalf("Expected no error. Got an error:%s", err.Error())
+			t.Fatalf("unexpected error: %#v", err)
 		}
 	})
 	t.Run("returns error where there is error stopping agent service", func(t *testing.T) {
@@ -219,7 +219,7 @@ func TestRunStopAgents(t *testing.T) {
 
 		err := cli.RunStopAgents(nil, nil)
 		if !strings.Contains(err.Error(), expectedStr) {
-			t.Fatalf("Got: %q Want:\"%s\" ", err.Error(), expectedStr)
+			t.Fatalf("got %v, want %v", err, expectedStr)
 		}
 	})
 }
@@ -236,7 +236,7 @@ func TestRunStopHub(t *testing.T) {
 
 		err := cli.RunStopHub(nil, nil)
 		if err != nil {
-			t.Fatalf("Expected no error. Got an error: %s", err.Error())
+			t.Fatalf("unexpected error: %#v", err)
 		}
 	})
 	t.Run("return no error when there is none verbose mode", func(t *testing.T) {
@@ -256,7 +256,7 @@ func TestRunStopHub(t *testing.T) {
 
 		err := cli.RunStopHub(nil, nil)
 		if err != nil {
-			t.Fatalf("Expected no error. Got an error: %s", err.Error())
+			t.Fatalf("unexpected error: %#v", err)
 		}
 	})
 	t.Run("return error when there is error stoppig Hub service", func(t *testing.T) {
@@ -270,7 +270,7 @@ func TestRunStopHub(t *testing.T) {
 
 		err := cli.RunStopHub(nil, nil)
 		if !strings.Contains(err.Error(), expectedStr) {
-			t.Fatalf("Got: %q Want:\"%s\" ", err.Error(), expectedStr)
+			t.Fatalf("got %v, want %v", err, expectedStr)
 		}
 	})
 }

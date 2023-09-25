@@ -47,7 +47,7 @@ func TestConnectToHub(t *testing.T) {
 
 		_, err := cli.ConnectToHub(&config)
 		if err != nil {
-			t.Fatalf("Unexpected error happened when connecting to hub:%v", err.Error())
+			t.Fatalf("unexpected error when connecting to hub: %#v", err)
 		}
 	})
 	t.Run("Connect to hub returns error when Dial context fails", func(t *testing.T) {
@@ -60,7 +60,7 @@ func TestConnectToHub(t *testing.T) {
 
 		_, err := cli.ConnectToHub(&config)
 		if err == nil || !strings.Contains(err.Error(), expectedErr) {
-			t.Fatalf("Expected %v in %v", expectedErr, err.Error())
+			t.Fatalf("got %v, want %v", err, expectedErr)
 		}
 	})
 	t.Run("Connect to hub returns error when load client credentials fail", func(t *testing.T) {
@@ -75,7 +75,7 @@ func TestConnectToHub(t *testing.T) {
 
 		_, err := cli.ConnectToHub(&config)
 		if err == nil || !strings.Contains(err.Error(), expectedErr) {
-			t.Fatalf("Expected %v in %v", expectedErr, err.Error())
+			t.Fatalf("got %v, want %v", err, expectedErr)
 		}
 	})
 }

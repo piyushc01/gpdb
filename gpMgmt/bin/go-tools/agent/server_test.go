@@ -44,8 +44,9 @@ func TestStartServer(t *testing.T) {
 	})
 
 	t.Run("failed to start if the load credential fail", func(t *testing.T) {
+		expected := errors.New("error")
 		credentials := &testutils.MockCredentials{
-			Err: errors.New("error"),
+			Err: expected,
 		}
 		agentServer := agent.New(agent.Config{
 			Port:        constants.DefaultAgentPort,
@@ -61,8 +62,7 @@ func TestStartServer(t *testing.T) {
 
 		select {
 		case err := <-errChan:
-			expected := "Could not load credentials"
-			if !strings.Contains(err.Error(), expected) {
+			if !errors.Is(err, expected) {
 				t.Fatalf("got %v, want %v", err, expected)
 			}
 		case <-time.After(1 * time.Second):
@@ -93,7 +93,7 @@ func TestStartServer(t *testing.T) {
 
 		select {
 		case err := <-errChan:
-			expected := fmt.Sprintf("Could not listen on port %d:", constants.DefaultAgentPort)
+			expected := fmt.Sprintf("could not listen on port %d:", constants.DefaultAgentPort)
 			if !strings.Contains(err.Error(), expected) {
 				t.Fatalf("got %v, want %v", err, expected)
 			}
@@ -125,7 +125,7 @@ func TestGetStatus(t *testing.T) {
 			Uptime: "",
 		}
 		if !reflect.DeepEqual(result, expected) {
-			t.Fatalf("got %+v, want %+v", expected, result)
+			t.Fatalf("got %+v, want %+v", result, expected)
 		}
 	})
 
@@ -155,7 +155,7 @@ func TestGetStatus(t *testing.T) {
 		}
 
 		if !reflect.DeepEqual(result, expected) {
-			t.Fatalf("expected: %v got: %v", expected, result)
+			t.Fatalf("got %+v, want %+v", result, expected)
 		}
 	})
 

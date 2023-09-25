@@ -41,7 +41,7 @@ func TestLoadServerCredentials(t *testing.T) {
 		if err == nil {
 			t.Fatalf("expected TLS error, did not receive one")
 		}
-		if err.Error() != "tls: failed to find any PEM data in certificate input" {
+		if err.Error() != "could not load server credentials: tls: failed to find any PEM data in certificate input" {
 			t.Errorf("expected TLS error, got %v", err)
 		}
 	})

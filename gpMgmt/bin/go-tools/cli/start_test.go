@@ -25,7 +25,7 @@ func TestWaitAndRetryHubConnect(t *testing.T) {
 		setConnectToHub(mockConnectToHub)
 		err := cli.WaitAndRetryHubConnect()
 		if err != nil {
-			t.Fatalf("Excted no error, received error:%s", err.Error())
+			t.Fatalf("unexpected error: %#v", err)
 		}
 	})
 	t.Run("WaitAndRetryHubConnect returns failure upon failure to connect", func(t *testing.T) {
@@ -38,7 +38,7 @@ func TestWaitAndRetryHubConnect(t *testing.T) {
 
 		err := cli.WaitAndRetryHubConnect()
 		if !strings.Contains(err.Error(), expectedErr) {
-			t.Fatalf("got: %q want:\"%s\"", err.Error(), expectedErr)
+			t.Fatalf("got %v, want %v", err, expectedErr)
 		}
 	})
 }
@@ -59,7 +59,7 @@ func TestStartAgentsAll(t *testing.T) {
 		setConnectToHub(mockConnectToHub)
 		_, err := cli.StartAgentsAll(cli.Conf)
 		if err != nil {
-			t.Fatalf("Expected no error, got error:%s", err.Error())
+			t.Fatalf("unexpected error: %#v", err)
 		}
 	})
 	t.Run("start all agents fails on error connecting hub", func(t *testing.T) {
@@ -72,7 +72,7 @@ func TestStartAgentsAll(t *testing.T) {
 
 		_, err := cli.StartAgentsAll(cli.Conf)
 		if !strings.Contains(err.Error(), expectedStr) {
-			t.Fatalf("got: %q want:\"%s\"", err.Error(), expectedStr)
+			t.Fatalf("got %v, want %v", err, expectedStr)
 		}
 	})
 	t.Run("start all agent fails when error starting agents", func(t *testing.T) {
@@ -87,7 +87,7 @@ func TestStartAgentsAll(t *testing.T) {
 
 		_, err := cli.StartAgentsAll(cli.Conf)
 		if !strings.Contains(err.Error(), expectedStr) {
-			t.Fatalf("got: %q want:\"%s\"", err.Error(), expectedStr)
+			t.Fatalf("got %v, want %v", err, expectedStr)
 		}
 	})
 }
@@ -117,7 +117,7 @@ func TestRunStartService(t *testing.T) {
 
 		err := cli.RunStartService(nil, nil)
 		if err != nil {
-			t.Fatalf("Expected no error, got error:%s", err.Error())
+			t.Fatalf("unexpected error: %#v", err)
 		}
 	})
 	t.Run("Run services when there's error starting hub", func(t *testing.T) {
@@ -129,7 +129,7 @@ func TestRunStartService(t *testing.T) {
 		setStartHubService(mockStartHubService)
 		err := cli.RunStartService(nil, nil)
 		if !strings.Contains(err.Error(), expectedStr) {
-			t.Fatalf("Want:\"%s\" But got: %q", expectedStr, err.Error())
+			t.Fatalf("got %v, want %v", err, expectedStr)
 		}
 	})
 	t.Run("Run services when there's error connecting Hub", func(t *testing.T) {
@@ -147,7 +147,7 @@ func TestRunStartService(t *testing.T) {
 		setWaitAndRetryHubConnect(mockWaitAndRetryHubConnect)
 		err := cli.RunStartService(nil, nil)
 		if !strings.Contains(err.Error(), expectedStr) {
-			t.Fatalf("Want:\"%s\" But got: %q", expectedStr, err.Error())
+			t.Fatalf("got %v, want %v", err, expectedStr)
 		}
 	})
 	t.Run("Run services when there's error starting agents", func(t *testing.T) {
@@ -172,7 +172,7 @@ func TestRunStartService(t *testing.T) {
 
 		err := cli.RunStartService(nil, nil)
 		if !strings.Contains(err.Error(), expectedStr) {
-			t.Fatalf("Want:\"%s\" But got: %q", expectedStr, err.Error())
+			t.Fatalf("got %v, want %v", err, expectedStr)
 		}
 	})
 }
@@ -188,7 +188,7 @@ func TestRunStartAgent(t *testing.T) {
 
 		err := cli.RunStartAgent(nil, nil)
 		if err != nil {
-			t.Fatalf("Expected no error. Got error:%s", err.Error())
+			t.Fatalf("unexpected error: %#v", err)
 		}
 	})
 	t.Run("Run start agent starts agents when starting agents fails", func(t *testing.T) {
@@ -201,7 +201,7 @@ func TestRunStartAgent(t *testing.T) {
 
 		err := cli.RunStartAgent(nil, nil)
 		if !strings.Contains(err.Error(), expectedStr) {
-			t.Fatalf("got: %q want:\"%s\"", err.Error(), expectedStr)
+			t.Fatalf("got %v, want %v", err, expectedStr)
 		}
 	})
 }
@@ -225,7 +225,7 @@ func TestRunStartHub(t *testing.T) {
 
 		err := cli.RunStartHub(nil, nil)
 		if err != nil {
-			t.Fatalf("Expected no error, received error:%s", err.Error())
+			t.Fatalf("unexpected error: %#v", err)
 		}
 	})
 	t.Run("Run Start Hub throws error when start hub service fails", func(t *testing.T) {
@@ -238,7 +238,7 @@ func TestRunStartHub(t *testing.T) {
 
 		err := cli.RunStartHub(nil, nil)
 		if !strings.Contains(err.Error(), expectedStr) {
-			t.Fatalf("got: %q want:\"%s\"", err.Error(), expectedStr)
+			t.Fatalf("got %v, want %v", err, expectedStr)
 		}
 	})
 	t.Run("Run Start Hub throws no error when there none", func(t *testing.T) {
@@ -258,7 +258,7 @@ func TestRunStartHub(t *testing.T) {
 
 		err := cli.RunStartHub(nil, nil)
 		if !strings.Contains(err.Error(), expectedStr) {
-			t.Fatalf("got: %q want:\"%s\"", err.Error(), expectedStr)
+			t.Fatalf("got %v, want %v", err, expectedStr)
 		}
 	})
 }

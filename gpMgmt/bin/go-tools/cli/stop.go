@@ -55,7 +55,7 @@ func RunStopHub(cmd *cobra.Command, args []string) error {
 func StopHubServiceFn() error {
 	client, err := ConnectToHub(Conf)
 	if err != nil {
-		return fmt.Errorf("could not connect to hub; is the hub running? Error:%v", err)
+		return fmt.Errorf("could not connect to hub; is the hub running? Error: %v", err)
 	}
 	_, err = client.Stop(context.Background(), &idl.StopHubRequest{})
 	// Ignore a "hub already stopped" error
@@ -85,7 +85,7 @@ func stopAgentsCmd() *cobra.Command {
 func RunStopAgents(cmd *cobra.Command, args []string) error {
 	err := StopAgentService()
 	if err != nil {
-		return fmt.Errorf("error stopping agent service:%w", err)
+		return fmt.Errorf("error stopping agent service: %w", err)
 	}
 	gplog.Info("Agents stopped successfully")
 	if Verbose {
@@ -97,7 +97,7 @@ func RunStopAgents(cmd *cobra.Command, args []string) error {
 func StopAgentServiceFn() error {
 	client, err := ConnectToHub(Conf)
 	if err != nil {
-		return fmt.Errorf("could not connect to hub; is the hub running? Error:%v", err)
+		return fmt.Errorf("could not connect to hub; is the hub running? Error: %v", err)
 	}
 
 	_, err = client.StopAgents(context.Background(), &idl.StopAgentsRequest{})
