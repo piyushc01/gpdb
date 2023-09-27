@@ -29,7 +29,7 @@ func TestWaitAndRetryHubConnect(t *testing.T) {
 		}
 	})
 	t.Run("WaitAndRetryHubConnect returns failure upon failure to connect", func(t *testing.T) {
-		expectedErr := "Hub service started but failed to connect"
+		expectedErr := "failed to connect to hub service. Check hub service log for details."
 		defer resetConnectToHub()
 		mockConnectToHub := func(conf *hub.Config) (idl.HubClient, error) {
 			return nil, errors.New(expectedErr)
@@ -223,6 +223,12 @@ func TestRunStartHub(t *testing.T) {
 		}
 		setShowHubStatus(mockShowHubStatus)
 
+		defer resetWaitAndRetryHubConnect()
+		mockWaitAndRetryHubConnect := func() error {
+			return nil
+		}
+		setWaitAndRetryHubConnect(mockWaitAndRetryHubConnect)
+
 		err := cli.RunStartHub(nil, nil)
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
@@ -241,7 +247,7 @@ func TestRunStartHub(t *testing.T) {
 			t.Fatalf("got %v, want %v", err, expectedStr)
 		}
 	})
-	t.Run("Run Start Hub throws no error when there none", func(t *testing.T) {
+	t.Run("Run Start Hub throws no error when there none in verbose mode", func(t *testing.T) {
 		expectedStr := "Test Error in ShowHubStatus"
 		defer resetStartHubService()
 		mockStartHubService := func(serviceName string) error {
@@ -255,6 +261,12 @@ func TestRunStartHub(t *testing.T) {
 			return false, errors.New(expectedStr)
 		}
 		setShowHubStatus(mockShowHubStatus)
+
+		defer resetWaitAndRetryHubConnect()
+		mockWaitAndRetryHubConnect := func() error {
+			return nil
+		}
+		setWaitAndRetryHubConnect(mockWaitAndRetryHubConnect)
 
 		err := cli.RunStartHub(nil, nil)
 		if !strings.Contains(err.Error(), expectedStr) {

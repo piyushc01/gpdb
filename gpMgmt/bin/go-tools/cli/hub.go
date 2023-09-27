@@ -11,6 +11,7 @@ import (
 	"github.com/greenplum-db/gpdb/gp/hub"
 	"github.com/greenplum-db/gpdb/gp/utils"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -62,9 +63,11 @@ func configureCmd() *cobra.Command {
 		PreRun: InitializeGplog,
 		RunE:   RunConfigure,
 	}
+
+	viper.AutomaticEnv()
 	// TODO: Adding input validation
 	configureCmd.Flags().IntVar(&agentPort, "agent-port", constants.DefaultAgentPort, `Port on which the agents should listen`)
-	configureCmd.Flags().StringVar(&gphome, "gphome", os.Getenv("GPHOME"), `Path to GPDB installation`)
+	configureCmd.Flags().StringVar(&gphome, "gphome", "/usr/local/greenplum-db", `Path to GPDB installation`)
 	configureCmd.Flags().IntVar(&hubPort, "hub-port", constants.DefaultHubPort, `Port on which the hub should listen`)
 	configureCmd.Flags().StringVar(&hubLogDir, "log-dir", constants.DefaultHubLogDir, `Path to gp hub log directory`)
 	configureCmd.Flags().StringVar(&serviceName, "service-name", constants.DefaultServiceName, `Name for the generated systemd service file`)
@@ -79,6 +82,9 @@ func configureCmd() *cobra.Command {
 	configureCmd.Flags().StringArrayVar(&hostnames, "host", []string{}, `Segment hostname`)
 	configureCmd.Flags().StringVar(&hostfilePath, "hostfile", "", `Path to file containing a list of segment hostnames`)
 	configureCmd.MarkFlagsMutuallyExclusive("host", "hostfile")
+
+	viper.BindPFlag("gphome", configureCmd.Flags().Lookup("gphome")) //nolint
+	gphome = viper.GetString("gphome")
 	return configureCmd
 }
 func RunConfigure(cmd *cobra.Command, args []string) (err error) {
@@ -87,7 +93,7 @@ func RunConfigure(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	// Regenerate default flag values if a custom GPHOME or username is passed
-	if cmd.Flags().Lookup("gphome").Changed && !cmd.Flags().Lookup("config-file").Changed {
+	if !cmd.Flags().Lookup("config-file").Changed {
 		ConfigFilePath = filepath.Join(gphome, constants.ConfigFileName)
 	}
 

@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/greenplum-db/gpdb/gp/constants"
+
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpdb/gp/idl"
 	"github.com/greenplum-db/gpdb/gp/testutils/exectest"
@@ -44,7 +46,7 @@ func TestCreateServiceDir(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	t.Run("CreateServiceDir returns error", func(t *testing.T) {
-		platform := GetPlatform("linux", t)
+		platform := GetPlatform(constants.PlatformLinux, t)
 
 		utils.SetExecCommand(exectest.NewCommand(exectest.Failure))
 		defer utils.ResetExecCommand()
@@ -56,7 +58,7 @@ func TestCreateServiceDir(t *testing.T) {
 	})
 
 	t.Run("CreateServiceDir runs successfully", func(t *testing.T) {
-		platform := GetPlatform("linux", t)
+		platform := GetPlatform(constants.PlatformLinux, t)
 
 		utils.SetExecCommand(exectest.NewCommand(exectest.Success))
 		defer utils.ResetExecCommand()
@@ -152,7 +154,7 @@ func TestGenerateServiceFileContents(t *testing.T) {
 	})
 
 	t.Run("GenerateServiceFileContents successfully generates contents for linux", func(t *testing.T) {
-		platform := GetPlatform("linux", t)
+		platform := GetPlatform(constants.PlatformLinux, t)
 
 		expected := `[Unit]
 Description=Greenplum Database management utility hub
@@ -178,7 +180,7 @@ func TestGetDefaultServiceDir(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	t.Run("GetDefaultServiceDir returns the correct directory path", func(t *testing.T) {
-		platform := GetPlatform("linux", t)
+		platform := GetPlatform(constants.PlatformLinux, t)
 
 		expected := "/home/%s/.config/systemd/user"
 		result := platform.GetDefaultServiceDir()
@@ -208,8 +210,8 @@ func TestReloadServices(t *testing.T) {
 	success_tests := []test{
 		{os: "darwin", service: "hub"},
 		{os: "darwin", service: "agent"},
-		{os: "linux", service: "hub"},
-		{os: "linux", service: "agent"},
+		{os: constants.PlatformLinux, service: "hub"},
+		{os: constants.PlatformLinux, service: "agent"},
 	}
 	for _, tc := range success_tests {
 		t.Run(fmt.Sprintf("reloading of %s service succeeds on %s", tc.service, tc.os), func(t *testing.T) {
@@ -264,7 +266,7 @@ func TestReloadServices(t *testing.T) {
 
 		t.Run(fmt.Sprintf("reloading of %s service returns error when not able to load the file on darwin", tc.service), func(t *testing.T) {
 			var err error
-			platform := GetPlatform("darwin", t)
+			platform := GetPlatform(constants.PlatformDarwin, t)
 
 			setMocks(t)
 			defer resetMocks(t)
@@ -286,13 +288,13 @@ func TestReloadServices(t *testing.T) {
 	}
 
 	failure_tests_linux := []test{
-		{os: "linux", service: "hub"},
-		{os: "linux", service: "agent", errSuffix: " on segment hosts"},
+		{os: constants.PlatformLinux, service: "hub"},
+		{os: constants.PlatformLinux, service: "agent", errSuffix: " on segment hosts"},
 	}
 	for _, tc := range failure_tests_linux {
 		t.Run(fmt.Sprintf("reloading of %s service returns error when not able to reload the file on linux", tc.service), func(t *testing.T) {
 			var err error
-			platform := GetPlatform("linux", t)
+			platform := GetPlatform(constants.PlatformLinux, t)
 
 			utils.SetExecCommand(exectest.NewCommand(exectest.Failure))
 			defer utils.ResetExecCommand()
@@ -315,7 +317,7 @@ func TestCreateAndInstallHubServiceFile(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	t.Run("CreateAndInstallHubServiceFile runs successfully", func(t *testing.T) {
-		platform := GetPlatform("linux", t)
+		platform := GetPlatform(constants.PlatformLinux, t)
 
 		utils.SetWriteServiceFileFunc(func(filename, contents string) error {
 			return nil
@@ -332,7 +334,7 @@ func TestCreateAndInstallHubServiceFile(t *testing.T) {
 	})
 
 	t.Run("CreateAndInstallHubServiceFile errors when not able to write to a file", func(t *testing.T) {
-		platform := GetPlatform("linux", t)
+		platform := GetPlatform(constants.PlatformLinux, t)
 
 		utils.SetWriteServiceFileFunc(func(filename, contents string) error {
 			return os.ErrPermission
@@ -350,7 +352,7 @@ func TestCreateAndInstallHubServiceFile(t *testing.T) {
 	})
 
 	t.Run("CreateAndInstallHubServiceFile errors when not able to reload the service", func(t *testing.T) {
-		platform := GetPlatform("linux", t)
+		platform := GetPlatform(constants.PlatformLinux, t)
 
 		utils.SetWriteServiceFileFunc(func(filename, contents string) error {
 			return nil
@@ -372,7 +374,7 @@ func TestCreateAndInstallAgentServiceFile(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	t.Run("CreateAndInstallAgentServiceFile runs successfully", func(t *testing.T) {
-		platform := GetPlatform("linux", t)
+		platform := GetPlatform(constants.PlatformLinux, t)
 
 		utils.SetWriteServiceFileFunc(func(filename, contents string) error {
 			return nil
@@ -402,7 +404,7 @@ func TestCreateAndInstallAgentServiceFile(t *testing.T) {
 	})
 
 	t.Run("CreateAndInstallAgentServiceFile errors when gpsync fails", func(t *testing.T) {
-		platform := GetPlatform("linux", t)
+		platform := GetPlatform(constants.PlatformLinux, t)
 
 		utils.SetWriteServiceFileFunc(func(filename, contents string) error {
 			return nil
@@ -433,7 +435,7 @@ func TestCreateAndInstallAgentServiceFile(t *testing.T) {
 	})
 
 	t.Run("CreateAndInstallAgentServiceFile errors when not able to write to a file", func(t *testing.T) {
-		platform := GetPlatform("linux", t)
+		platform := GetPlatform(constants.PlatformLinux, t)
 
 		utils.SetWriteServiceFileFunc(func(filename, contents string) error {
 			return os.ErrPermission
@@ -455,7 +457,7 @@ func TestCreateAndInstallAgentServiceFile(t *testing.T) {
 	})
 
 	t.Run("CreateAndInstallAgentServiceFile errors when not able to reload the service", func(t *testing.T) {
-		platform := GetPlatform("linux", t)
+		platform := GetPlatform(constants.PlatformLinux, t)
 
 		utils.SetWriteServiceFileFunc(func(filename, contents string) error {
 			return nil
@@ -481,7 +483,7 @@ func TestGetStartHubCommand(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	t.Run("GetStartHubCommand returns the correct command for linux", func(t *testing.T) {
-		platform := GetPlatform("linux", t)
+		platform := GetPlatform(constants.PlatformLinux, t)
 
 		result := platform.GetStartHubCommand("gptest").Args
 		expected := []string{"systemctl", "--user", "start", "gptest_hub"}
@@ -491,7 +493,7 @@ func TestGetStartHubCommand(t *testing.T) {
 	})
 
 	t.Run("GetStartHubCommand returns the correct command for darwin", func(t *testing.T) {
-		platform := GetPlatform("darwin", t)
+		platform := GetPlatform(constants.PlatformDarwin, t)
 
 		result := platform.GetStartHubCommand("gptest").Args
 		expected := []string{"launchctl", "start", "gptest_hub"}
@@ -505,7 +507,7 @@ func TestGetStartAgentCommandString(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	t.Run("GetStartAgentCommandString returns the correct string for linux", func(t *testing.T) {
-		platform := GetPlatform("linux", t)
+		platform := GetPlatform(constants.PlatformLinux, t)
 
 		result := platform.GetStartAgentCommandString("gptest")
 		expected := []string{"systemctl", "--user", "start", "gptest_agent"}
@@ -515,7 +517,7 @@ func TestGetStartAgentCommandString(t *testing.T) {
 	})
 
 	t.Run("GetStartAgentCommandString returns the correct string for darwin", func(t *testing.T) {
-		platform := GetPlatform("darwin", t)
+		platform := GetPlatform(constants.PlatformDarwin, t)
 
 		result := platform.GetStartAgentCommandString("gptest")
 		expected := []string{"launchctl", "", "start", "gptest_agent"}
@@ -529,7 +531,7 @@ func TestGetServiceStatusMessage(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	t.Run("GetServiceStatusMessage successfully gets the service status for linux", func(t *testing.T) {
-		platform := GetPlatform("linux", t)
+		platform := GetPlatform(constants.PlatformLinux, t)
 
 		utils.SetExecCommand(exectest.NewCommandWithVerifier(ServiceStatusOutput, func(utility string, args ...string) {
 			if utility != "systemctl" {
@@ -551,7 +553,7 @@ func TestGetServiceStatusMessage(t *testing.T) {
 	})
 
 	t.Run("GetServiceStatusMessage successfully gets the service status for darwin", func(t *testing.T) {
-		platform := GetPlatform("darwin", t)
+		platform := GetPlatform(constants.PlatformDarwin, t)
 
 		utils.SetExecCommand(exectest.NewCommandWithVerifier(ServiceStatusOutput, func(utility string, args ...string) {
 			if utility != "launchctl" {
@@ -573,7 +575,7 @@ func TestGetServiceStatusMessage(t *testing.T) {
 	})
 
 	t.Run("GetServiceStatusMessage does not throw error when service is stopped", func(t *testing.T) {
-		platform := GetPlatform("linux", t)
+		platform := GetPlatform(constants.PlatformLinux, t)
 
 		utils.SetExecCommand(exectest.NewCommand(ServiceStopped))
 		defer utils.ResetExecCommand()
@@ -585,7 +587,7 @@ func TestGetServiceStatusMessage(t *testing.T) {
 	})
 
 	t.Run("GetServiceStatusMessage errors when not able to get the service status", func(t *testing.T) {
-		platform := GetPlatform("linux", t)
+		platform := GetPlatform(constants.PlatformLinux, t)
 
 		utils.SetExecCommand(exectest.NewCommand(exectest.Failure))
 		defer utils.ResetExecCommand()
@@ -613,7 +615,7 @@ func TestParseServiceStatusMessage(t *testing.T) {
 	}{
 		{
 			name: "ParseServiceStatusMessage gets status for darwin when service is running",
-			os:   "darwin",
+			os:   constants.PlatformDarwin,
 			message: `
 			{
 				"StandardOutPath" = "/tmp/grpc_hub.log";
@@ -634,7 +636,7 @@ func TestParseServiceStatusMessage(t *testing.T) {
 		},
 		{
 			name: "ParseServiceStatusMessage gets status for darwin when service is not running",
-			os:   "darwin",
+			os:   constants.PlatformDarwin,
 			message: `
 			{
 				"StandardOutPath" = "/tmp/grpc_hub.log";
@@ -654,7 +656,7 @@ func TestParseServiceStatusMessage(t *testing.T) {
 		},
 		{
 			name: "ParseServiceStatusMessage gets status for linux when service is running",
-			os:   "linux",
+			os:   constants.PlatformLinux,
 			message: `
 			ExecMainStartTimestamp=Sun 2023-08-20 14:43:35 UTC
 			ExecMainStartTimestampMonotonic=286453245
@@ -667,7 +669,7 @@ func TestParseServiceStatusMessage(t *testing.T) {
 		},
 		{
 			name: "ParseServiceStatusMessage gets status for linux when service is not running",
-			os:   "linux",
+			os:   constants.PlatformLinux,
 			message: `
 			ExecMainStartTimestampMonotonic=286453245
 			ExecMainExitTimestampMonotonic=0
@@ -681,7 +683,7 @@ func TestParseServiceStatusMessage(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			platform := GetPlatform("darwin", t)
+			platform := GetPlatform(constants.PlatformDarwin, t)
 
 			result := platform.ParseServiceStatusMessage(tc.message)
 			if !reflect.DeepEqual(&result, tc.expected) {
@@ -696,7 +698,7 @@ func TestDisplayServiceStatus(t *testing.T) {
 
 	t.Run("DisplayServiceStatus displays the service message", func(t *testing.T) {
 		var output bytes.Buffer
-		platform := GetPlatform("linux", t)
+		platform := GetPlatform(constants.PlatformLinux, t)
 		statuses := []*idl.ServiceStatus{
 			{
 				Host:   "sdw1",
@@ -716,7 +718,7 @@ func TestDisplayServiceStatus(t *testing.T) {
 
 	t.Run("DisplayServiceStatus displays the service message with header", func(t *testing.T) {
 		var output bytes.Buffer
-		platform := GetPlatform("linux", t)
+		platform := GetPlatform(constants.PlatformLinux, t)
 		statuses := []*idl.ServiceStatus{
 			{
 				Host:   "sdw1",
@@ -739,7 +741,7 @@ func TestEnableUserLingering(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	t.Run("EnableUserLingering run successfully for linux", func(t *testing.T) {
-		platform := GetPlatform("linux", t)
+		platform := GetPlatform(constants.PlatformLinux, t)
 
 		utils.SetExecCommand(exectest.NewCommand(exectest.Success))
 		defer utils.ResetExecCommand()
@@ -751,7 +753,7 @@ func TestEnableUserLingering(t *testing.T) {
 	})
 
 	t.Run("EnableUserLingering runs successfully for other platforms", func(t *testing.T) {
-		platform := GetPlatform("darwin", t)
+		platform := GetPlatform(constants.PlatformDarwin, t)
 
 		err := platform.EnableUserLingering([]string{"host1", "host2"}, "path/to/gphome", "serviceUser")
 		if err != nil {
@@ -760,8 +762,7 @@ func TestEnableUserLingering(t *testing.T) {
 	})
 
 	t.Run("EnableUserLingering returns error on failure", func(t *testing.T) {
-		platform := GetPlatform("linux", t)
-
+		platform := GetPlatform(constants.PlatformLinux, t)
 		utils.SetExecCommand(exectest.NewCommand(exectest.Failure))
 		defer utils.ResetExecCommand()
 

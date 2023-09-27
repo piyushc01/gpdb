@@ -9,4 +9,6 @@ const (
 	ShellPath          = "/bin/bash"
 	GpSSH              = "gpssh"
 	MaxRetries         = 10
+	PlatformDarwin     = "darwin"
+	PlatformLinux      = "linux"
 )

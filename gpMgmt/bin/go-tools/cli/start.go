@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/greenplum-db/gpdb/gp/constants"
+
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpdb/gp/hub"
 	"github.com/greenplum-db/gpdb/gp/idl"
@@ -54,6 +56,10 @@ func StartHubServiceFn(serviceName string) error {
 }
 func RunStartHubFn(cmd *cobra.Command, args []string) error {
 	err := StartHubService(Conf.ServiceName)
+	if err != nil {
+		return err
+	}
+	err = WaitAndRetryHubConnect()
 	if err != nil {
 		return err
 	}
@@ -150,7 +156,7 @@ func RunStartServiceFn(cmd *cobra.Command, args []string) error {
 
 func WaitAndRetryHubConnectFn() error {
 	var err error
-	for try := 0; try < 10; try++ {
+	for try := 0; try < constants.MaxRetries; try++ {
 		_, err = ConnectToHub(Conf)
 		if err == nil {
 			return nil
@@ -158,5 +164,5 @@ func WaitAndRetryHubConnectFn() error {
 
 		time.Sleep(time.Second / 2)
 	}
-	return fmt.Errorf("hub service started but failed to connect. Bailing out. Error: %w", err)
+	return fmt.Errorf("failed to connect to hub service. Check hub service log for details. Error: %w", err)
 }

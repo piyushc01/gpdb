@@ -38,18 +38,18 @@ type GpPlatform struct {
 
 func NewPlatform(os string) (Platform, error) {
 	switch os {
-	case "darwin":
+	case constants.PlatformDarwin:
 		return GpPlatform{
-			OS:         "darwin",
+			OS:         constants.PlatformDarwin,
 			ServiceCmd: "launchctl",
 			UserArg:    "",
 			ServiceExt: "plist",
 			StatusArg:  "list",
 		}, nil
 
-	case "linux":
+	case constants.PlatformLinux:
 		return GpPlatform{
-			OS:         "linux",
+			OS:         constants.PlatformLinux,
 			ServiceCmd: "systemctl",
 			UserArg:    "--user",
 			ServiceExt: "service",
@@ -125,7 +125,7 @@ func WriteServiceFile(filename string, contents string) error {
 }
 
 func (p GpPlatform) GenerateServiceFileContents(process string, gphome string, serviceName string) string {
-	if p.OS == "darwin" {
+	if p.OS == constants.PlatformDarwin {
 		return GenerateDarwinServiceFileContents(process, gphome, serviceName)
 	}
 
@@ -179,7 +179,7 @@ WantedBy=default.target
 }
 
 func (p GpPlatform) GetDefaultServiceDir() string {
-	if p.OS == "darwin" {
+	if p.OS == constants.PlatformDarwin {
 		return "/Users/%s/Library/LaunchAgents"
 	}
 
@@ -204,7 +204,7 @@ func (p GpPlatform) CreateAndInstallHubServiceFile(gphome string, serviceDir str
 }
 
 func (p GpPlatform) ReloadHubService(servicePath string) error {
-	if p.OS == "darwin" {
+	if p.OS == constants.PlatformDarwin {
 		// launchctl does not have a single reload command. Hence unload and load the file to update the configuration.
 		err := UnloadServiceCommand(p.ServiceCmd, "unload", servicePath).Run()
 		if err != nil {
@@ -230,7 +230,7 @@ func (p GpPlatform) ReloadHubService(servicePath string) error {
 func (p GpPlatform) ReloadAgentService(gphome string, hostList []string, servicePath string) error {
 	args := append(hostList, p.ServiceCmd)
 
-	if p.OS == "darwin" { // launchctl reloads a specific service, not all of them
+	if p.OS == constants.PlatformDarwin { // launchctl reloads a specific service, not all of them
 		// launchctl does not have a single reload command. Hence unload and load the file to update the configuration.
 		err := UnloadServiceCommand(fmt.Sprintf("%s/bin/gpssh", gphome), append(args, "unload", servicePath)...).Run()
 		if err != nil {
@@ -287,7 +287,7 @@ func (p GpPlatform) CreateAndInstallAgentServiceFile(hostnames []string, gphome 
 func (p GpPlatform) GetStartHubCommand(serviceName string) *exec.Cmd {
 	args := []string{p.UserArg, "start", fmt.Sprintf("%s_hub", serviceName)}
 
-	if p.OS == "darwin" { // empty strings are also treated as arguments
+	if p.OS == constants.PlatformDarwin { // empty strings are also treated as arguments
 		args = args[1:]
 	}
 
@@ -301,7 +301,7 @@ func (p GpPlatform) GetStartAgentCommandString(serviceName string) []string {
 func (p GpPlatform) GetServiceStatusMessage(serviceName string) (string, error) {
 	args := []string{p.UserArg, p.StatusArg, serviceName}
 
-	if p.OS == "darwin" { // empty strings are also treated as arguments
+	if p.OS == constants.PlatformDarwin { // empty strings are also treated as arguments
 		args = args[1:]
 	}
 
