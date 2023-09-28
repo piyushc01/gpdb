@@ -221,16 +221,13 @@ class GpRecoverSegmentProgram:
             res = dbconn.execSQL(conn, "SELECT datname FROM PG_DATABASE WHERE datname != 'template0'")
         return res.fetchall()
 
-    def run(self):
+    def validateRecoveryParams(self):
         if self.__options.parallelDegree < 1 or self.__options.parallelDegree > gp.MAX_MASTER_NUM_WORKERS:
             raise ProgramArgumentValidationException(
                 "Invalid parallelDegree value provided with -B argument: %d" % self.__options.parallelDegree)
         if self.__options.parallelPerHost < 1 or self.__options.parallelPerHost > gp.MAX_SEGHOST_NUM_WORKERS:
             raise ProgramArgumentValidationException(
                 "Invalid parallelPerHost value provided with -b argument: %d" % self.__options.parallelPerHost)
-
-        self.__pool = WorkerPool(self.__options.parallelDegree)
-        gpEnv = GpMasterEnvironment(self.__options.masterDataDirectory, True)
 
         # verify "where to recover" options
         optionCnt = 0
@@ -252,6 +249,19 @@ class GpRecoverSegmentProgram:
         # verify differential supported options
         if self.__options.differentialResynchronization and self.__options.outputSampleConfigFile:
             raise ProgramArgumentValidationException("Invalid -o provided with --differential argument")
+
+        # Verify if full recovery option provided along with rebalance and recovery to new host option
+        if self.__options.forceFullResynchronization:
+            if self.__options.rebalanceSegments:
+                raise ProgramArgumentValidationException("Invalid -F provided with -r argument")
+            if self.__options.newRecoverHosts is not None:
+                raise ProgramArgumentValidationException("Invalid -F provided with -p argument")
+
+        return
+    def run(self):
+        self.validateRecoveryParams()
+        self.__pool = WorkerPool(self.__options.parallelDegree)
+        gpEnv = GpMasterEnvironment(self.__options.masterDataDirectory, True)
 
         faultProberInterface.getFaultProber().initializeProber(gpEnv.getMasterPort())
 
