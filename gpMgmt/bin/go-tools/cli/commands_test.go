@@ -3,6 +3,7 @@ package cli_test
 import (
 	"context"
 	"errors"
+	"os"
 	"strings"
 	"testing"
 
@@ -42,6 +43,12 @@ func resetCLIVars() {
 	cli.PrintServicesStatus = cli.PrintServicesStatusFunc
 	cli.StopAgentService = cli.StopAgentServiceFunc
 	cli.StopHubService = cli.StopHubServiceFunc
+	cli.RunInitCluster = cli.RunInitClusterFn
+	cli.InitClusterService = cli.InitClusterServiceFn
+	cli.LoadInputConfigToIdl = cli.LoadInputConfigToIdlFn
+	cli.ValidateInputConfigAndSetDefaults = cli.ValidateInputConfigAndSetDefaultsFn
+	cli.OsStat = os.Stat
+	cli.CheckForDuplicatPortAndDataDirectory = cli.CheckForDuplicatPortAndDataDirectoryFn
 }
 
 func funcNilError() func() error {

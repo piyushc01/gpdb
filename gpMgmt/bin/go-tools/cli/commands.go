@@ -44,6 +44,7 @@ func RootCommand() *cobra.Command {
 		startCmd(),
 		statusCmd(),
 		stopCmd(),
+		initCmd(),
 	)
 
 	return root
@@ -91,11 +92,6 @@ func InitializeLogger(cmd *cobra.Command, args []string) error {
 
 	gplog.InitializeLogging(logName, "")
 
-	timeFormat := time.Now().Format("2006-01-02 15:04:05.000000")
-	hostname, _ := os.Hostname()
-	gplog.SetLogPrefixFunc(func(level string) string {
-		return fmt.Sprintf("%s %s  [%s] ", timeFormat, hostname, level) // TODO: decide what prefix we want, assuming we want one, but we *definitely* don't want the legacy one
-	})
 	if Verbose {
 		gplog.SetVerbosity(gplog.LOGDEBUG)
 	}

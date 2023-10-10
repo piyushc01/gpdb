@@ -325,14 +325,15 @@ ExecMainCode=0
 ExecMainStatus=0
 
 Darwin:
-{
-	"PID" = 19909;
-	"Program" = "/usr/local/gpdb/bin/gp";
-	"ProgramArguments" = (
-		"/usr/local/gpdb/bin/gp";
-		"hub";
-	);
-};
+
+	{
+		"PID" = 19909;
+		"Program" = "/usr/local/gpdb/bin/gp";
+		"ProgramArguments" = (
+			"/usr/local/gpdb/bin/gp";
+			"hub";
+		);
+	};
 */
 func (p GpPlatform) ParseServiceStatusMessage(message string) idl.ServiceStatus {
 	var status, uptime string

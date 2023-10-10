@@ -12,17 +12,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/greenplum-db/gpdb/gp/constants"
-
-	"github.com/greenplum-db/gp-common-go-libs/gplog"
-	"github.com/greenplum-db/gpdb/gp/idl"
-	"github.com/greenplum-db/gpdb/gp/testutils/exectest"
-	"github.com/greenplum-db/gpdb/gp/utils"
+	"golang.org/x/exp/slices"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/connectivity"
 	"google.golang.org/grpc/reflection"
 	grpcStatus "google.golang.org/grpc/status"
+
+	"github.com/greenplum-db/gp-common-go-libs/gplog"
+	"github.com/greenplum-db/gpdb/gp/constants"
+	"github.com/greenplum-db/gpdb/gp/idl"
+	"github.com/greenplum-db/gpdb/gp/testutils/exectest"
+	"github.com/greenplum-db/gpdb/gp/utils"
 )
 
 var (
@@ -33,6 +34,10 @@ var (
 )
 
 type Dialer func(context.Context, string) (net.Conn, error)
+
+type streamSender interface {
+	Send(*idl.HubReply) error
+}
 
 type Config struct {
 	Port        int      `json:"hubPort"`
@@ -312,7 +317,9 @@ func ExecuteRPC(agentConns []*Connection, executeRequest func(conn *Connection) 
 		go func() {
 			defer wg.Done()
 			err := executeRequest(conn)
-			errs <- err
+			if err != nil {
+				errs <- fmt.Errorf("host: %s, %w", conn.Hostname, err)
+			}
 		}()
 	}
 
@@ -378,7 +385,7 @@ func copyConfigFileToAgents(conf *Config, ConfigFilePath string) error {
 	}
 	greenplumPathSh := filepath.Join(conf.GpHome, "greenplum_path.sh")
 	if len(hostList) < 1 {
-		return fmt.Errorf("hostlist should not be empty. No hosts to copy files.")
+		return fmt.Errorf("hostlist should not be empty. No hosts to copy files")
 	}
 
 	remoteCmd := append(hostList, ConfigFilePath, fmt.Sprintf("=:%s", ConfigFilePath))
@@ -391,7 +398,110 @@ func copyConfigFileToAgents(conf *Config, ConfigFilePath string) error {
 	return nil
 }
 
-// used only for testing
+func getConnByHost(conns []*Connection, hostnames []string) []*Connection {
+	result := []*Connection{}
+	for _, conn := range conns {
+		if slices.Contains(hostnames, conn.Hostname) {
+			result = append(result, conn)
+		}
+	}
+
+	return result
+}
+
+func streamLogMsg(stream streamSender, logMsg *idl.LogMessage) {
+	message := &idl.HubReply{
+		Message: &idl.HubReply_LogMsg{
+			LogMsg: logMsg,
+		},
+	}
+
+	err := stream.Send(message)
+	if err != nil {
+		gplog.Error("unable to stream message %q: %s", message, err)
+	}
+}
+
+func streamStdoutMsg(stream streamSender, msg string) {
+	message := &idl.HubReply{
+		Message: &idl.HubReply_StdoutMsg{
+			StdoutMsg: msg,
+		},
+	}
+
+	err := stream.Send(message)
+	if err != nil {
+		gplog.Error("unable to stream message %q: %s", message, err)
+	}
+}
+
+func streamExecCommand(stream streamSender, cmd *exec.Cmd, gphome string) error {
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return err
+	}
+
+	gplog.Debug("Executing command: %s", cmd.String())
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	go func() {
+		buf := make([]byte, 1024)
+		for {
+			n, err := stdout.Read(buf)
+			if err != nil {
+				break
+			}
+
+			output := string(buf[:n])
+			streamStdoutMsg(stream, output)
+		}
+	}()
+
+	go func() {
+		buf := make([]byte, 1024)
+		for {
+			n, err := stderr.Read(buf)
+			if err != nil {
+				break
+			}
+
+			output := string(buf[:n])
+			streamStdoutMsg(stream, output)
+		}
+	}()
+
+	if err := cmd.Wait(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func streamProgressMsg(stream streamSender, label string, total int) {
+
+	message := &idl.HubReply{
+		Message: &idl.HubReply_ProgressMsg{
+			ProgressMsg: &idl.ProgressMessage{
+				Label: label,
+				Total: int32(total),
+			},
+		},
+	}
+
+	err := stream.Send(message)
+	if err != nil {
+		gplog.Error("unable to stream message %q: %s", message, err)
+	}
+}
+
+// SetEnsureConnectionsAreReady used only for testing
 func SetEnsureConnectionsAreReady(customFunc func(conns []*Connection) error) {
 	ensureConnectionsAreReadyFunc = customFunc
 }

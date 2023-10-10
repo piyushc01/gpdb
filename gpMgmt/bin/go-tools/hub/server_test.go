@@ -348,7 +348,7 @@ func TestStatusAgents(t *testing.T) {
 
 		_, err := hubServer.StatusAgents(context.Background(), &idl.StatusAgentsRequest{})
 		expectedErr := "failed to get agent status on host sdw2"
-		if err.Error() != expectedErr {
+		if err == nil || !strings.Contains(err.Error(), expectedErr) {
 			t.Fatalf("got %v, want %v", err, expectedErr)
 		}
 	})
@@ -430,7 +430,7 @@ func TestStopAgents(t *testing.T) {
 
 		_, err := hubServer.StopAgents(context.Background(), &idl.StopAgentsRequest{})
 		expectedErr := "failed to stop agent on host sdw2: error"
-		if err.Error() != expectedErr {
+		if !strings.Contains(err.Error(), expectedErr) {
 			t.Fatalf("got %v, want %v", err, expectedErr)
 		}
 	})

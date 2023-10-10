@@ -19,6 +19,7 @@ var (
 type Config struct {
 	Port        int
 	ServiceName string
+	GpHome      string
 
 	Credentials utils.Credentials
 }
