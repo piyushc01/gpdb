@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -27,6 +28,7 @@ var (
 	OsIsNotExist           = os.IsNotExist
 	GetAllNonEmptyDir      = GetAllNonEmptyDirFn
 	CheckFilePermissions   = CheckFilePermissionsFn
+	GetAllAvailableLocales = GetAllAvailableLocalesFn
 	ValidateLocaleSettings = ValidateLocaleSettingsFn
 	ValidatePortList       = ValidatePortListFn
 	VerifyPgVersion        = ValidatePgVersionFn
@@ -262,7 +264,7 @@ func CheckExecutableFn(FileMode os.FileMode) bool {
 	return FileMode&0111 != 0
 }
 
-func getAllAvailableLocales() (string, error) {
+func GetAllAvailableLocalesFn() (string, error) {
 	cmd := utils.System.ExecCommand("/usr/bin/locale", "-a")
 	availableLocales, err := cmd.Output()
 
@@ -272,11 +274,60 @@ func getAllAvailableLocales() (string, error) {
 	return string(availableLocales), nil
 }
 
+// Simplified version of _nl_normalize_codeset from glibc
+// https://sourceware.org/git/?p=glibc.git;a=blob;f=intl/l10nflist.c;h=078a450dfec21faf2d26dc5d0cb02158c1f23229;hb=1305edd42c44fee6f8660734d2dfa4911ec755d6#l294
+// Input parameter - string with locale define as [language[_territory][.codeset][@modifier]]
+func NormalizeCodesetInLocale(locale string) string {
+	localeSplit := strings.Split(locale, ".")
+	languageAndTerritory := localeSplit[0]
+
+	codesetAndModifier := strings.Split(localeSplit[1], "@")
+
+	codeset := codesetAndModifier[0]
+
+	modifier := ""
+
+	if len(codesetAndModifier) == 2 {
+		modifier = codesetAndModifier[1]
+	}
+
+	digitPattern := regexp.MustCompile(`^[0-9]+$`)
+	if digitPattern.MatchString(codeset) {
+		codeset = "iso" + codeset
+	} else {
+		codeset = strings.Map(func(r rune) rune {
+			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+				return r
+			}
+			return -1
+		}, codeset)
+		codeset = strings.ToLower(codeset)
+	}
+
+	result := fmt.Sprintf("%s%s%s", languageAndTerritory, dotIfNotEmpty(codeset), atIfNotEmpty(modifier))
+	return result
+}
+
+func dotIfNotEmpty(s string) string {
+	if s != "" {
+		return "." + s
+	}
+	return ""
+}
+
+func atIfNotEmpty(s string) string {
+	if s != "" {
+		return "@" + s
+	}
+	return ""
+}
+
 func IsLocaleAvailable(locale_type string, allAvailableLocales string) bool {
 	locales := strings.Split(allAvailableLocales, "\n")
+	normalizedLocale := NormalizeCodesetInLocale(locale_type)
 
 	for _, v := range locales {
-		if locale_type == v {
+		if locale_type == v || normalizedLocale == v {
 			return true
 		}
 	}
@@ -284,7 +335,7 @@ func IsLocaleAvailable(locale_type string, allAvailableLocales string) bool {
 }
 
 func ValidateLocaleSettingsFn(locale *idl.Locale) error {
-	systemLocales, err := getAllAvailableLocales()
+	systemLocales, err := GetAllAvailableLocales()
 	if err != nil {
 		return err
 	}

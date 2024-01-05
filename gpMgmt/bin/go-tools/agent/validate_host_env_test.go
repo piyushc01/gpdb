@@ -639,6 +639,7 @@ func resetAgentFunctions() {
 	agent.ValidatePortList = agent.ValidatePortListFn
 	agent.VerifyPgVersion = agent.ValidatePgVersionFn
 	agent.OsIsNotExist = os.IsNotExist
+	agent.GetAllAvailableLocales = agent.GetAllAvailableLocalesFn
 	utils.ResetSystemFunctions()
 
 }
@@ -679,6 +680,81 @@ func TestGetAllNonEmptyDir(t *testing.T) {
 		emptyList := agent.GetAllNonEmptyDir(dirList)
 		if len(emptyList) != 1 || emptyList[0] != expectedStr {
 			t.Fatalf("got %q, want %q", emptyList, expectedStr)
+		}
+	})
+}
+
+func TestNormalizeCodesetInLocale(t *testing.T) {
+	testhelper.SetupTestLogger()
+	t.Run("function returns the locale with normalized codeset", func(t *testing.T) {
+		expectedLocale := "en_US.utf8"
+		normalizedCodesetLocale := agent.NormalizeCodesetInLocale("en_US.UTF-8")
+		if normalizedCodesetLocale != expectedLocale {
+			t.Fatalf("got locale %s expected %s", normalizedCodesetLocale, expectedLocale)
+		}
+	})
+	t.Run("function returns the locale with normalized codeset when codeset contains only digits", func(t *testing.T) {
+		expectedLocale := "en_US.iso1234"
+		normalizedCodesetLocale := agent.NormalizeCodesetInLocale("en_US.1234")
+		if normalizedCodesetLocale != expectedLocale {
+			t.Fatalf("got locale %s expected %s", normalizedCodesetLocale, expectedLocale)
+		}
+	})
+	t.Run("function returns the locale with normalized codeset with modifier", func(t *testing.T) {
+		expectedLocale := "en_US.iso1234@tlo"
+		normalizedCodesetLocale := agent.NormalizeCodesetInLocale("en_US.1234@tlo")
+		if normalizedCodesetLocale != expectedLocale {
+			t.Fatalf("got locale %s expected %s", normalizedCodesetLocale, expectedLocale)
+		}
+	})
+}
+
+func TestIsLocaleAvailable(t *testing.T) {
+	testhelper.SetupTestLogger()
+	t.Run("function returns true if locale is available on the system", func(t *testing.T) {
+		isAvailable := agent.IsLocaleAvailable("en_US.UTF-8", "en_US.UTF-8\nfi_FI.ISO8859-15\nko_KR.CP949\nhy_AM.UTF-8")
+		if !isAvailable {
+			t.Fatalf("Returned false even when locale is available")
+		}
+	})
+	t.Run("function returns false if locale is available on the system", func(t *testing.T) {
+		isAvailable := agent.IsLocaleAvailable("en_US.UTF-8", "fi_FI.ISO8859-15\nko_KR.CP949\nhy_AM.UTF-8")
+		if isAvailable {
+			t.Fatalf("Returned true even when locale is not available")
+		}
+	})
+}
+
+func TestValidateLocaleSettingsFn(t *testing.T) {
+	testhelper.SetupTestLogger()
+	defer resetAgentFunctions()
+	locale := &idl.Locale{
+		LcAll:      "en_US.UTF-8",
+		LcCtype:    "en_US.UTF-8",
+		LcTime:     "en_US.UTF-8",
+		LcNumeric:  "en_US.UTF-8",
+		LcMonetory: "en_US.UTF-8",
+		LcMessages: "en_US.UTF-8",
+		LcCollate:  "en_US.UTF-8",
+	}
+	t.Run("function does not return any error if all of the locale are available on the system", func(t *testing.T) {
+		agent.GetAllAvailableLocales = func() (string, error) {
+			return "en_US.UTF-8\nfi_FI.ISO8859-15\nko_KR.CP949\nhy_AM.UTF-8", nil
+		}
+		err := agent.ValidateLocaleSettingsFn(locale)
+		if err != nil {
+			t.Fatalf("got unexpected error %s", err)
+		}
+	})
+	t.Run("function returns error if any of the locale is not available on the system", func(t *testing.T) {
+		expectedError := "locale value 'en_US.1234' is not a valid locale"
+		locale.LcCtype = "en_US.1234"
+		agent.GetAllAvailableLocales = func() (string, error) {
+			return "en_US.UTF-8\nfi_FI.ISO8859-15\nko_KR.CP949\nhy_AM.UTF-8", nil
+		}
+		err := agent.ValidateLocaleSettingsFn(locale)
+		if err == nil || !strings.Contains(err.Error(), expectedError) {
+			t.Fatalf("got %s, expected: %s", err, expectedError)
 		}
 	})
 }
