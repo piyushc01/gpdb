@@ -3,10 +3,13 @@ package agent_test
 import (
 	"context"
 	"fmt"
+	"github.com/greenplum-db/gpdb/gp/constants"
+	"github.com/greenplum-db/gpdb/gp/testutils"
 	"net"
 	"os"
 	"os/user"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
@@ -18,8 +21,351 @@ import (
 
 func init() {
 	exectest.RegisterMains(
-		PgVersionCmd,
+		PgVersionCmd, UlimitSuccess, UlimitFail, UlimitTextOutput,
 	)
+}
+func UlimitSuccess() {
+	//os.Stdout.WriteString("%d", constants.OsOpenFiles+1)
+	os.Stdout.WriteString(fmt.Sprintf("%d", constants.OsOpenFiles+1))
+}
+func UlimitFail() {
+
+	os.Stdout.WriteString(fmt.Sprintf("%d", constants.OsOpenFiles-1))
+}
+func UlimitTextOutput() {
+
+	os.Stdout.WriteString(fmt.Sprintf("abc:%d", constants.OsOpenFiles+1))
+}
+func PgVersionCmd() {
+	os.Stdout.WriteString("test-version-1234")
+}
+
+func resetAgentFunctions() {
+	agent.CheckDirEmpty = agent.CheckDirEmptyFn
+	agent.CheckFileOwnerGroup = agent.CheckFileOwnerGroupFn
+	agent.CheckExecutable = agent.CheckExecutableFn
+	agent.GetAllNonEmptyDir = agent.GetAllNonEmptyDirFn
+	agent.CheckFilePermissions = agent.CheckFilePermissionsFn
+	agent.ValidateLocaleSettings = agent.ValidateLocaleSettingsFn
+	agent.ValidatePortList = agent.ValidatePortListFn
+	agent.VerifyPgVersion = agent.ValidatePgVersionFn
+	agent.OsIsNotExist = os.IsNotExist
+	agent.GetAllAvailableLocales = agent.GetAllAvailableLocalesFn
+	utils.ResetSystemFunctions()
+
+}
+func TestCheckOpenFilesLimit(t *testing.T) {
+	testhelper.SetupTestLogger()
+
+	t.Run("returns error if fails to get the current user", func(t *testing.T) {
+		testStr := "error getting user"
+		defer utils.ResetSystemFunctions()
+		utils.System.CurrentUser = func() (*user.User, error) {
+			return nil, fmt.Errorf(testStr)
+		}
+		reply := agent.CheckOpenFilesLimit()
+		if len(reply) < 1 || !strings.Contains(reply[0].Message, testStr) {
+			t.Fatalf("got error:%v, expected:%s", reply, testStr)
+		}
+	})
+	t.Run("returns error when fails to execute ulimit command", func(t *testing.T) {
+		expReply := idl.LogMessage{
+			Message: "error fetching open file limit values:exit status 1",
+			Level:   idl.LogLevel_WARNING,
+		}
+		defer utils.ResetSystemFunctions()
+		utils.System.ExecCommand = exectest.NewCommand(exectest.Failure)
+		reply := agent.CheckOpenFilesLimit()
+		if !strings.Contains(reply[0].Message, expReply.Message) || reply[0].Level != expReply.Level {
+			t.Fatalf("Got:%s:thu, Expected:%v", reply[0].Message, expReply)
+		}
+	})
+	t.Run("returns no warning when ulimit returns higher value", func(t *testing.T) {
+		defer utils.ResetSystemFunctions()
+		utils.System.ExecCommand = exectest.NewCommand(UlimitSuccess)
+		reply := agent.CheckOpenFilesLimit()
+		if len(reply) > 0 {
+			t.Fatalf("Got:%s, Expected no warinings", reply[0].Message)
+		}
+	})
+	t.Run("returns warning when fails to convert ulimit output", func(t *testing.T) {
+		tesstStr := "could not convert the ulimit value"
+		defer utils.ResetSystemFunctions()
+		utils.System.ExecCommand = exectest.NewCommand(UlimitTextOutput)
+		reply := agent.CheckOpenFilesLimit()
+		if len(reply) < 1 || !strings.Contains(reply[0].Message, tesstStr) {
+			t.Fatalf("Got:%s, Expected:%s", reply[0].Message, tesstStr)
+		}
+	})
+	t.Run("returns warning when ulimit returns lower value on MacOS platform", func(t *testing.T) {
+		tesstStr := "Host open file limit is"
+		defer utils.ResetSystemFunctions()
+		defer agent.ResetPlatform()
+		utils.System.ExecCommand = exectest.NewCommand(UlimitFail)
+		pf := testutils.MockPlatform{OS: constants.PlatformDarwin}
+		agent.SetPlatform(&pf)
+		reply := agent.CheckOpenFilesLimit()
+		if len(reply) < 1 || !strings.Contains(reply[0].Message, tesstStr) {
+			t.Fatalf("Got:%s, Expected:%s", reply[0].Message, tesstStr)
+		}
+	})
+	t.Run("returns warning when fails to open directory on linux platform", func(t *testing.T) {
+		tesstStr := "error opening directory"
+		defer utils.ResetSystemFunctions()
+		defer agent.ResetPlatform()
+		defer utils.ResetSystemFunctions()
+		utils.System.ExecCommand = exectest.NewCommand(UlimitFail)
+		pf := testutils.MockPlatform{OS: constants.PlatformLinux}
+		agent.SetPlatform(&pf)
+
+		utils.System.ReadDir = func(name string) ([]os.DirEntry, error) {
+			return nil, fmt.Errorf("%s", tesstStr)
+		}
+
+		reply := agent.CheckOpenFilesLimit()
+		if len(reply) < 1 || !strings.Contains(reply[0].Message, tesstStr) {
+			t.Fatalf("Got:%s, Expected:%s", reply[0].Message, tesstStr)
+		}
+	})
+	t.Run("returns warning when get invalid value from limits.d directory on linux platform", func(t *testing.T) {
+		tesstStr := "Host open file limit is"
+		unitTestDir, err := os.MkdirTemp("", "")
+		if err != nil {
+			t.Fatalf("error creating temp directory:%v", err)
+		}
+		f1, err := os.CreateTemp(unitTestDir, "")
+		if err != nil {
+			t.Fatalf("error creating temp file:%v", err)
+		}
+		f2, err := os.CreateTemp(unitTestDir, "")
+		if err != nil {
+			t.Fatalf("error creating temp file:%v", err)
+		}
+
+		defer os.Remove(f1.Name())
+		defer os.Remove(f2.Name())
+		defer os.Remove(unitTestDir)
+		defer utils.ResetSystemFunctions()
+		defer agent.ResetPlatform()
+		defer utils.ResetSystemFunctions()
+		utils.System.ExecCommand = exectest.NewCommand(UlimitFail)
+		pf := testutils.MockPlatform{OS: constants.PlatformLinux}
+		agent.SetPlatform(&pf)
+
+		utils.System.ReadDir = func(name string) ([]os.DirEntry, error) {
+			ret, err := os.ReadDir(unitTestDir)
+			if err != nil {
+				t.Fatalf("error reading temp dir:%s error:%v", unitTestDir, err)
+			}
+			return ret, nil
+		}
+		agent.GetMaxFilesFromLimitsFile = func(fileName string, curUser *user.User) (int, error) {
+			return constants.OsOpenFiles - 1, nil
+		}
+
+		reply := agent.CheckOpenFilesLimit()
+		if len(reply) < 1 || !strings.Contains(reply[0].Message, tesstStr) {
+			t.Fatalf("Got:%s, Expected:%s", reply[0].Message, tesstStr)
+		}
+	})
+
+	t.Run("returns warning when get valid values from limits.d directory on linux platform", func(t *testing.T) {
+		unitTestDir, err := os.MkdirTemp("", "")
+		if err != nil {
+			t.Fatalf("error creating temp directory:%v", err)
+		}
+		f1, err := os.CreateTemp(unitTestDir, "")
+		if err != nil {
+			t.Fatalf("error creating temp file:%v", err)
+		}
+		f2, err := os.CreateTemp(unitTestDir, "")
+		if err != nil {
+			t.Fatalf("error creating temp file:%v", err)
+		}
+
+		defer os.Remove(f1.Name())
+		defer os.Remove(f2.Name())
+		defer os.Remove(unitTestDir)
+		defer utils.ResetSystemFunctions()
+		defer agent.ResetPlatform()
+		defer utils.ResetSystemFunctions()
+		utils.System.ExecCommand = exectest.NewCommand(UlimitFail)
+		pf := testutils.MockPlatform{OS: constants.PlatformLinux}
+		agent.SetPlatform(&pf)
+
+		utils.System.ReadDir = func(name string) ([]os.DirEntry, error) {
+			ret, err := os.ReadDir(unitTestDir)
+			if err != nil {
+				t.Fatalf("error reading temp dir:%s error:%v", unitTestDir, err)
+			}
+			return ret, nil
+		}
+		agent.GetMaxFilesFromLimitsFile = func(fileName string, curUser *user.User) (int, error) {
+			return constants.OsOpenFiles + 1, nil
+		}
+
+		reply := agent.CheckOpenFilesLimit()
+		if len(reply) != 0 {
+			t.Fatalf("Got:%s, Expected no warnings", reply[0].Message)
+		}
+	})
+	t.Run("returns  warning when no limits.d file and get a invalid value from limits.conf directory on linux platform", func(t *testing.T) {
+		tesstStr := "Host open file limit is"
+		defer utils.ResetSystemFunctions()
+		defer agent.ResetPlatform()
+		defer utils.ResetSystemFunctions()
+		utils.System.ExecCommand = exectest.NewCommand(UlimitFail)
+		pf := testutils.MockPlatform{OS: constants.PlatformLinux}
+		agent.SetPlatform(&pf)
+
+		utils.System.ReadDir = func(name string) ([]os.DirEntry, error) {
+			return nil, nil
+		}
+		agent.GetMaxFilesFromLimitsFile = func(fileName string, curUser *user.User) (int, error) {
+			return constants.OsOpenFiles - 1, nil
+		}
+
+		reply := agent.CheckOpenFilesLimit()
+		if len(reply) < 1 || !strings.Contains(reply[0].Message, tesstStr) {
+			t.Fatalf("Got:%s, Expected:%s", reply[0].Message, tesstStr)
+		}
+	})
+	t.Run("returns no warning when no limits.d file and get a valid value from limits.conf directory on linux platform", func(t *testing.T) {
+		defer utils.ResetSystemFunctions()
+		defer agent.ResetPlatform()
+		defer utils.ResetSystemFunctions()
+		utils.System.ExecCommand = exectest.NewCommand(UlimitFail)
+		pf := testutils.MockPlatform{OS: constants.PlatformLinux}
+		agent.SetPlatform(&pf)
+
+		utils.System.ReadDir = func(name string) ([]os.DirEntry, error) {
+			return nil, nil
+		}
+		agent.GetMaxFilesFromLimitsFile = func(fileName string, curUser *user.User) (int, error) {
+			return constants.OsOpenFiles + 1, nil
+		}
+
+		reply := agent.CheckOpenFilesLimit()
+		if len(reply) != 0 {
+			t.Fatalf("Got:%s, Expected no warning", reply[0].Message)
+		}
+	})
+
+}
+
+func TestGetMaxFilesFromLimitsFileFn(t *testing.T) {
+	testhelper.SetupTestLogger()
+	curUser, err := user.Current()
+	if err != nil {
+		t.Fatalf("error fetching current user:%v", err)
+	}
+
+	t.Run("returns error when fails to open the file", func(t *testing.T) {
+		testStr := "error opening file"
+		utils.System.Open = func(name string) (*os.File, error) {
+			return nil, fmt.Errorf(testStr)
+		}
+		defer utils.ResetSystemFunctions()
+
+		_, err = agent.GetMaxFilesFromLimitsFileFn("testfile", curUser)
+		if err == nil || !strings.Contains(err.Error(), testStr) {
+			t.Fatalf("got:%v, expected:%s", err, testStr)
+		}
+	})
+
+	t.Run("returns correct value of file limit from the file when all users specified", func(t *testing.T) {
+		expLimit := 5000
+		testFile, err := os.CreateTemp("", "")
+		if err != nil {
+			t.Fatalf("error creating temp file:%s", err)
+		}
+		defer testFile.Close()
+		defer os.Remove(testFile.Name())
+
+		data := fmt.Sprintf("* soft nofile %d", expLimit)
+		_, err = testFile.Write([]byte(data))
+		if err != nil {
+			t.Fatalf("error writing content to temp file:%s", err)
+		}
+
+		curLimit, err := agent.GetMaxFilesFromLimitsFileFn(testFile.Name(), curUser)
+		if err != nil {
+			t.Fatalf("got:%v, expected no error", err)
+		}
+		if curLimit != expLimit {
+			t.Fatalf("got limit:%d, expected limit:%d", curLimit, expLimit)
+		}
+	})
+	t.Run("returns correct value of file limit from the file when user is specified", func(t *testing.T) {
+		expLimit := 5000
+		testFile, err := os.CreateTemp("", "")
+		if err != nil {
+			t.Fatalf("error creating temp file:%s", err)
+		}
+		defer testFile.Close()
+		defer os.Remove(testFile.Name())
+
+		data := fmt.Sprintf("%s soft nofile %d", curUser.Name, expLimit)
+		_, err = testFile.Write([]byte(data))
+		if err != nil {
+			t.Fatalf("error writing content to temp file:%s", err)
+		}
+
+		curLimit, err := agent.GetMaxFilesFromLimitsFileFn(testFile.Name(), curUser)
+		if err != nil {
+			t.Fatalf("got:%v, expected no error", err)
+		}
+		if curLimit != expLimit {
+			t.Fatalf("got limit:%d, expected limit:%d", curLimit, expLimit)
+		}
+	})
+	t.Run("returns correct value of file limit from multi-line file", func(t *testing.T) {
+		expLimit := 5000
+		testFile, err := os.CreateTemp("", "")
+		if err != nil {
+			t.Fatalf("error creating temp file:%s", err)
+		}
+		defer testFile.Close()
+		defer os.Remove(testFile.Name())
+
+		data := fmt.Sprintf("* hard notile 1234\ngpadmin limit 567\n%s soft nofile %d\ngpadmin limit 789",
+			curUser.Name, expLimit)
+		_, err = testFile.Write([]byte(data))
+		if err != nil {
+			t.Fatalf("error writing content to temp file:%s", err)
+		}
+
+		curLimit, err := agent.GetMaxFilesFromLimitsFileFn(testFile.Name(), curUser)
+		if err != nil {
+			t.Fatalf("got:%v, expected no error", err)
+		}
+		if curLimit != expLimit {
+			t.Fatalf("got limit:%d, expected limit:%d", curLimit, expLimit)
+		}
+	})
+	t.Run("returns -1 when limit not found in current file", func(t *testing.T) {
+		expLimit := -1
+		testFile, err := os.CreateTemp("", "")
+		if err != nil {
+			t.Fatalf("error creating temp file:%s", err)
+		}
+		defer testFile.Close()
+		defer os.Remove(testFile.Name())
+
+		data := fmt.Sprintf("* hard notile 1234\ngpadmin limit 567\n")
+		_, err = testFile.Write([]byte(data))
+		if err != nil {
+			t.Fatalf("error writing content to temp file:%s", err)
+		}
+
+		curLimit, err := agent.GetMaxFilesFromLimitsFileFn(testFile.Name(), curUser)
+		if err != nil {
+			t.Fatalf("got:%v, expected no error", err)
+		}
+		if curLimit != expLimit {
+			t.Fatalf("got limit:%d, expected limit:%d", curLimit, expLimit)
+		}
+	})
 }
 
 func TestCheckHostAddressInHostsFile(t *testing.T) {
@@ -102,7 +448,7 @@ func TestValidatePgVersionFn(t *testing.T) {
 		defer utils.ResetSystemFunctions()
 
 		err := agent.ValidatePgVersionFn("expected-version", "gphome")
-		expectedStr := "etching postgres gp-version:exit status 1"
+		expectedStr := "fetching postgres gp-version: exit status 1"
 		if err == nil || !strings.Contains(err.Error(), expectedStr) {
 			t.Fatalf("expected error:`%s`, got error:`%s`", expectedStr, err)
 		}
@@ -137,9 +483,6 @@ func TestValidatePgVersionFn(t *testing.T) {
 			t.Fatalf("expected error: `%s`, got error:`%s`", expectedStr, err)
 		}
 	})
-}
-func PgVersionCmd() {
-	os.Stdout.WriteString("test-version-1234")
 }
 
 func TestValidatePortList(t *testing.T) {
@@ -420,7 +763,34 @@ func TestCheckFileOwnerGroupFn(t *testing.T) {
 			t.Fatalf("got %v expected none", err)
 		}
 	})
-	t.Run("returns  error when uid does not matches", func(t *testing.T) {
+	t.Run("returns no error when only GID does not match", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("/tmp/", "")
+		if err != nil {
+			t.Fatalf("error creating test temp file:%v", err)
+		}
+		defer os.Remove(tmpFile.Name())
+		defer resetAgentFunctions()
+		utils.System.Getgid = func() int {
+			return -1
+		}
+		utils.System.Getuid = func() int {
+			stat, err := tmpFile.Stat()
+			if err != nil {
+				t.Fatalf("error getting test temp file stat:%v", err)
+			}
+			return int(stat.Sys().(*syscall.Stat_t).Uid)
+		}
+		filePath := tmpFile.Name()
+		fileInfo, err := os.Stat(filePath)
+		if err != nil {
+			t.Fatalf("error stating the file temp file %s:%v", filePath, err)
+		}
+		err = agent.CheckFileOwnerGroupFn(filePath, fileInfo)
+		if err != nil {
+			t.Fatalf("got %v expected no error", err)
+		}
+	})
+	t.Run("returns no error when only UID does not match", func(t *testing.T) {
 		tmpFile, err := os.CreateTemp("/tmp/", "")
 		if err != nil {
 			t.Fatalf("error creating test temp file:%v", err)
@@ -430,18 +800,24 @@ func TestCheckFileOwnerGroupFn(t *testing.T) {
 		utils.System.Getuid = func() int {
 			return -1
 		}
+		utils.System.Getgid = func() int {
+			stat, err := tmpFile.Stat()
+			if err != nil {
+				t.Fatalf("error getting test temp file stat:%v", err)
+			}
+			return int(stat.Sys().(*syscall.Stat_t).Gid)
+		}
 		filePath := tmpFile.Name()
 		fileInfo, err := os.Stat(filePath)
 		if err != nil {
 			t.Fatalf("error stating the file temp file %s:%v", filePath, err)
 		}
-		testStr := "is neither owned by the user nor by group"
 		err = agent.CheckFileOwnerGroupFn(filePath, fileInfo)
-		if err == nil || !strings.Contains(err.Error(), testStr) {
-			t.Fatalf("got %v expected %s", err, testStr)
+		if err != nil {
+			t.Fatalf("got %v expected no error", err)
 		}
 	})
-	t.Run("returns  error when gid does not matches", func(t *testing.T) {
+	t.Run("returns error when uid and gid both do not match", func(t *testing.T) {
 		tmpFile, err := os.CreateTemp("/tmp/", "")
 		if err != nil {
 			t.Fatalf("error creating test temp file:%v", err)
@@ -628,20 +1004,6 @@ func TestCheckEmptyDir(t *testing.T) {
 			t.Fatalf("expected directory non-empty, but returned empty")
 		}
 	})
-}
-func resetAgentFunctions() {
-	agent.CheckDirEmpty = agent.CheckDirEmptyFn
-	agent.CheckFileOwnerGroup = agent.CheckFileOwnerGroupFn
-	agent.CheckExecutable = agent.CheckExecutableFn
-	agent.GetAllNonEmptyDir = agent.GetAllNonEmptyDirFn
-	agent.CheckFilePermissions = agent.CheckFilePermissionsFn
-	agent.ValidateLocaleSettings = agent.ValidateLocaleSettingsFn
-	agent.ValidatePortList = agent.ValidatePortListFn
-	agent.VerifyPgVersion = agent.ValidatePgVersionFn
-	agent.OsIsNotExist = os.IsNotExist
-	agent.GetAllAvailableLocales = agent.GetAllAvailableLocalesFn
-	utils.ResetSystemFunctions()
-
 }
 
 func TestGetAllNonEmptyDir(t *testing.T) {

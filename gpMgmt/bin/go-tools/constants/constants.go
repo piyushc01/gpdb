@@ -19,4 +19,6 @@ const (
 	DefaultEncoding     = "UTF-8"
 	RolePrimary         = "p"
 	EtcHostsFilepath    = "/etc/hosts"
+	SecurityLimitsConf  = "/etc/security/limits.conf"
+	SecurityLimitsdDir  = "/etc/security/limits.d/"
 )

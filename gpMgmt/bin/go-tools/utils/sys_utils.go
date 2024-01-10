@@ -23,6 +23,7 @@ type SystemFunctions struct {
 	Getgid         func() int
 	RemoveAll      func(path string) error
 	ReadFile       func(name string) ([]byte, error)
+	ReadDir        func(name string) ([]os.DirEntry, error)
 }
 
 func InitializeSystemFunctions() *SystemFunctions {
@@ -38,6 +39,7 @@ func InitializeSystemFunctions() *SystemFunctions {
 		Getgid:         os.Getgid,
 		RemoveAll:      os.RemoveAll,
 		ReadFile:       os.ReadFile,
+		ReadDir:        os.ReadDir,
 	}
 }
 

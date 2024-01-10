@@ -31,6 +31,7 @@ type MockPlatform struct {
 	DefServiceDir        string
 	StartCmd             *exec.Cmd
 	ConfigFileData       []byte
+	OS                   string
 }
 
 func InitializeTestEnv() *hub.Config {
@@ -91,6 +92,9 @@ func (p *MockPlatform) ReadFile(configFilePath string) (config *hub.Config, err 
 }
 func (p *MockPlatform) SetServiceFileContent(content string) {
 	p.ServiceFileContent = content
+}
+func (p *MockPlatform) GetPlatformOS() string {
+	return p.OS
 }
 
 type MockCredentials struct {

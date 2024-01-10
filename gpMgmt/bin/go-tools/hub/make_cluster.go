@@ -217,7 +217,12 @@ func (s *Server) ValidateEnvironment(stream idl.Hub_MakeClusterServer, request *
 		}
 
 		streamProgressMsg(stream, progressLabel, progressTotal)
-		replies = append(replies, reply.Messages...)
+		// Add host-name to each reply message
+		for _, msg := range reply.Messages {
+			msg.Message = fmt.Sprintf("Host: %s %s", conn.Hostname, msg.Message)
+			replies = append(replies, msg)
+		}
+		//replies = append(replies, reply.Messages...)
 
 		return nil
 	}

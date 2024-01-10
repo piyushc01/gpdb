@@ -1,11 +1,13 @@
 package agent
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
 	"net"
 	"os"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -22,16 +24,17 @@ import (
 )
 
 var (
-	CheckDirEmpty          = CheckDirEmptyFn
-	CheckFileOwnerGroup    = CheckFileOwnerGroupFn
-	CheckExecutable        = CheckExecutableFn
-	OsIsNotExist           = os.IsNotExist
-	GetAllNonEmptyDir      = GetAllNonEmptyDirFn
-	CheckFilePermissions   = CheckFilePermissionsFn
-	GetAllAvailableLocales = GetAllAvailableLocalesFn
-	ValidateLocaleSettings = ValidateLocaleSettingsFn
-	ValidatePortList       = ValidatePortListFn
-	VerifyPgVersion        = ValidatePgVersionFn
+	CheckDirEmpty             = CheckDirEmptyFn
+	CheckFileOwnerGroup       = CheckFileOwnerGroupFn
+	CheckExecutable           = CheckExecutableFn
+	OsIsNotExist              = os.IsNotExist
+	GetAllNonEmptyDir         = GetAllNonEmptyDirFn
+	CheckFilePermissions      = CheckFilePermissionsFn
+	GetAllAvailableLocales    = GetAllAvailableLocalesFn
+	ValidateLocaleSettings    = ValidateLocaleSettingsFn
+	ValidatePortList          = ValidatePortListFn
+	VerifyPgVersion           = ValidatePgVersionFn
+	GetMaxFilesFromLimitsFile = GetMaxFilesFromLimitsFileFn
 )
 
 func (s *Server) ValidateHostEnv(ctx context.Context, request *idl.ValidateHostEnvRequest) (*idl.ValidateHostEnvReply, error) {
@@ -121,9 +124,18 @@ func ValidatePgVersionFn(expectedVersion string, gpHome string) error {
 	return nil
 
 }
+
 func CheckOpenFilesLimit() []*idl.LogMessage {
 	var warnings []*idl.LogMessage
-	out, err := utils.System.ExecCommand("ulimit", "-n").CombinedOutput()
+	curUser, err := utils.System.CurrentUser()
+	if err != nil {
+		warnMsg := fmt.Sprintf("error getting current user: %v", err)
+		warnings = append(warnings, &idl.LogMessage{Message: warnMsg, Level: idl.LogLevel_WARNING})
+		gplog.Warn(warnMsg)
+		return warnings
+	}
+
+	out, err := utils.System.ExecCommand("bash", "-c", "source ~/.bashrc;ulimit -n").CombinedOutput()
 	if err != nil {
 		warnMsg := fmt.Sprintf("error fetching open file limit values:%v", err)
 		warnings = append(warnings, &idl.LogMessage{Message: warnMsg, Level: idl.LogLevel_WARNING})
@@ -131,20 +143,127 @@ func CheckOpenFilesLimit() []*idl.LogMessage {
 		return warnings
 	}
 
-	openFileLimit, err := strconv.Atoi(strings.TrimSpace(string(out)))
+	ulimitVal, err := strconv.Atoi(strings.TrimSpace(string(out)))
 	if err != nil {
 		warnMsg := fmt.Sprintf("could not convert the ulimit value: %v", err)
 		warnings = append(warnings, &idl.LogMessage{Message: warnMsg, Level: idl.LogLevel_WARNING})
 		gplog.Warn(warnMsg)
 		return warnings
 	}
-	if openFileLimit < constants.OsOpenFiles {
-		warnMsg := fmt.Sprintf("Coordinator open file limit is %d should be >= %d", openFileLimit, constants.OsOpenFiles)
-		warnings = append(warnings, &idl.LogMessage{Message: warnMsg, Level: idl.LogLevel_WARNING})
-		gplog.Warn(warnMsg)
+	//curPlatform := utils.GetPlatform()
+	if platform.GetPlatformOS() == constants.PlatformDarwin {
+		if ulimitVal < constants.OsOpenFiles {
+			// In case of macOS, no limits file are present, return error
+			warnMsg := fmt.Sprintf("Host open file limit is %d should be >= %d", ulimitVal, constants.OsOpenFiles)
+			warnings = append(warnings, &idl.LogMessage{Message: warnMsg, Level: idl.LogLevel_WARNING})
+			gplog.Warn(warnMsg)
+			return warnings
+		}
+		return warnings
+	}
+	// Continue checking limits further for Linux platform
+	if ulimitVal < constants.OsOpenFiles {
+		// Sometime not able to get the correct value of open files limit using `ulimit -n`
+		// This happens because agent is running as a service and for services settings are applied through service file
+		// For linux platform, Check in limits.d/limits.conf and limits.conf file
+		// limits.d/*limit.conf settings override limits.conf
+
+		// look for entries like o extract nofile limit:
+		// * soft nofile 65536
+		// gpadmin soft nofile 65536
+		files, err := utils.System.ReadDir(constants.SecurityLimitsdDir)
+
+		if err != nil && !OsIsNotExist(err) {
+			warnMsg := fmt.Sprintf("error opening directory: %v", err)
+			warnings = append(warnings, &idl.LogMessage{Message: warnMsg, Level: idl.LogLevel_WARNING})
+			gplog.Warn(warnMsg)
+			return warnings
+		}
+
+		// In case of multiple files, files are sourced in ascending alphabetical order.
+		// To get effective value, sort files in descending alphabetical order
+		// on first detection of soft limit, extract value and return
+		for _, file := range files {
+			if file.IsDir() {
+				// skip if it's a directory
+				continue
+			}
+			// open file, read contents and get the entry for max open files limit for the user
+			fileLimit, err := GetMaxFilesFromLimitsFile(filepath.Join(constants.SecurityLimitsdDir, file.Name()), curUser)
+			if err != nil {
+				warnMsg := fmt.Sprintf(" %v", err)
+				warnings = append(warnings, &idl.LogMessage{Message: warnMsg, Level: idl.LogLevel_WARNING})
+				gplog.Warn(warnMsg)
+				return warnings
+			}
+			if fileLimit < constants.OsOpenFiles && fileLimit != -1 {
+				warnMsg := fmt.Sprintf("Host open file limit is %d should be >= %d", fileLimit, constants.OsOpenFiles)
+				warnings = append(warnings, &idl.LogMessage{Message: warnMsg, Level: idl.LogLevel_WARNING})
+				gplog.Warn(warnMsg)
+				return warnings
+			}
+		}
+
+		// in case not in limits.d/* files, check security/limits.conf file
+		fileLimit, err := GetMaxFilesFromLimitsFile(constants.SecurityLimitsConf, curUser)
+		if err != nil {
+			warnMsg := fmt.Sprintf(" %v", err)
+			warnings = append(warnings, &idl.LogMessage{Message: warnMsg, Level: idl.LogLevel_WARNING})
+			gplog.Warn(warnMsg)
+			return warnings
+		}
+		if fileLimit < constants.OsOpenFiles && fileLimit != -1 {
+
+			warnMsg := fmt.Sprintf("Host open file limit is %d should be >= %d", fileLimit, constants.OsOpenFiles)
+			warnings = append(warnings, &idl.LogMessage{Message: warnMsg, Level: idl.LogLevel_WARNING})
+			gplog.Warn(warnMsg)
+			return warnings
+		}
+		// Check if limit not defined in limits.conf or limits.d/* report warning based on value from ulimit
+		if fileLimit == -1 && ulimitVal < constants.OsOpenFiles {
+			warnMsg := fmt.Sprintf("Host open file limit is %d should be >= %d", ulimitVal, constants.OsOpenFiles)
+			warnings = append(warnings, &idl.LogMessage{Message: warnMsg, Level: idl.LogLevel_WARNING})
+			gplog.Warn(warnMsg)
+			return warnings
+		}
 	}
 
 	return warnings
+}
+
+func GetMaxFilesFromLimitsFileFn(fileName string, curUser *user.User) (int, error) {
+	fd, err := utils.System.Open(fileName)
+	if err != nil {
+		warnMsg := fmt.Sprintf("error opening file: %v", err)
+		gplog.Warn(warnMsg)
+		return -1, fmt.Errorf(warnMsg)
+	}
+	scanner := bufio.NewScanner(fd)
+	for scanner.Scan() {
+		// Form the regex and check if nofile is set
+		re := regexp.MustCompile(fmt.Sprintf("(^\\s*%s|\\*)\\s+soft\\s+nofile\\s+(\\d+)\\s*$", curUser.Name))
+		match := re.FindStringSubmatch(scanner.Text())
+		if match == nil {
+			continue
+		}
+		//if there's a regex match, check integer value
+		intMaxFiles, err := strconv.Atoi(match[2])
+		if err != nil {
+			warnMsg := fmt.Sprintf("error converting max files limit value: %v", err)
+			gplog.Warn(warnMsg)
+			return -1, fmt.Errorf(warnMsg)
+		}
+		gplog.Debug("GetMaxFilesFromLimitsFile for file:%s, returned value:%d", fileName, intMaxFiles)
+		return intMaxFiles, nil
+
+	}
+	if scanner.Err() != nil {
+		warnMsg := fmt.Sprintf("error reading the file: %v", err)
+		gplog.Warn(warnMsg)
+		return -1, fmt.Errorf(warnMsg)
+	}
+	gplog.Debug("GetMaxFilesFromLimitsFile for file:%s, No value found", fileName)
+	return -1, nil
 }
 
 func CheckHostAddressInHostsFile(hostAddressList []string) []*idl.LogMessage {
@@ -255,6 +374,7 @@ func CheckFileOwnerGroupFn(filePath string, fileInfo os.FileInfo) error {
 	}
 
 	if int(stat.Uid) != systemUid && int(stat.Gid) != systemGid {
+		fmt.Printf("StatUID:%d, StatGID:%d\nSysUID:%d SysGID:%d\n", stat.Uid, stat.Gid, systemUid, systemGid)
 		return fmt.Errorf("file %s is neither owned by the user nor by group", filePath)
 	}
 	return nil

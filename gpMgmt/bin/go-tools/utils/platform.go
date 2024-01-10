@@ -75,6 +75,7 @@ type Platform interface {
 	ParseServiceStatusMessage(message string) idl.ServiceStatus
 	DisplayServiceStatus(outfile io.Writer, serviceName string, statuses []*idl.ServiceStatus, skipHeader bool)
 	EnableUserLingering(hostnames []string, gphome string, serviceUser string) error
+	GetPlatformOS() string
 }
 
 func GetPlatform() Platform {
@@ -107,6 +108,9 @@ func (p GpPlatform) CreateServiceDir(hostnames []string, serviceDir string, gpho
 
 	gplog.Info("Created service file directory %s on all hosts", serviceDir)
 	return nil
+}
+func (p GpPlatform) GetPlatformOS() string {
+	return p.OS
 }
 
 func WriteServiceFile(filename string, contents string) error {

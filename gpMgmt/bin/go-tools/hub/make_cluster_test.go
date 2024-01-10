@@ -471,7 +471,7 @@ func TestValidateEnvironment(t *testing.T) {
 		},
 	}
 
-	t.Run("succesfully validates the segment hosts", func(t *testing.T) {
+	t.Run("successfully validates the segment hosts", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
@@ -566,7 +566,7 @@ func TestValidateEnvironment(t *testing.T) {
 		expectedStreamResponse = append(expectedStreamResponse, &idl.HubReply{
 			Message: &idl.HubReply_LogMsg{
 				LogMsg: &idl.LogMessage{
-					Message: "message",
+					Message: "Host: sdw1 message",
 					Level:   idl.LogLevel_WARNING,
 				},
 			},
