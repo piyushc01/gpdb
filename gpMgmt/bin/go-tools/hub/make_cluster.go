@@ -310,7 +310,7 @@ func (s *Server) CreateSegments(stream idl.Hub_MakeClusterServer, segs []greenpl
 	for _, seg := range segs {
 		segReq := &idl.Segment{
 			Port:          int32(seg.Port),
-			DataDirectory: seg.DataDirectory,
+			DataDirectory: seg.DataDir,
 			HostName:      seg.HostName,
 			HostAddress:   seg.HostAddress,
 			Contentid:     int32(seg.ContentId),

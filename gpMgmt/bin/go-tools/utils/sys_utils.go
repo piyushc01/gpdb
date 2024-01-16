@@ -47,6 +47,11 @@ func ResetSystemFunctions() {
 	System = InitializeSystemFunctions()
 }
 
+/*
+		WriteLinesToFile creates a new file with the given contents.
+		If a file with the name already exists, overwrites the file with new contents.
+	    Takes lines to be written as input and updates to the file by adding \n's.
+*/
 func WriteLinesToFile(filename string, lines []string) error {
 	file, err := System.Create(filename)
 	if err != nil {

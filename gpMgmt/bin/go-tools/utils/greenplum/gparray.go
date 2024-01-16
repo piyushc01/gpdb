@@ -17,17 +17,17 @@ type Segment struct {
 	Dbid          int
 	ContentId     int
 	Role          string
-	PrefRole      string
+	PreferredRole string
 	Mode          string
-	State         string
+	Status        string
 	Port          int
-	DataDirectory string
-	HostAddress   string
 	HostName      string
+	HostAddress   string
+	DataDir       string
 }
 
-func (seg *Segment) isSegmentPrimary() bool {
-	return seg.ContentId >= 0 && ((seg.Role == constants.RolePrimary) || (seg.PrefRole == constants.RolePrimary))
+func (seg *Segment) isSegmentActingPrimary() bool {
+	return seg.ContentId >= 0 && seg.Role == constants.RolePrimary
 }
 
 type GpArray struct {
@@ -53,10 +53,6 @@ func (gpArray *GpArray) ReadGpSegmentConfig(conn *dbconn.DBConn) error {
 		"FROM pg_catalog.gp_segment_configuration ORDER BY content ASC, role DESC;"
 
 	rows, _ := conn.Query(query)
-	/*if rows.Next() == false {
-		err = errors.New("Empty gp_segment_configuration")
-		return err
-	}*/
 	defer rows.Close()
 
 	result, _ := buildGpArray(rows)
@@ -75,11 +71,11 @@ func buildGpArray(rows *sqlx.Rows) ([]Segment, error) {
 			&dest.Dbid,
 			&dest.ContentId,
 			&dest.Role,
-			&dest.PrefRole,
+			&dest.PreferredRole,
 			&dest.Mode,
-			&dest.State,
+			&dest.Status,
 			&dest.Port,
-			&dest.DataDirectory,
+			&dest.DataDir,
 			&dest.HostName,
 			&dest.HostAddress,
 		); rErr != nil {
@@ -96,7 +92,7 @@ func (gpArray *GpArray) GetPrimarySegments() ([]Segment, error) {
 	var result []Segment
 
 	for _, seg := range gpArray.Segments {
-		if seg.isSegmentPrimary() {
+		if seg.isSegmentActingPrimary() {
 			result = append(result, seg)
 		}
 	}
@@ -112,7 +108,6 @@ func RegisterPrimaries(segs []*idl.Segment, conn *dbconn.DBConn) error {
 	addPrimaryQuery := "SELECT pg_catalog.gp_add_segment_primary( '%s', '%s', %d, '%s');"
 	for _, seg := range segs {
 		addSegmentQuery := fmt.Sprintf(addPrimaryQuery, seg.HostName, seg.HostAddress, seg.Port, seg.DataDirectory)
-		fmt.Println(addSegmentQuery)
 
 		_, err := conn.Exec(addSegmentQuery)
 		if err != nil {

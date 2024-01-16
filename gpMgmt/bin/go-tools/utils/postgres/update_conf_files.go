@@ -156,7 +156,7 @@ func updateConfFile(filename, pgdata string, configParams map[string]string, ove
 				if !overwrite {
 					updatedLines = append(updatedLines, fmt.Sprintf("# %s", line))
 				}
-				line = fmt.Sprintf("%s = %s", key, quoteString(value))
+				line = fmt.Sprintf("%s = %s", key, quoteIfString(value))
 				delete(configParams, key)
 			}
 		}
@@ -166,7 +166,7 @@ func updateConfFile(filename, pgdata string, configParams map[string]string, ove
 
 	// Add the remaining entries
 	for key, value := range configParams {
-		line := fmt.Sprintf("%s = %s", key, quoteString(value))
+		line := fmt.Sprintf("%s = %s", key, quoteIfString(value))
 		updatedLines = append(updatedLines, line)
 	}
 
@@ -178,6 +178,10 @@ func updateConfFile(filename, pgdata string, configParams map[string]string, ove
 	return nil
 }
 
+/*
+addPgHbaEntries adds an entry to ph_hba.conf entries.
+Entries are added with specified address, access-type and the user
+*/
 func addPgHbaEntries(existingEntries *[]string, addrs []string, accessType string, user string) {
 	var hostAccessString = "host\t%s\t%s\t%s\ttrust"
 
@@ -190,9 +194,10 @@ func addPgHbaEntries(existingEntries *[]string, addrs []string, accessType strin
 }
 
 /*
-Enclose string values inside quotes
+quoteIfString encloses string values inside quotes.
+Checks if string is a number, then skips adding quotes to the string.
 */
-func quoteString(value string) string {
+func quoteIfString(value string) string {
 	if _, err := strconv.ParseFloat(value, 64); err == nil {
 		return value
 	} else {

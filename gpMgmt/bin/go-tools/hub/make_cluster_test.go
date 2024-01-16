@@ -56,22 +56,22 @@ func TestCreateSegments(t *testing.T) {
 
 	segs := []greenplum.Segment{
 		{
-			Port:          1111,
-			DataDirectory: "/gpseg0",
-			HostAddress:   "sdw1",
-			HostName:      "sdw1",
+			Port:        1111,
+			DataDir:     "/gpseg0",
+			HostAddress: "sdw1",
+			HostName:    "sdw1",
 		},
 		{
-			Port:          2222,
-			DataDirectory: "/gpseg1",
-			HostAddress:   "sdw2",
-			HostName:      "sdw2",
+			Port:        2222,
+			DataDir:     "/gpseg1",
+			HostAddress: "sdw2",
+			HostName:    "sdw2",
 		},
 		{
-			Port:          3333,
-			DataDirectory: "/gpseg2",
-			HostAddress:   "sdw2",
-			HostName:      "sdw2",
+			Port:        3333,
+			DataDir:     "/gpseg2",
+			HostAddress: "sdw2",
+			HostName:    "sdw2",
 		},
 	}
 
@@ -432,28 +432,28 @@ func TestValidateEnvironment(t *testing.T) {
 
 	segs := []greenplum.Segment{
 		{
-			Port:          1111,
-			DataDirectory: "/gpseg-1",
-			HostAddress:   "cdw",
-			HostName:      "cdw",
+			Port:        1111,
+			DataDir:     "/gpseg-1",
+			HostAddress: "cdw",
+			HostName:    "cdw",
 		},
 		{
-			Port:          2222,
-			DataDirectory: "/gpseg0",
-			HostAddress:   "sdw1",
-			HostName:      "sdw1",
+			Port:        2222,
+			DataDir:     "/gpseg0",
+			HostAddress: "sdw1",
+			HostName:    "sdw1",
 		},
 		{
-			Port:          3333,
-			DataDirectory: "/gpseg1",
-			HostAddress:   "sdw2-1",
-			HostName:      "sdw2",
+			Port:        3333,
+			DataDir:     "/gpseg1",
+			HostAddress: "sdw2-1",
+			HostName:    "sdw2",
 		},
 		{
-			Port:          4444,
-			DataDirectory: "/gpseg2",
-			HostAddress:   "sdw2-2",
-			HostName:      "sdw2",
+			Port:        4444,
+			DataDir:     "/gpseg2",
+			HostAddress: "sdw2-2",
+			HostName:    "sdw2",
 		},
 	}
 
@@ -480,7 +480,7 @@ func TestValidateEnvironment(t *testing.T) {
 			gomock.Any(),
 			&idl.ValidateHostEnvRequest{
 				HostAddressList: []string{segs[0].HostAddress},
-				DirectoryList:   []string{segs[0].DataDirectory},
+				DirectoryList:   []string{segs[0].DataDir},
 				Locale:          &idl.Locale{},
 				PortList:        []int32{int32(segs[0].Port)},
 				Forced:          false,
@@ -492,7 +492,7 @@ func TestValidateEnvironment(t *testing.T) {
 			gomock.Any(),
 			&idl.ValidateHostEnvRequest{
 				HostAddressList: []string{segs[1].HostAddress},
-				DirectoryList:   []string{segs[1].DataDirectory},
+				DirectoryList:   []string{segs[1].DataDir},
 				Locale:          &idl.Locale{},
 				PortList:        []int32{int32(segs[1].Port)},
 				Forced:          false,
@@ -511,7 +511,7 @@ func TestValidateEnvironment(t *testing.T) {
 			gomock.Any(),
 			&idl.ValidateHostEnvRequest{
 				HostAddressList: []string{segs[2].HostAddress, segs[3].HostAddress},
-				DirectoryList:   []string{segs[2].DataDirectory, segs[3].DataDirectory},
+				DirectoryList:   []string{segs[2].DataDir, segs[3].DataDir},
 				Locale:          &idl.Locale{},
 				PortList:        []int32{int32(segs[2].Port), int32(segs[3].Port)},
 				Forced:          false,
@@ -912,7 +912,7 @@ func TestSetGpUserPasswd(t *testing.T) {
 func segmentToProto(seg greenplum.Segment) *idl.Segment {
 	return &idl.Segment{
 		Port:          int32(seg.Port),
-		DataDirectory: seg.DataDirectory,
+		DataDirectory: seg.DataDir,
 		HostAddress:   seg.HostAddress,
 		HostName:      seg.HostName,
 	}

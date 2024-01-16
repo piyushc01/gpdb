@@ -18,7 +18,7 @@ type GpStop struct {
 }
 
 func (cmd *GpStop) BuildExecCommand(gphome string) *exec.Cmd {
-	utility := utils.GetGphomeUtilityPath(gphome, gpstop)
+	utility := utils.GetGpUtilityPath(gphome, gpstop)
 	args := []string{"-a"}
 
 	args = utils.AppendIfNotEmpty(args, "-d", cmd.DataDirectory)
@@ -34,7 +34,7 @@ type GpStart struct {
 }
 
 func (cmd *GpStart) BuildExecCommand(gphome string) *exec.Cmd {
-	utility := utils.GetGphomeUtilityPath(gphome, gpstart)
+	utility := utils.GetGpUtilityPath(gphome, gpstart)
 	args := []string{"-a"}
 
 	args = utils.AppendIfNotEmpty(args, "-d", cmd.DataDirectory)

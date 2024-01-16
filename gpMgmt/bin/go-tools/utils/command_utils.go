@@ -51,7 +51,7 @@ func RunGpSourcedCommand(cmdBuilder CommandBuilder, gphome string) (*bytes.Buffe
 	return runCommand(NewGpSourcedCommand(cmdBuilder, gphome))
 }
 
-func GetGphomeUtilityPath(gphome, utility string) string {
+func GetGpUtilityPath(gphome, utility string) string {
 	return path.Join(gphome, "bin", utility)
 }
 

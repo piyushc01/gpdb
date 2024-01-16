@@ -352,7 +352,7 @@ func TestGetMaxFilesFromLimitsFileFn(t *testing.T) {
 		defer testFile.Close()
 		defer os.Remove(testFile.Name())
 
-		data := fmt.Sprintf("* hard notile 1234\ngpadmin limit 567\n")
+		data := "* hard notile 1234\ngpadmin limit 567\n"
 		_, err = testFile.Write([]byte(data))
 		if err != nil {
 			t.Fatalf("error writing content to temp file:%s", err)

@@ -99,10 +99,10 @@ func TestReadGpSegmentConfig(t *testing.T) {
 			"FROM pg_catalog.gp_segment_configuration ORDER BY content ASC, role DESC;").WillReturnRows(fakeRows)
 
 		result := []greenplum.Segment{
-			{1, -1, "p", "p", "n", "u", 7000, "/tmp/demo/0", "temp.com", "temp.com"},
-			{2, 0, "p", "p", "s", "u", 7002, "/tmp/demo/1", "temp.com", "temp.com"},
-			{3, 1, "p", "p", "s", "u", 7003, "/tmp/demo/2", "temp.com", "temp.com"},
-			{4, 3, "p", "p", "s", "u", 7004, "/tmp/demo/3", "temp.com", "temp.com"},
+			{1, -1, "p", "p", "n", "u", 7000, "temp.com", "temp.com", "/tmp/demo/0"},
+			{2, 0, "p", "p", "s", "u", 7002, "temp.com", "temp.com", "/tmp/demo/1"},
+			{3, 1, "p", "p", "s", "u", 7003, "temp.com", "temp.com", "/tmp/demo/2"},
+			{4, 3, "p", "p", "s", "u", 7004, "temp.com", "temp.com", "/tmp/demo/3"},
 		}
 		gpArray := greenplum.NewGpArray()
 		_ = gpArray.ReadGpSegmentConfig(mockConnection)
@@ -129,9 +129,9 @@ func TestGpArray_GetPrimarySegments(t *testing.T) {
 			"FROM pg_catalog.gp_segment_configuration ORDER BY content ASC, role DESC;").WillReturnRows(fakeRows)
 
 		expResult := []greenplum.Segment{
-			{2, 0, "p", "p", "s", "u", 7002, "/tmp/demo/1", "temp.com", "temp.com"},
-			{3, 1, "p", "p", "s", "u", 7003, "/tmp/demo/2", "temp.com", "temp.com"},
-			{4, 3, "p", "p", "s", "u", 7004, "/tmp/demo/3", "temp.com", "temp.com"},
+			{2, 0, "p", "p", "s", "u", 7002, "temp.com", "temp.com", "/tmp/demo/1"},
+			{3, 1, "p", "p", "s", "u", 7003, "temp.com", "temp.com", "/tmp/demo/2"},
+			{4, 3, "p", "p", "s", "u", 7004, "temp.com", "temp.com", "/tmp/demo/3"},
 		}
 		gpArray := greenplum.NewGpArray()
 		_ = gpArray.ReadGpSegmentConfig(mockConnection)

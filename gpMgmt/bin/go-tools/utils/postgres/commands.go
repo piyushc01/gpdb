@@ -28,7 +28,7 @@ type Initdb struct {
 }
 
 func (cmd *Initdb) BuildExecCommand(gphome string) *exec.Cmd {
-	utility := utils.GetGphomeUtilityPath(gphome, initdbUtility)
+	utility := utils.GetGpUtilityPath(gphome, initdbUtility)
 	args := []string{}
 
 	args = utils.AppendIfNotEmpty(args, "--pgdata", cmd.PgData)
@@ -57,7 +57,7 @@ type PgCtlStart struct {
 }
 
 func (cmd *PgCtlStart) BuildExecCommand(gphome string) *exec.Cmd {
-	utility := utils.GetGphomeUtilityPath(gphome, pgCtlUtility)
+	utility := utils.GetGpUtilityPath(gphome, pgCtlUtility)
 	args := []string{"start"}
 
 	args = utils.AppendIfNotEmpty(args, "--pgdata", cmd.PgData)
@@ -79,7 +79,7 @@ type PgCtlStop struct {
 }
 
 func (cmd *PgCtlStop) BuildExecCommand(gphome string) *exec.Cmd {
-	utility := utils.GetGphomeUtilityPath(gphome, pgCtlUtility)
+	utility := utils.GetGpUtilityPath(gphome, pgCtlUtility)
 	args := []string{"stop"}
 
 	args = utils.AppendIfNotEmpty(args, "--pgdata", cmd.PgData)
@@ -96,7 +96,7 @@ type PostgresGpVersion struct {
 }
 
 func (cmd *PostgresGpVersion) BuildExecCommand(gphome string) *exec.Cmd {
-	utililty := utils.GetGphomeUtilityPath(gphome, postgresUtility)
+	utililty := utils.GetGpUtilityPath(gphome, postgresUtility)
 	args := []string{"--gp-version"}
 	return utils.System.ExecCommand(utililty, args...)
 }

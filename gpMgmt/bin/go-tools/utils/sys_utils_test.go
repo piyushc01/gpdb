@@ -13,20 +13,17 @@ import (
 
 func TestWriteLinesToFile(t *testing.T) {
 	t.Run("succesfully writes to the file", func(t *testing.T) {
-		file, err := os.CreateTemp("", "")
-		if err != nil {
-			t.Fatalf("unexpected error: %#v", err)
-		}
-		defer os.Remove(file.Name())
+		file := "/tmp/testfile001"
+		defer os.Remove(file)
 
 		lines := []string{"line1", "line2", "line3"}
-		err = utils.WriteLinesToFile(file.Name(), lines)
+		err := utils.WriteLinesToFile(file, lines)
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
 		}
 
 		expected := "line1\nline2\nline3"
-		testutils.AssertFileContents(t, file.Name(), expected)
+		testutils.AssertFileContents(t, file, expected)
 	})
 
 	t.Run("errors out when not able to create the file", func(t *testing.T) {
