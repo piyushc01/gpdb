@@ -12,11 +12,11 @@ import (
 	"github.com/vbauerster/mpb/v8"
 )
 
-type streamReceiver interface {
+type StreamReceiver interface {
 	Recv() (*idl.HubReply, error)
 }
 
-func ParseStreamResponse(stream streamReceiver) error {
+func ParseStreamResponseFn(stream StreamReceiver) error {
 	progressBarMap := make(map[string]*mpb.Bar)
 	progressInstance := utils.NewProgressInstance(os.Stdout)
 

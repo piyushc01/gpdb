@@ -3,13 +3,11 @@ package cli
 import (
 	"context"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpdb/gp/constants"
-	"github.com/greenplum-db/gpdb/gp/hub"
 	"github.com/greenplum-db/gpdb/gp/idl"
 	"github.com/greenplum-db/gpdb/gp/utils"
 	"github.com/spf13/cobra"
@@ -48,6 +46,140 @@ type InitConfig struct {
 	PrimarySegmentsArray []Segment         `mapstructure:"primary-segments-array"`
 }
 
+var (
+	InitClusterService                   = InitClusterServiceFn
+	LoadInputConfigToIdl                 = LoadInputConfigToIdlFn
+	ValidateInputConfigAndSetDefaults    = ValidateInputConfigAndSetDefaultsFn
+	CheckForDuplicatPortAndDataDirectory = CheckForDuplicatePortAndDataDirectoryFn
+	ParseStreamResponse                  = ParseStreamResponseFn
+)
+var cliForceFlag bool
+
+// initCmd adds support for command "gp init <config-file> [--force]
+func initCmd() *cobra.Command {
+	initCmd := &cobra.Command{
+		Use:     "init",
+		Short:   "Initialize cluster, segments",
+		PreRunE: InitializeCommand,
+		RunE:    RunInitClusterCmd,
+	}
+	initCmd.PersistentFlags().BoolVar(&cliForceFlag, "force", false, "Create cluster forcefully by overwriting existing directories")
+	initCmd.AddCommand(initClusterCmd())
+	return initCmd
+}
+
+// initClusterCmd adds support for command "gp init cluster <config-file> [--force]
+func initClusterCmd() *cobra.Command {
+	initClusterCmd := &cobra.Command{
+		Use:     "cluster",
+		Short:   "Initialize the cluster",
+		PreRunE: InitializeCommand,
+		RunE:    RunInitClusterCmd,
+	}
+
+	return initClusterCmd
+}
+func RunInitClusterCmd(cmd *cobra.Command, args []string) error {
+	// initial basic cli validations
+	if len(args) == 0 {
+		return fmt.Errorf("please provide config file for cluster initialization")
+	}
+	if len(args) > 1 {
+		return fmt.Errorf("more arguments than expected")
+	}
+
+	// Call for further input config validation and cluster creation
+	err := InitClusterService(args[0], cliForceFlag, Verbose)
+	if err != nil {
+		return err
+	}
+	gplog.Info("Cluster initialized successfully")
+
+	return nil
+}
+
+/*
+InitClusterServiceFn does input config file validation followed by actual cluster creation
+*/
+func InitClusterServiceFn(inputConfigFile string, force, verbose bool) error {
+	if _, err := utils.System.Stat(inputConfigFile); err != nil {
+		return err
+	}
+
+	// Load cluster-request from the config file
+	clusterReq, err := LoadInputConfigToIdl(inputConfigFile, force, verbose)
+	if err != nil {
+		return err
+	}
+
+	// Validate give input configuration
+	if err := ValidateInputConfigAndSetDefaults(clusterReq); err != nil {
+		return err
+	}
+
+	// Make call to MakeCluster RPC and wait for results
+	client, err := ConnectToHub(Conf)
+	if err != nil {
+		return err
+	}
+
+	// Call RPC on Hub to create the cluster
+	stream, err := client.MakeCluster(context.Background(), clusterReq)
+	if err != nil {
+		return utils.FormatGrpcError(err)
+	}
+
+	err = ParseStreamResponse(stream)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+/*
+LoadInputConfigToIdlFn reads config file and populates RPC IDL request structure
+*/
+func LoadInputConfigToIdlFn(inputConfigFile string, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
+	viper.SetConfigFile(inputConfigFile)
+
+	viper.SetDefault("common-config", make(map[string]string))
+	viper.SetDefault("coordinator-config", make(map[string]string))
+	viper.SetDefault("segment-config", make(map[string]string))
+	viper.SetDefault("data-checksums", true)
+
+	if err := viper.ReadInConfig(); err != nil {
+		return &idl.MakeClusterRequest{}, fmt.Errorf("error while reading config file: %w", err)
+	}
+
+	var config InitConfig
+	if err := viper.Unmarshal(&config); err != nil {
+		return &idl.MakeClusterRequest{}, fmt.Errorf("error while unmarshaling config file: %w", err)
+	}
+
+	return CreateMakeClusterReq(&config, force, verbose), nil
+}
+
+/*
+CreateMakeClusterReq helper function to populate cluster request from the config
+*/
+func CreateMakeClusterReq(config *InitConfig, forceFlag bool, verbose bool) *idl.MakeClusterRequest {
+	var primarySegs []*idl.Segment
+	for _, seg := range config.PrimarySegmentsArray {
+		primarySegs = append(primarySegs, SegmentToIdl(seg))
+	}
+
+	return &idl.MakeClusterRequest{
+		GpArray: &idl.GpArray{
+			Coordinator: SegmentToIdl(config.Coordinator),
+			Primaries:   primarySegs,
+		},
+		ClusterParams: ClusterParamsToIdl(config),
+		ForceFlag:     forceFlag,
+		Verbose:       verbose,
+	}
+}
+
 func SegmentToIdl(seg Segment) *idl.Segment {
 	return &idl.Segment{
 		Port:          int32(seg.Port),
@@ -79,132 +211,9 @@ func ClusterParamsToIdl(config *InitConfig) *idl.ClusterParams {
 	}
 }
 
-func CreateMakeClusterReq(config *InitConfig, forceFlag bool, verbose bool) *idl.MakeClusterRequest {
-	primarySegs := []*idl.Segment{}
-	for _, seg := range config.PrimarySegmentsArray {
-		primarySegs = append(primarySegs, SegmentToIdl(seg))
-	}
-
-	return &idl.MakeClusterRequest{
-		GpArray: &idl.GpArray{
-			Coordinator: SegmentToIdl(config.Coordinator),
-			Primaries:   primarySegs,
-		},
-		ClusterParams: ClusterParamsToIdl(config),
-		ForceFlag:     forceFlag,
-		Verbose:       verbose,
-	}
-}
-
-func initCmd() *cobra.Command {
-	initCmd := &cobra.Command{
-		Use:     "init",
-		Short:   "Initialize cluster, segments",
-		PreRunE: InitializeCommand,
-		RunE:    RunInitClusterCmd,
-	}
-	initCmd.PersistentFlags().Bool("force", false, "Create cluster forcefully by overwriting existing directories")
-	initCmd.AddCommand(initClusterCmd())
-	return initCmd
-}
-
-var (
-	InitClusterService                   = InitClusterServiceFn
-	RunInitCluster                       = RunInitClusterFn
-	LoadInputConfigToIdl                 = LoadInputConfigToIdlFn
-	ValidateInputConfigAndSetDefaults    = ValidateInputConfigAndSetDefaultsFn
-	OsStat                               = os.Stat
-	CheckForDuplicatPortAndDataDirectory = CheckForDuplicatPortAndDataDirectoryFn
-)
-
-func initClusterCmd() *cobra.Command {
-	initClusterCmd := &cobra.Command{
-		Use:     "cluster",
-		Short:   "Initialize the cluster",
-		PreRunE: InitializeCommand,
-		RunE:    RunInitClusterCmd,
-	}
-
-	return initClusterCmd
-}
-func RunInitClusterCmd(cmd *cobra.Command, args []string) error {
-	force, err := cmd.Flags().GetBool("force")
-	if err != nil {
-		gplog.Error("Could not get value of force flag %v", err)
-		return err
-	}
-	return RunInitCluster(cmd, args, force, Verbose)
-}
-
-func InitClusterServiceFn(hubConfig *hub.Config, inputConfigFile string, force, verbose bool) error {
-	if _, err := OsStat(inputConfigFile); err != nil {
-		return err
-	}
-
-	clusterReq, err := LoadInputConfigToIdl(inputConfigFile, force, verbose)
-	if err != nil {
-		return err
-	}
-
-	if err := ValidateInputConfigAndSetDefaults(clusterReq); err != nil {
-		return err
-	}
-
-	// Make call to MakeCluster RPC and wait for results
-	client, err := ConnectToHub(Conf)
-	if err != nil {
-		return err
-	}
-
-	stream, err := client.MakeCluster(context.Background(), clusterReq)
-	if err != nil {
-		return utils.FormatGrpcError(err)
-	}
-
-	err = ParseStreamResponse(stream)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func RunInitClusterFn(cmd *cobra.Command, args []string, force, verbose bool) error {
-	if len(args) == 0 {
-		return fmt.Errorf("please provide config file for cluster initialization")
-	}
-	if len(args) > 1 {
-		return fmt.Errorf("more arguments than expected")
-	}
-	err := InitClusterService(Conf, args[0], force, verbose)
-	if err != nil {
-		return err
-	}
-	gplog.Info("Cluster initialized successfully")
-
-	return nil
-}
-
-func LoadInputConfigToIdlFn(inputConfigFile string, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
-	viper.SetConfigFile(inputConfigFile)
-
-	viper.SetDefault("common-config", make(map[string]string))
-	viper.SetDefault("coordinator-config", make(map[string]string))
-	viper.SetDefault("segment-config", make(map[string]string))
-	viper.SetDefault("data-checksums", true)
-
-	if err := viper.ReadInConfig(); err != nil {
-		return &idl.MakeClusterRequest{}, fmt.Errorf("error while reading config file: %w", err)
-	}
-
-	var config InitConfig
-	if err := viper.Unmarshal(&config); err != nil {
-		return &idl.MakeClusterRequest{}, fmt.Errorf("error while unmarshaling config file: %w", err)
-	}
-
-	return CreateMakeClusterReq(&config, force, verbose), nil
-}
-
+/*
+ValidateInputConfigAndSetDefaultsFn performs various validation checks on the configuration
+*/
 func ValidateInputConfigAndSetDefaultsFn(request *idl.MakeClusterRequest) error {
 	// Check if length of Gparray.PimarySegments is 0
 	if len(request.GpArray.Primaries) == 0 {
@@ -276,7 +285,7 @@ func ValidateInputConfigAndSetDefaultsFn(request *idl.MakeClusterRequest) error 
 	return nil
 }
 
-func CheckForDuplicatPortAndDataDirectoryFn(primaries []*idl.Segment) error {
+func CheckForDuplicatePortAndDataDirectoryFn(primaries []*idl.Segment) error {
 	hostToPortDataDirectory := make(map[string]map[string]bool)
 	for _, primary := range primaries {
 		if _, ok := hostToPortDataDirectory[primary.HostName]; !ok {

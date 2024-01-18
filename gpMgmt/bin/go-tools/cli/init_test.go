@@ -3,6 +3,10 @@ package cli_test
 import (
 	"errors"
 	"fmt"
+	"github.com/golang/mock/gomock"
+	"github.com/greenplum-db/gpdb/gp/idl/mock_idl"
+	"github.com/greenplum-db/gpdb/gp/utils"
+	"github.com/spf13/cobra"
 	"os"
 	"strings"
 	"testing"
@@ -12,94 +16,189 @@ import (
 	"github.com/greenplum-db/gpdb/gp/hub"
 	"github.com/greenplum-db/gpdb/gp/idl"
 	"github.com/greenplum-db/gpdb/gp/testutils"
-	"github.com/spf13/cobra"
 )
 
-func TestRunInitCluster(t *testing.T) {
+func TestRunInitClusterCmd(t *testing.T) {
 	setupTest(t)
 	defer teardownTest()
-
-	t.Run("RunInitCluster fails if required arguments are not provided", func(t *testing.T) {
-		defer resetCLIVars()
-		expectedErr := "please provide config file for cluster initialization"
-		err := cli.RunInitCluster(&cobra.Command{}, []string{}, false, false)
-		if err == nil || !strings.Contains(err.Error(), expectedErr) {
-			t.Fatalf("got %v, want %v", err, expectedErr)
+	t.Run("returns error when length of args less than 1", func(t *testing.T) {
+		testStr := "please provide config file for cluster initialization"
+		cmd := cobra.Command{}
+		err := cli.RunInitClusterCmd(&cmd, nil)
+		if err == nil || !strings.Contains(err.Error(), testStr) {
+			t.Fatalf("got:%v, expected:%s", err, testStr)
 		}
 	})
-
-	t.Run("RunInitCluster fails if more than required arguments are provided", func(t *testing.T) {
-		defer resetCLIVars()
-		expectedErr := "more arguments than expected"
-		err := cli.RunInitCluster(&cobra.Command{}, []string{"/tmp/input_config", ""}, false, false)
-		if err == nil || !strings.Contains(err.Error(), expectedErr) {
-			t.Fatalf("got %v, want %v", err, expectedErr)
+	t.Run("returns error when length of args greater than 1", func(t *testing.T) {
+		testStr := "more arguments than expected"
+		cmd := cobra.Command{}
+		args := []string{"/tmp/1", "/tmp/2"}
+		err := cli.RunInitClusterCmd(&cmd, args)
+		if err == nil || !strings.Contains(err.Error(), testStr) {
+			t.Fatalf("got:%v, expected:%s", err, testStr)
 		}
 	})
-
-	t.Run("RunInitCluster succeeds if required arguments are provided", func(t *testing.T) {
+	t.Run("returns error cluster creation fails", func(t *testing.T) {
+		testStr := "test-error"
+		cmd := cobra.Command{}
+		args := []string{"/tmp/1"}
+		cli.InitClusterService = func(inputConfigFile string, force, verbose bool) error {
+			return fmt.Errorf(testStr)
+		}
 		defer resetCLIVars()
-		cli.InitClusterService = func(hubConfig *hub.Config, inputConfigFile string, force, verbose bool) error {
+		err := cli.RunInitClusterCmd(&cmd, args)
+		if err == nil || !strings.Contains(err.Error(), testStr) {
+			t.Fatalf("got:%v, expected:%s", err, testStr)
+		}
+	})
+	t.Run("returns error cluster is created successfully", func(t *testing.T) {
+
+		cmd := cobra.Command{}
+		args := []string{"/tmp/1"}
+		cli.InitClusterService = func(inputConfigFile string, force, verbose bool) error {
 			return nil
 		}
-		err := cli.RunInitCluster(&cobra.Command{}, []string{"/tmp/input_config"}, false, false)
-		if err != nil {
-			t.Fatalf("got unexpected error while executing RunInitCluster: %#v", err)
-		}
-	})
-
-	t.Run("RunInitCluster fails if InitClusterService returns error", func(t *testing.T) {
 		defer resetCLIVars()
-		expectedErr := "Got an error"
-		cli.InitClusterService = func(hubConfig *hub.Config, inputConfigFile string, force, verbose bool) error {
-			return fmt.Errorf("%v", expectedErr)
-		}
-		err := cli.RunInitCluster(&cobra.Command{}, []string{"/tmp/input_config"}, false, false)
-		if err == nil || !strings.Contains(err.Error(), expectedErr) {
-			t.Fatalf("got %v, want %v", err, expectedErr)
+		err := cli.RunInitClusterCmd(&cmd, args)
+		if err != nil {
+			t.Fatalf("got:%v, expected no error", err)
 		}
 	})
 }
-
 func TestInitClusterService(t *testing.T) {
 	setupTest(t)
 	defer teardownTest()
 
 	t.Run("InitClusterService fails if input config file does not exist", func(t *testing.T) {
 		defer resetCLIVars()
-		err := cli.InitClusterService(&hub.Config{}, "/tmp/invalid_file", false, false)
+		err := cli.InitClusterService("/tmp/invalid_file", false, false)
 		if err == nil {
 			t.Fatalf("error was expected")
 		}
 	})
 
 	t.Run("InitClusterService fails if LoadInputConfigToIdl returns error", func(t *testing.T) {
+		testStr := "got an error"
 		defer resetCLIVars()
-		cli.OsStat = func(name string) (os.FileInfo, error) {
+		defer utils.ResetSystemFunctions()
+		utils.System.Stat = func(name string) (os.FileInfo, error) {
 			return nil, nil
 		}
 		cli.LoadInputConfigToIdl = func(inputConfigFile string, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
-			return nil, fmt.Errorf("got an error")
+			return nil, fmt.Errorf(testStr)
 		}
-		err := cli.InitClusterService(&hub.Config{}, "/tmp/invalid_file", false, false)
-		if err == nil || !strings.Contains(err.Error(), "got an error") {
-			t.Fatalf("got %v, want %v", err, "got an error")
+		err := cli.InitClusterService("/tmp/invalid_file", false, false)
+		if err == nil || !strings.Contains(err.Error(), testStr) {
+			t.Fatalf("got %v, want %s", err, testStr)
 		}
 	})
 	t.Run("InitClusterService fails if ValidateInputConfigAndSetDefaults returns error", func(t *testing.T) {
+		testStr := "got an error"
 		defer resetCLIVars()
-		cli.OsStat = func(name string) (os.FileInfo, error) {
+		defer utils.ResetSystemFunctions()
+		utils.System.Stat = func(name string) (os.FileInfo, error) {
 			return nil, nil
 		}
 		cli.LoadInputConfigToIdl = func(inputConfigFile string, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
 			return nil, nil
 		}
 		cli.ValidateInputConfigAndSetDefaults = func(request *idl.MakeClusterRequest) error {
-			return fmt.Errorf("got an error")
+			return fmt.Errorf(testStr)
 		}
-		err := cli.InitClusterService(&hub.Config{}, "/tmp/invalid_file", false, false)
-		if err == nil || !strings.Contains(err.Error(), "got an error") {
-			t.Fatalf("got %v, want %v", err, "got an error")
+		err := cli.InitClusterService("/tmp/invalid_file", false, false)
+		if err == nil || !strings.Contains(err.Error(), testStr) {
+			t.Fatalf("got %v, want %s", err, testStr)
+		}
+	})
+	t.Run("InitClusterService fails if ValidateInputConfigAndSetDefaults returns error", func(t *testing.T) {
+		testStr := "got an error"
+		defer resetCLIVars()
+		defer utils.ResetSystemFunctions()
+		utils.System.Stat = func(name string) (os.FileInfo, error) {
+			return nil, nil
+		}
+		cli.LoadInputConfigToIdl = func(inputConfigFile string, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
+			return nil, nil
+		}
+		cli.ValidateInputConfigAndSetDefaults = func(request *idl.MakeClusterRequest) error {
+			return fmt.Errorf(testStr)
+		}
+		err := cli.InitClusterService("/tmp/invalid_file", false, false)
+		if err == nil || !strings.Contains(err.Error(), testStr) {
+			t.Fatalf("got %v, want %s", err, testStr)
+		}
+	})
+	t.Run("returns error if connect to hub fails", func(t *testing.T) {
+		testStr := "test-error"
+		defer resetCLIVars()
+		defer utils.ResetSystemFunctions()
+		utils.System.Stat = func(name string) (os.FileInfo, error) {
+			return nil, nil
+		}
+		cli.LoadInputConfigToIdl = func(inputConfigFile string, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
+			return nil, nil
+		}
+		cli.ValidateInputConfigAndSetDefaults = func(request *idl.MakeClusterRequest) error {
+			return nil
+		}
+		cli.ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+			return nil, fmt.Errorf(testStr)
+		}
+
+		err := cli.InitClusterService("/tmp/invalid_file", false, false)
+		if err == nil || !strings.Contains(err.Error(), testStr) {
+			t.Fatalf("got %v, want %v", err, testStr)
+		}
+	})
+	t.Run("returns error if RPC returns error", func(t *testing.T) {
+		testStr := "test-error"
+		defer resetCLIVars()
+		defer utils.ResetSystemFunctions()
+		utils.System.Stat = func(name string) (os.FileInfo, error) {
+			return nil, nil
+		}
+		cli.LoadInputConfigToIdl = func(inputConfigFile string, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
+			return nil, nil
+		}
+		cli.ValidateInputConfigAndSetDefaults = func(request *idl.MakeClusterRequest) error {
+			return nil
+		}
+		cli.ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+			hubClient := mock_idl.NewMockHubClient(ctrl)
+			hubClient.EXPECT().MakeCluster(gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf(testStr))
+			return hubClient, nil
+		}
+
+		err := cli.InitClusterService("/tmp/invalid_file", false, false)
+		if err == nil || !strings.Contains(err.Error(), testStr) {
+			t.Fatalf("got %v, want %v", err, testStr)
+		}
+	})
+	t.Run("returns error if stream receiver returns error", func(t *testing.T) {
+		testStr := "test-error"
+		defer resetCLIVars()
+		defer utils.ResetSystemFunctions()
+
+		utils.System.Stat = func(name string) (os.FileInfo, error) {
+			return nil, nil
+		}
+		cli.LoadInputConfigToIdl = func(inputConfigFile string, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
+			return nil, nil
+		}
+		cli.ValidateInputConfigAndSetDefaults = func(request *idl.MakeClusterRequest) error {
+			return nil
+		}
+		cli.ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
+			hubClient := mock_idl.NewMockHubClient(ctrl)
+			hubClient.EXPECT().MakeCluster(gomock.Any(), gomock.Any()).Return(nil, nil)
+			return hubClient, nil
+		}
+		cli.ParseStreamResponse = func(stream cli.StreamReceiver) error {
+			return fmt.Errorf(testStr)
+		}
+		err := cli.InitClusterService("/tmp/invalid_file", false, false)
+		if err == nil || !strings.Contains(err.Error(), testStr) {
+			t.Fatalf("got %v, want %v", err, testStr)
 		}
 	})
 }
