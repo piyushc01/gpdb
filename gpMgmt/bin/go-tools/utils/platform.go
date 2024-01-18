@@ -174,6 +174,8 @@ Type=simple
 Environment=GPHOME=%[2]s
 ExecStart=%[2]s/bin/gp %[1]s
 Restart=on-failure
+StandardOutput=file:/tmp/grpc_%[1]s.log
+StandardError=file:/tmp/grpc_%[1]s.log
 
 [Install]
 Alias=%[3]s_%[1]s.service
@@ -329,7 +331,6 @@ ExecMainCode=0
 ExecMainStatus=0
 
 Darwin:
-
 	{
 		"PID" = 19909;
 		"Program" = "/usr/local/gpdb/bin/gp";
@@ -340,7 +341,7 @@ Darwin:
 	};
 */
 func (p GpPlatform) ParseServiceStatusMessage(message string) idl.ServiceStatus {
-	var status, uptime string
+	var uptime string
 	var pid int
 
 	lines := strings.Split(message, "\n")
@@ -351,20 +352,19 @@ func (p GpPlatform) ParseServiceStatusMessage(message string) idl.ServiceStatus 
 			results := strings.Split(line, " = ")
 			pid, _ = strconv.Atoi(results[1])
 
-		case strings.HasPrefix(line, "ExecMainPID="): // for linux
+		case strings.HasPrefix(line, "MainPID="): // for linux
 			results := strings.Split(line, "=")
 			pid, _ = strconv.Atoi(results[1])
 
-		case strings.HasPrefix(line, "ExecMainStartTimestamp="): // for linux
+		case strings.HasPrefix(line, "ActiveEnterTimestamp="): // for linux
 			result := strings.Split(line, "=")
 			uptime = result[1]
 		}
 	}
 
+	status := "not running"
 	if pid > 0 {
 		status = "running"
-	} else {
-		status = "not running"
 	}
 
 	return idl.ServiceStatus{Status: status, Uptime: uptime, Pid: uint32(pid)}

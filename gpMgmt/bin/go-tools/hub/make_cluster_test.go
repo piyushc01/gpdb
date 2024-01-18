@@ -2,6 +2,7 @@ package hub_test
 
 import (
 	"errors"
+	"fmt"
 	"maps"
 	"os/exec"
 	"os/user"
@@ -479,11 +480,11 @@ func TestValidateEnvironment(t *testing.T) {
 		cdw.EXPECT().ValidateHostEnv(
 			gomock.Any(),
 			&idl.ValidateHostEnvRequest{
-				HostAddressList: []string{segs[0].HostAddress},
-				DirectoryList:   []string{segs[0].DataDir},
-				Locale:          &idl.Locale{},
-				PortList:        []int32{int32(segs[0].Port)},
-				Forced:          false,
+				HostAddressList:   []string{segs[0].HostAddress},
+				DirectoryList:     []string{segs[0].DataDir},
+				Locale:            &idl.Locale{},
+				SocketAddressList: []string{fmt.Sprintf("%s:%d", segs[0].HostAddress, segs[0].Port)},
+				Forced:            false,
 			},
 		).Return(&idl.ValidateHostEnvReply{}, nil)
 
@@ -491,11 +492,11 @@ func TestValidateEnvironment(t *testing.T) {
 		sdw1.EXPECT().ValidateHostEnv(
 			gomock.Any(),
 			&idl.ValidateHostEnvRequest{
-				HostAddressList: []string{segs[1].HostAddress},
-				DirectoryList:   []string{segs[1].DataDir},
-				Locale:          &idl.Locale{},
-				PortList:        []int32{int32(segs[1].Port)},
-				Forced:          false,
+				HostAddressList:   []string{segs[1].HostAddress},
+				DirectoryList:     []string{segs[1].DataDir},
+				Locale:            &idl.Locale{},
+				SocketAddressList: []string{fmt.Sprintf("%s:%d", segs[1].HostAddress, segs[1].Port)},
+				Forced:            false,
 			},
 		).Return(&idl.ValidateHostEnvReply{
 			Messages: []*idl.LogMessage{
@@ -510,11 +511,11 @@ func TestValidateEnvironment(t *testing.T) {
 		sdw2.EXPECT().ValidateHostEnv(
 			gomock.Any(),
 			&idl.ValidateHostEnvRequest{
-				HostAddressList: []string{segs[2].HostAddress, segs[3].HostAddress},
-				DirectoryList:   []string{segs[2].DataDir, segs[3].DataDir},
-				Locale:          &idl.Locale{},
-				PortList:        []int32{int32(segs[2].Port), int32(segs[3].Port)},
-				Forced:          false,
+				HostAddressList:   []string{segs[2].HostAddress, segs[3].HostAddress},
+				DirectoryList:     []string{segs[2].DataDir, segs[3].DataDir},
+				Locale:            &idl.Locale{},
+				SocketAddressList: []string{fmt.Sprintf("%s:%d", segs[2].HostAddress, segs[2].Port), fmt.Sprintf("%s:%d", segs[3].HostAddress, segs[3].Port)},
+				Forced:            false,
 			},
 		).Return(&idl.ValidateHostEnvReply{}, nil)
 

@@ -73,24 +73,7 @@ func InitializeLogger(cmd *cobra.Command, args []string) error {
 	// CommandPath lists the names of the called command and all of its parent commands, so this
 	// turns e.g. "gp stop hub" into "gp_stop_hub" to generate a unique log file name for each command.
 	logName := strings.ReplaceAll(cmd.CommandPath(), " ", "_")
-
-	// Create the log directory if it does not exist, otherwise gplog panics
-	if _, err := os.Stat(hubLogDir); err != nil {
-		if os.IsNotExist(err) {
-			err = os.MkdirAll(hubLogDir, 0755)
-			if err != nil {
-				return err
-			}
-		}
-
-		return err
-	}
-
-	gplog.SetLogFileNameFunc(func(program string, logdir string) string {
-		return filepath.Join(hubLogDir, fmt.Sprintf("%s.log", logName))
-	})
-
-	gplog.InitializeLogging(logName, "")
+	gplog.InitializeLogging(logName, hubLogDir)
 
 	if Verbose {
 		gplog.SetVerbosity(gplog.LOGDEBUG)

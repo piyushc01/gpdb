@@ -3,8 +3,6 @@ package agent_test
 import (
 	"context"
 	"fmt"
-	"github.com/greenplum-db/gpdb/gp/constants"
-	"github.com/greenplum-db/gpdb/gp/testutils"
 	"net"
 	"os"
 	"os/user"
@@ -14,7 +12,9 @@ import (
 
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpdb/gp/agent"
+	"github.com/greenplum-db/gpdb/gp/constants"
 	"github.com/greenplum-db/gpdb/gp/idl"
+	"github.com/greenplum-db/gpdb/gp/testutils"
 	"github.com/greenplum-db/gpdb/gp/testutils/exectest"
 	"github.com/greenplum-db/gpdb/gp/utils"
 )
@@ -47,7 +47,7 @@ func resetAgentFunctions() {
 	agent.GetAllNonEmptyDir = agent.GetAllNonEmptyDirFn
 	agent.CheckFilePermissions = agent.CheckFilePermissionsFn
 	agent.ValidateLocaleSettings = agent.ValidateLocaleSettingsFn
-	agent.ValidatePortList = agent.ValidatePortListFn
+	agent.ValidatePorts = agent.ValidatePortsFn
 	agent.VerifyPgVersion = agent.ValidatePgVersionFn
 	agent.OsIsNotExist = os.IsNotExist
 	agent.GetAllAvailableLocales = agent.GetAllAvailableLocalesFn
@@ -485,25 +485,25 @@ func TestValidatePgVersionFn(t *testing.T) {
 	})
 }
 
-func TestValidatePortList(t *testing.T) {
+func TestValidatePorts(t *testing.T) {
 	testhelper.SetupTestLogger()
 	t.Run("returns no error when ports are not in use", func(t *testing.T) {
-		testPort := []int32{11456, 11457, 11458}
-		err := agent.ValidatePortList(testPort)
+		testPort := []string{":11456", ":11457", ":11458"}
+		err := agent.ValidatePorts(testPort)
 		if err != nil {
 			t.Fatalf("got %v, expected no error", err)
 		}
 	})
 	t.Run("returns error when ports are in use", func(t *testing.T) {
-		testPort := []int32{11456, 11457, 11458}
+		testPort := []string{":11456", ":11457", ":11458"}
 
-		listener, err := net.Listen("tcp", fmt.Sprintf(":%d", testPort[0]))
+		listener, err := net.Listen("tcp", testPort[0])
 		if err != nil {
-			t.Fatalf("error while listening to test port %d Please change test port", testPort[0])
+			t.Fatalf("error while listening to test port %v Please change test port", testPort[0])
 		}
 		defer listener.Close()
 
-		err = agent.ValidatePortList(testPort)
+		err = agent.ValidatePorts(testPort)
 
 		testStr := "ports already in use:"
 		if err == nil || !strings.Contains(err.Error(), testStr) {
@@ -674,7 +674,7 @@ func TestValidateHostEnv(t *testing.T) {
 		agent.ValidateLocaleSettings = func(locale *idl.Locale) error {
 			return nil
 		}
-		agent.ValidatePortList = func(portList []int32) error {
+		agent.ValidatePorts = func(portList []string) error {
 			return fmt.Errorf(testStr)
 		}
 
@@ -702,7 +702,7 @@ func TestValidateHostEnv(t *testing.T) {
 		agent.ValidateLocaleSettings = func(locale *idl.Locale) error {
 			return nil
 		}
-		agent.ValidatePortList = func(portList []int32) error {
+		agent.ValidatePorts = func(portList []string) error {
 			return nil
 		}
 
@@ -730,7 +730,7 @@ func TestValidateHostEnv(t *testing.T) {
 		agent.ValidateLocaleSettings = func(locale *idl.Locale) error {
 			return nil
 		}
-		agent.ValidatePortList = func(portList []int32) error {
+		agent.ValidatePorts = func(portList []string) error {
 			return nil
 		}
 

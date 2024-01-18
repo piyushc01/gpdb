@@ -37,8 +37,8 @@ message StatusAgentReply {
 message ValidateHostEnvRequest{
     repeated string hostAddressList = 1;
     repeated string DirectoryList = 2;
-    Locale locale = 3;
-    repeated int32 portList = 4;
+    repeated string socketAddressList = 3;
+    Locale locale = 4;
     string gpVersion = 5;
     bool forced = 6;
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"sync"
 
 	"golang.org/x/exp/maps"
@@ -25,7 +26,7 @@ func (s *Server) MakeCluster(request *idl.MakeClusterRequest, stream idl.Hub_Mak
 	// shutdown the coordinator segment if any error occurs
 	defer func() {
 		if err != nil && shutdownCoordinator {
-			streamLogMsg(stream, &idl.LogMessage{Message: "Not able to create the the cluster, proceeding to shutdown the coordinator segment", Level: idl.LogLevel_WARNING})
+			streamLogMsg(stream, &idl.LogMessage{Message: "Not able to create the the cluster, proceeding to shutdown the coordinator segment", Level: idl.LogLevel_INFO})
 			err := s.StopCoordinator(stream, request.GpArray.Coordinator.DataDirectory)
 			if err != nil {
 				gplog.Error(err.Error())
@@ -162,19 +163,19 @@ func (s *Server) ValidateEnvironment(stream idl.Hub_MakeClusterServer, request *
 
 	gparray := request.GpArray
 	hostDirMap := make(map[string][]string)
-	hostPortMap := make(map[string][]int32)
+	hostSocketAddressMap := make(map[string][]string)
 	hostAddressMap := make(map[string]map[string]bool)
 
 	// Add coordinator to the map
 	hostDirMap[gparray.Coordinator.HostName] = append(hostDirMap[gparray.Coordinator.HostName], gparray.Coordinator.DataDirectory)
-	hostPortMap[gparray.Coordinator.HostName] = append(hostPortMap[gparray.Coordinator.HostName], gparray.Coordinator.Port)
+	hostSocketAddressMap[gparray.Coordinator.HostName] = append(hostSocketAddressMap[gparray.Coordinator.HostName], net.JoinHostPort(gparray.Coordinator.HostAddress, fmt.Sprintf("%d", gparray.Coordinator.Port)))
 	hostAddressMap[gparray.Coordinator.HostName] = make(map[string]bool)
 	hostAddressMap[gparray.Coordinator.HostName][gparray.Coordinator.HostAddress] = true
 
 	// Add primaries to the map
 	for _, seg := range gparray.Primaries {
 		hostDirMap[seg.HostName] = append(hostDirMap[seg.HostName], seg.DataDirectory)
-		hostPortMap[seg.HostName] = append(hostPortMap[seg.HostName], seg.Port)
+		hostSocketAddressMap[seg.HostName] = append(hostSocketAddressMap[seg.HostName], net.JoinHostPort(seg.HostAddress, fmt.Sprintf("%d", seg.Port)))
 
 		if hostAddressMap[seg.HostName] == nil {
 			hostAddressMap[seg.HostName] = make(map[string]bool)
@@ -196,7 +197,7 @@ func (s *Server) ValidateEnvironment(stream idl.Hub_MakeClusterServer, request *
 	streamProgressMsg(stream, progressLabel, progressTotal)
 	validateFn := func(conn *Connection) error {
 		dirList := hostDirMap[conn.Hostname]
-		portList := hostPortMap[conn.Hostname]
+		socketAddress := hostSocketAddressMap[conn.Hostname]
 		var addressList []string
 		for address := range hostAddressMap[conn.Hostname] {
 			addressList = append(addressList, address)
@@ -204,12 +205,12 @@ func (s *Server) ValidateEnvironment(stream idl.Hub_MakeClusterServer, request *
 		gplog.Debug("AddressList:[%v]", addressList)
 
 		validateReq := idl.ValidateHostEnvRequest{
-			DirectoryList:   dirList,
-			Locale:          request.ClusterParams.Locale,
-			PortList:        portList,
-			Forced:          request.ForceFlag,
-			HostAddressList: addressList,
-			GpVersion:       localPgVersion,
+			DirectoryList:     dirList,
+			Locale:            request.ClusterParams.Locale,
+			SocketAddressList: socketAddress,
+			Forced:            request.ForceFlag,
+			HostAddressList:   addressList,
+			GpVersion:         localPgVersion,
 		}
 		reply, err := conn.AgentClient.ValidateHostEnv(context.Background(), &validateReq)
 		if err != nil {
