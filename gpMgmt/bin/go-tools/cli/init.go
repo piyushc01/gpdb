@@ -149,12 +149,12 @@ func LoadInputConfigToIdlFn(inputConfigFile string, force bool, verbose bool) (*
 	viper.SetDefault("data-checksums", true)
 
 	if err := viper.ReadInConfig(); err != nil {
-		return &idl.MakeClusterRequest{}, fmt.Errorf("error while reading config file: %w", err)
+		return &idl.MakeClusterRequest{}, fmt.Errorf("while reading config file: %w", err)
 	}
 
 	var config InitConfig
 	if err := viper.Unmarshal(&config); err != nil {
-		return &idl.MakeClusterRequest{}, fmt.Errorf("error while unmarshaling config file: %w", err)
+		return &idl.MakeClusterRequest{}, fmt.Errorf("while unmarshaling config file: %w", err)
 	}
 
 	return CreateMakeClusterReq(&config, force, verbose), nil
