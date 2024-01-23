@@ -2,6 +2,7 @@ package utils_test
 
 import (
 	"errors"
+	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"net"
 	"os"
 	"reflect"
@@ -11,7 +12,57 @@ import (
 	"github.com/greenplum-db/gpdb/gp/utils"
 )
 
+func TestGetListDifference(t *testing.T) {
+	testhelper.SetupTestLogger()
+	t.Run("returns correct diff when both lists are same", func(t *testing.T) {
+		list1 := []string{"s1", "s2", "s3"}
+		list2 := []string{"s1", "s2", "s3"}
+		var expResult []string
+		result := utils.GetListDifference(list1, list2)
+		if !reflect.DeepEqual(result, expResult) {
+			t.Fatalf("got:%v, expected:%v", result, list1)
+		}
+	})
+	t.Run("returns correct diff when list1 and list2 has some common elements", func(t *testing.T) {
+		list1 := []string{"s1", "s2", "s3"}
+		list2 := []string{"s1", "s2"}
+		expResult := []string{"s3"}
+		result := utils.GetListDifference(list1, list2)
+		if !reflect.DeepEqual(result, expResult) {
+			t.Fatalf("got:%v, expected:%v", result, list1)
+		}
+	})
+	t.Run("returns correct diff when list2 has some extra elements", func(t *testing.T) {
+		list1 := []string{"s1", "s2", "s3"}
+		list2 := []string{"s2", "s1", "s4", "s5"}
+		expResult := []string{"s3"}
+		result := utils.GetListDifference(list1, list2)
+		if !reflect.DeepEqual(result, expResult) {
+			t.Fatalf("got:%v, expected:%v", result, list1)
+		}
+	})
+	t.Run("returns correct diff when list2 has no elements", func(t *testing.T) {
+		list1 := []string{"s1", "s2", "s3"}
+		list2 := []string{}
+		expResult := list1
+		result := utils.GetListDifference(list1, list2)
+		if !reflect.DeepEqual(result, expResult) {
+			t.Fatalf("got:%v, expected:%v", result, list1)
+		}
+	})
+	t.Run("returns correct diff when list2 has some extra elements", func(t *testing.T) {
+		list1 := []string{}
+		list2 := []string{"s1", "s2", "s4", "s5"}
+		expResult := list1
+		result := utils.GetListDifference(list1, list2)
+		if len(expResult) != 0 {
+			t.Fatalf("got:%v, expected:%v", result, list1)
+		}
+	})
+}
+
 func TestWriteLinesToFile(t *testing.T) {
+	testhelper.SetupTestLogger()
 	t.Run("succesfully writes to the file", func(t *testing.T) {
 		file := "/tmp/testfile001"
 		defer os.Remove(file)
@@ -65,6 +116,7 @@ func TestWriteLinesToFile(t *testing.T) {
 }
 
 func TestGetHostAddrsNoLoopback(t *testing.T) {
+	testhelper.SetupTestLogger()
 	t.Run("returns the correct address without loopback", func(t *testing.T) {
 		utils.System.InterfaceAddrs = func() ([]net.Addr, error) {
 			_, addr1, _ := net.ParseCIDR("192.0.1.0/24")

@@ -215,6 +215,10 @@ func ClusterParamsToIdl(config *InitConfig) *idl.ClusterParams {
 ValidateInputConfigAndSetDefaultsFn performs various validation checks on the configuration
 */
 func ValidateInputConfigAndSetDefaultsFn(request *idl.MakeClusterRequest) error {
+	// Check if coordinator details are provided
+	if request.GpArray.Coordinator == nil {
+		return fmt.Errorf("No coordinator segments are provided in input config file")
+	}
 	// Check if length of Gparray.PimarySegments is 0
 	if len(request.GpArray.Primaries) == 0 {
 		return fmt.Errorf("No primary segments are provided in input config file")
@@ -241,17 +245,23 @@ func ValidateInputConfigAndSetDefaultsFn(request *idl.MakeClusterRequest) error 
 	}
 
 	if _, ok := request.ClusterParams.CoordinatorConfig["max_connections"]; !ok {
-		gplog.Info(fmt.Sprintf("COORDINATOR max_connections not set, will set to default value %v", constants.DefaultQdMaxConnect))
-		request.ClusterParams.CoordinatorConfig["max_connections"] = strconv.Itoa(constants.DefaultQdMaxConnect)
+		// Check if common-config has max-connections defined
+		if _, ok := request.ClusterParams.CommonConfig["max_connections"]; !ok {
+			gplog.Info("COORDINATOR max_connections not set, will set to default value %v", constants.DefaultQdMaxConnect)
+			request.ClusterParams.CoordinatorConfig["max_connections"] = strconv.Itoa(constants.DefaultQdMaxConnect)
+		} else {
+			gplog.Info("COORDINATOR max_connections set to value: %s", request.ClusterParams.CommonConfig["max_connections"])
+			request.ClusterParams.CoordinatorConfig["max_connections"] = request.ClusterParams.CommonConfig["max_connections"]
+		}
 	}
-
 	coordinatorMaxConnect, err := strconv.Atoi(request.ClusterParams.CoordinatorConfig["max_connections"])
 	if err != nil {
-		return fmt.Errorf("error parsing max_connections from json: %v", err)
+		return fmt.Errorf("invalid value %s for max_connections, must be an integer. error: %v",
+			request.ClusterParams.CoordinatorConfig["max_connections"], err)
 	}
 
 	if coordinatorMaxConnect < 1 {
-		return fmt.Errorf("COORDINATOR_MAX_CONNECT less than 1")
+		return fmt.Errorf("COORDINATOR max_connections value %d is too small. Should be more than 1. ", coordinatorMaxConnect)
 	}
 	if _, ok := request.ClusterParams.SegmentConfig["max_connections"]; !ok {
 		request.ClusterParams.SegmentConfig["max_connections"] = strconv.Itoa(coordinatorMaxConnect * constants.QeConnectFactor)

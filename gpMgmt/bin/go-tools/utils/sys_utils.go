@@ -86,7 +86,8 @@ func GetHostAddrsNoLoopback() ([]string, error) {
 /*
 This returns all the elements present in listA but not listB
 */
-func GetListDifference(listA, listB []string) (result []string) {
+func GetListDifference(listA, listB []string) []string {
+	var result []string
 	m := make(map[string]bool)
 
 	for _, item := range listB {
@@ -99,5 +100,5 @@ func GetListDifference(listA, listB []string) (result []string) {
 		}
 	}
 
-	return
+	return result
 }

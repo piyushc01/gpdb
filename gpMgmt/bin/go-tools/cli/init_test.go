@@ -210,91 +210,107 @@ func resetConfHostnames() {
 func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 	setupTest(t)
 	defer teardownTest()
-	_, _, logfile := testhelper.SetupTestLogger()
-	coordinator := &idl.Segment{
-		HostAddress:   "cdw",
-		HostName:      "cdw",
-		Port:          700,
-		DataDirectory: "/tmp/coordinator/",
-	}
-	gparray := &idl.GpArray{
-		Coordinator: coordinator,
-		Primaries: []*idl.Segment{
-			{
-				HostAddress:   "sdw1",
-				HostName:      "sdw1",
-				Port:          7002,
-				DataDirectory: "/tmp/demo/1",
-			},
-			{
-				HostAddress:   "sdw1",
-				HostName:      "sdw1",
-				Port:          7003,
-				DataDirectory: "/tmp/demo/2",
-			},
-			{
-				HostAddress:   "sdw2",
-				HostName:      "sdw2",
-				Port:          7004,
-				DataDirectory: "/tmp/demo/3",
-			},
-			{
-				HostAddress:   "sdw2",
-				HostName:      "sdw2",
-				Port:          7005,
-				DataDirectory: "/tmp/demo/4",
-			},
-		},
-	}
-	clusterparamas := &idl.ClusterParams{
-		CoordinatorConfig: map[string]string{
-			"max_connections": "50",
-		},
-		SegmentConfig: map[string]string{
-			"max_connections":    "150",
-			"debug_pretty_print": "off",
-			"log_min_messages":   "warning",
-		},
-		CommonConfig: map[string]string{
-			"shared_buffers": "128000kB",
-		},
-		Locale: &idl.Locale{
-			LcAll:      "en_US.UTF-8",
-			LcCtype:    "en_US.UTF-8",
-			LcTime:     "en_US.UTF-8",
-			LcNumeric:  "en_US.UTF-8",
-			LcMonetory: "en_US.UTF-8",
-			LcMessages: "en_US.UTF-8",
-			LcCollate:  "en_US.UTF-8",
-		},
-		HbaHostnames:  false,
-		Encoding:      "Unicode",
-		SuPassword:    "gp",
-		DbName:        "gpadmin",
-		DataChecksums: false,
-	}
-	var request = &idl.MakeClusterRequest{
-		GpArray:       gparray,
-		ClusterParams: clusterparamas,
-		ForceFlag:     false,
-		Verbose:       false,
-	}
+	var request = &idl.MakeClusterRequest{}
 
-	t.Run("ValidateInputConfigAndSetDefaults fails if 0 primary segments are provided in input config file", func(t *testing.T) {
+	_, _, logfile := testhelper.SetupTestLogger()
+	initializeRequest := func() {
+		cli.Conf.Hostnames = []string{"cdw", "sdw1", "sdw2", "sdw3"}
+		coordinator := &idl.Segment{
+			HostAddress:   "cdw",
+			HostName:      "cdw",
+			Port:          700,
+			DataDirectory: "/tmp/coordinator/",
+		}
+		gparray := &idl.GpArray{
+			Coordinator: coordinator,
+			Primaries: []*idl.Segment{
+				{
+					HostAddress:   "sdw1",
+					HostName:      "sdw1",
+					Port:          7002,
+					DataDirectory: "/tmp/demo/1",
+				},
+				{
+					HostAddress:   "sdw1",
+					HostName:      "sdw1",
+					Port:          7003,
+					DataDirectory: "/tmp/demo/2",
+				},
+				{
+					HostAddress:   "sdw2",
+					HostName:      "sdw2",
+					Port:          7004,
+					DataDirectory: "/tmp/demo/3",
+				},
+				{
+					HostAddress:   "sdw2",
+					HostName:      "sdw2",
+					Port:          7005,
+					DataDirectory: "/tmp/demo/4",
+				},
+			},
+		}
+		clusterparamas := &idl.ClusterParams{
+			CoordinatorConfig: map[string]string{
+				"max_connections": "50",
+			},
+			SegmentConfig: map[string]string{
+				"max_connections":    "150",
+				"debug_pretty_print": "off",
+				"log_min_messages":   "warning",
+			},
+			CommonConfig: map[string]string{
+				"shared_buffers": "128000kB",
+			},
+			Locale: &idl.Locale{
+				LcAll:      "en_US.UTF-8",
+				LcCtype:    "en_US.UTF-8",
+				LcTime:     "en_US.UTF-8",
+				LcNumeric:  "en_US.UTF-8",
+				LcMonetory: "en_US.UTF-8",
+				LcMessages: "en_US.UTF-8",
+				LcCollate:  "en_US.UTF-8",
+			},
+			HbaHostnames:  false,
+			Encoding:      "Unicode",
+			SuPassword:    "gp",
+			DbName:        "gpadmin",
+			DataChecksums: false,
+		}
+		request = &idl.MakeClusterRequest{
+			GpArray:       gparray,
+			ClusterParams: clusterparamas,
+			ForceFlag:     false,
+			Verbose:       false,
+		}
+	}
+	initializeRequest()
+
+	t.Run("fails if coordinator segment is not provided in input config", func(t *testing.T) {
 		defer resetCLIVars()
-		expectedError := "No primary segments are provided in input config file"
-		primaries := gparray.Primaries
-		gparray.Primaries = []*idl.Segment{}
+		defer initializeRequest()
+		expectedError := "No coordinator segments are provided in input config file"
+		request.GpArray.Coordinator = nil
 		err := cli.ValidateInputConfigAndSetDefaults(request)
 		if err == nil || !strings.Contains(err.Error(), expectedError) {
 			t.Fatalf("got %v, want %v", err, expectedError)
 		}
-		gparray.Primaries = primaries
+	})
+	t.Run("fails if 0 primary segments are provided in input config file", func(t *testing.T) {
+		defer resetCLIVars()
+		defer initializeRequest()
+		expectedError := "No primary segments are provided in input config file"
+		request.GpArray.Primaries = []*idl.Segment{}
+		err := cli.ValidateInputConfigAndSetDefaults(request)
+		if err == nil || !strings.Contains(err.Error(), expectedError) {
+			t.Fatalf("got %v, want %v", err, expectedError)
+		}
 	})
 
-	t.Run("ValidateInputConfigAndSetDefaults fails if some of hosts do not have gp services configured", func(t *testing.T) {
+	t.Run("fails if some of hosts do not have gp services configured", func(t *testing.T) {
 		defer resetCLIVars()
 		defer resetConfHostnames()
+		defer initializeRequest()
 		cli.Conf.Hostnames = []string{"cdw", "sdw1"}
 		expectedError := "following hostnames [sdw2 sdw2] do not have gp services configured. Please configure the services"
 		err := cli.ValidateInputConfigAndSetDefaults(request)
@@ -302,12 +318,13 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 			t.Fatalf("got: %v, want: %v", err, expectedError)
 		}
 	})
-	t.Run("ValidateInputConfigAndSetDefaults succeeds with info if encoding is not provided", func(t *testing.T) {
+	t.Run("succeeds with info if encoding is not provided", func(t *testing.T) {
 		defer resetCLIVars()
+		defer initializeRequest()
 		cli.CheckForDuplicatPortAndDataDirectory = func(primaries []*idl.Segment) error {
 			return nil
 		}
-		clusterparamas.Encoding = ""
+		request.ClusterParams.Encoding = ""
 		cli.Conf.Hostnames = []string{"cdw", "sdw1", "sdw2"}
 		err := cli.ValidateInputConfigAndSetDefaults(request)
 		if err != nil {
@@ -316,50 +333,75 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 		expectedLogMsg := `Could not find encoding in cluster config, defaulting to UTF-8`
 		testutils.AssertLogMessage(t, logfile, expectedLogMsg)
 	})
-	t.Run("ValidateInputConfigAndSetDefaults fails if provided encoding is SQL_ASCII", func(t *testing.T) {
+	t.Run("fails if provided encoding is SQL_ASCII", func(t *testing.T) {
 		defer resetCLIVars()
-		clusterparamas.Encoding = "SQL_ASCII"
+		defer initializeRequest()
+		request.ClusterParams.Encoding = "SQL_ASCII"
 		expectedError := "SQL_ASCII is no longer supported as a server encoding"
 		err := cli.ValidateInputConfigAndSetDefaults(request)
 		if err == nil || !strings.Contains(err.Error(), expectedError) {
 			t.Fatalf("got %v, want %v", err, expectedError)
 		}
-		clusterparamas.Encoding = "Unicode"
 	})
-	t.Run("ValidateInputConfigAndSetDefaults succeeds with info if coordinator max_connection is not provided", func(t *testing.T) {
+	t.Run("succeeds with info if coordinator max_connection is not provided", func(t *testing.T) {
 		defer resetCLIVars()
-		delete(clusterparamas.CoordinatorConfig, "max_connections")
+		defer initializeRequest()
+		delete(request.ClusterParams.CoordinatorConfig, "max_connections")
+		delete(request.ClusterParams.CommonConfig, "max_connections")
 		err := cli.ValidateInputConfigAndSetDefaults(request)
 		if err != nil {
 			t.Fatalf("got an unexpected error %v", err)
 		}
 		expectedLogMsg := `COORDINATOR max_connections not set, will set to default value 150`
 		testutils.AssertLogMessage(t, logfile, expectedLogMsg)
-		clusterparamas.CoordinatorConfig["max_connections"] = "50"
 	})
-	t.Run("ValidateInputConfigAndSetDefaults fails if provided coordinator max_connection is less than 1", func(t *testing.T) {
+	t.Run("fails if provided coordinator max_connection is less than 1", func(t *testing.T) {
 		defer resetCLIVars()
-		clusterparamas.CoordinatorConfig["max_connections"] = "-1"
-		expectedError := "COORDINATOR_MAX_CONNECT less than 1"
+		defer initializeRequest()
+		request.ClusterParams.CoordinatorConfig["max_connections"] = "-1"
+		expectedError := "COORDINATOR max_connections value -1 is too small. Should be more than 1"
 		err := cli.ValidateInputConfigAndSetDefaults(request)
 		if err == nil || !strings.Contains(err.Error(), expectedError) {
 			t.Fatalf("got %v, want %v", err, expectedError)
 		}
-		clusterparamas.CoordinatorConfig["max_connections"] = "50"
 	})
-	t.Run("ValidateInputConfigAndSetDefaults succeeds with info if shared_buffers are not provided", func(t *testing.T) {
+	t.Run("fails if provided coordinator max_connection is less than 1 in common-config", func(t *testing.T) {
 		defer resetCLIVars()
-		delete(clusterparamas.CommonConfig, "shared_buffers")
+		defer initializeRequest()
+		delete(request.ClusterParams.CoordinatorConfig, "max_connections")
+		request.ClusterParams.CommonConfig["max_connections"] = "-1"
+		expectedError := "COORDINATOR max_connections value -1 is too small. Should be more than 1"
+		err := cli.ValidateInputConfigAndSetDefaults(request)
+		if err == nil || !strings.Contains(err.Error(), expectedError) {
+			t.Fatalf("got %v, want %v", err, expectedError)
+		}
+	})
+	t.Run("max_connections picks value from common config if not provided in coordinator-config", func(t *testing.T) {
+		defer resetCLIVars()
+		defer initializeRequest()
+		delete(request.ClusterParams.CoordinatorConfig, "max_connections")
+		request.ClusterParams.CommonConfig["max_connections"] = "300"
+		expectedLogMsg := "COORDINATOR max_connections set to value: 300"
+		err := cli.ValidateInputConfigAndSetDefaults(request)
+		if err != nil {
+			t.Fatalf("got %v, want no error", err)
+		}
+		testutils.AssertLogMessage(t, logfile, expectedLogMsg)
+	})
+	t.Run("succeeds with info if shared_buffers are not provided", func(t *testing.T) {
+		defer resetCLIVars()
+		defer initializeRequest()
+		delete(request.ClusterParams.CommonConfig, "shared_buffers")
 		err := cli.ValidateInputConfigAndSetDefaults(request)
 		if err != nil {
 			t.Fatalf("got an unexpected error %v", err)
 		}
 		expectedLogMsg := `shared_buffers is not set, will set to default value 128000kB`
 		testutils.AssertLogMessage(t, logfile, expectedLogMsg)
-		clusterparamas.CommonConfig["shared_buffers"] = "128000kB"
 	})
-	t.Run("ValidateInputConfigAndSetDefaults fails if CheckForDuplicatPortAndDataDirectory returns error", func(t *testing.T) {
+	t.Run("fails if CheckForDuplicatPortAndDataDirectory returns error", func(t *testing.T) {
 		defer resetCLIVars()
+		defer initializeRequest()
 		expectedError := "Got an error"
 		cli.CheckForDuplicatPortAndDataDirectory = func(primaries []*idl.Segment) error {
 			return errors.New(expectedError)
