@@ -10,6 +10,11 @@ import (
 	"github.com/greenplum-db/gpdb/gp/utils/postgres"
 )
 
+/*
+StartSegment implements agent RPC to start the segment.
+Input: data-directory, wait and timeout.
+Makes a call to pg_ctl start command
+*/
 func (s *Server) StartSegment(ctx context.Context, in *idl.StartSegmentRequest) (*idl.StartSegmentReply, error) {
 	pgCtlStartOptions := postgres.PgCtlStart{
 		PgData:  in.DataDir,

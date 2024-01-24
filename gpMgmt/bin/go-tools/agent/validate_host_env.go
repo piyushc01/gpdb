@@ -37,6 +37,11 @@ var (
 	GetMaxFilesFromLimitsFile = GetMaxFilesFromLimitsFileFn
 )
 
+/*
+ValidateHostEnv implements agent RPC to validate local host environment
+Performs various checks on host like gpdb version, permissions to initdb, data directory exists, ports in use etc
+*/
+
 func (s *Server) ValidateHostEnv(ctx context.Context, request *idl.ValidateHostEnvRequest) (*idl.ValidateHostEnvReply, error) {
 	gplog.Debug("Starting ValidateHostEnvFn for request:%v", request)
 	dirList := request.DirectoryList
@@ -111,6 +116,10 @@ func (s *Server) ValidateHostEnv(ctx context.Context, request *idl.ValidateHostE
 	return &idl.ValidateHostEnvReply{Messages: warnings}, nil
 }
 
+/*
+ValidatePgVersionFn gets current version of gpdb and compares with version from coordinator
+returns error if version do not match.
+*/
 func ValidatePgVersionFn(expectedVersion string, gpHome string) error {
 	localPgVersion, err := greenplum.GetPostgresGpVersion(gpHome)
 	if err != nil {
@@ -124,6 +133,16 @@ func ValidatePgVersionFn(expectedVersion string, gpHome string) error {
 	return nil
 
 }
+
+/*
+CheckOpenFilesLimit sends an warning to CLI if open files limit is not unlimited
+On McOS, by sourcing .bashrc, ulimit gives correct current limit.
+On Linux environment, issue happens because agent is running as a service.
+To get correct value of open files limit, need to check /etc/security/limits.conf and /etc/security/limits.d/*
+Preference is given to limits.d/* as it overrides limits.conf entry.
+Limits.d directory can contain multiple files and are sourced in alphabetical order. This function reads the directory,
+sort in decreasing order and look for first occurrence of open files limit.
+*/
 
 func CheckOpenFilesLimit() []*idl.LogMessage {
 	var warnings []*idl.LogMessage
@@ -150,7 +169,6 @@ func CheckOpenFilesLimit() []*idl.LogMessage {
 		gplog.Warn(warnMsg)
 		return warnings
 	}
-	//curPlatform := utils.GetPlatform()
 	if platform.GetPlatformOS() == constants.PlatformDarwin {
 		if ulimitVal < constants.OsOpenFiles {
 			// In case of macOS, no limits file are present, return error
@@ -231,6 +249,11 @@ func CheckOpenFilesLimit() []*idl.LogMessage {
 	return warnings
 }
 
+/*
+GetMaxFilesFromLimitsFileFn extracts open file limit from the conf file.
+Returns -1 if limit not defined in the file.
+Returns error if fails to open the file.
+*/
 func GetMaxFilesFromLimitsFileFn(fileName string, curUser *user.User) (int, error) {
 	fd, err := utils.System.Open(fileName)
 	if err != nil {
@@ -266,6 +289,10 @@ func GetMaxFilesFromLimitsFileFn(fileName string, curUser *user.User) (int, erro
 	return -1, nil
 }
 
+/*
+CheckHostAddressInHostsFile checks if given address present with a localhost entry.
+Returns a warning message to CLI if entry is detected
+*/
 func CheckHostAddressInHostsFile(hostAddressList []string) []*idl.LogMessage {
 	var warnings []*idl.LogMessage
 	gplog.Debug("CheckHostAddressInHostsFile checking for address:%v", hostAddressList)
@@ -297,6 +324,9 @@ func CheckHostAddressInHostsFile(hostAddressList []string) []*idl.LogMessage {
 	return warnings
 }
 
+/*
+ValidatePortsFn checks if port is already in use.
+*/
 func ValidatePortsFn(socketAddressList []string) error {
 	gplog.Debug("Started with ValidatePorts")
 	var usedSocketAddressList []string
@@ -315,6 +345,9 @@ func ValidatePortsFn(socketAddressList []string) error {
 	return nil
 }
 
+/*
+GetAllNonEmptyDirFn returns list of all non-empty directories
+*/
 func GetAllNonEmptyDirFn(dirList []string) []string {
 	var nonEmptyDir []string
 	for _, dir := range dirList {
@@ -329,6 +362,11 @@ func GetAllNonEmptyDirFn(dirList []string) []string {
 	}
 	return nonEmptyDir
 }
+
+/*
+CheckDirEmptyFn checks if given directory is empty or not
+returns true if directory is empty
+*/
 func CheckDirEmptyFn(dirPath string) (bool, error) {
 	// check if dir exists
 	file, err := os.Open(dirPath)
@@ -346,6 +384,11 @@ func CheckDirEmptyFn(dirPath string) (bool, error) {
 	return false, nil
 }
 
+/*
+CheckFilePermissionsFn checks if the file has right permissions.
+Verified if execute permission is available.
+Also checks if file is owned by group or user.
+*/
 func CheckFilePermissionsFn(filePath string) error {
 	fileInfo, err := utils.System.Stat(filePath)
 	if err != nil {
@@ -364,6 +407,10 @@ func CheckFilePermissionsFn(filePath string) error {
 	return nil
 }
 
+/*
+CheckFileOwnerGroupFn checks if file is owned by user or the group
+returns error if not owned by both
+*/
 func CheckFileOwnerGroupFn(filePath string, fileInfo os.FileInfo) error {
 	systemUid := utils.System.Getuid()
 	systemGid := utils.System.Getgid()
@@ -399,15 +446,21 @@ func GetAllAvailableLocalesFn() (string, error) {
 // Input parameter - string with locale define as [language[_territory][.codeset][@modifier]]
 func NormalizeCodesetInLocale(locale string) string {
 	localeSplit := strings.Split(locale, ".")
-	languageAndTerritory := localeSplit[0]
-
-	codesetAndModifier := strings.Split(localeSplit[1], "@")
-
-	codeset := codesetAndModifier[0]
-
+	languageAndTerritory := ""
+	codesetAndModifier := []string{}
+	codeset := ""
 	modifier := ""
+	if len(localeSplit) > 0 {
+		languageAndTerritory = localeSplit[0]
+	}
 
-	if len(codesetAndModifier) == 2 {
+	if len(localeSplit) > 1 {
+
+		codesetAndModifier = strings.Split(localeSplit[1], "@")
+		codeset = codesetAndModifier[0]
+	}
+
+	if len(codesetAndModifier) > 1 {
 		modifier = codesetAndModifier[1]
 	}
 

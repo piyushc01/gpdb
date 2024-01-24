@@ -1069,6 +1069,20 @@ func TestNormalizeCodesetInLocale(t *testing.T) {
 			t.Fatalf("got locale %s expected %s", normalizedCodesetLocale, expectedLocale)
 		}
 	})
+	t.Run("function returns the locale when empty locale is passed", func(t *testing.T) {
+		expectedLocale := ""
+		normalizedCodesetLocale := agent.NormalizeCodesetInLocale("")
+		if normalizedCodesetLocale != expectedLocale {
+			t.Fatalf("got locale %s expected %s", normalizedCodesetLocale, expectedLocale)
+		}
+	})
+	t.Run("function returns the locale when only locale is passed", func(t *testing.T) {
+		expectedLocale := "UTF8"
+		normalizedCodesetLocale := agent.NormalizeCodesetInLocale("UTF8")
+		if normalizedCodesetLocale != expectedLocale {
+			t.Fatalf("got locale %s expected %s", normalizedCodesetLocale, expectedLocale)
+		}
+	})
 }
 
 func TestIsLocaleAvailable(t *testing.T) {
@@ -1099,6 +1113,16 @@ func TestValidateLocaleSettingsFn(t *testing.T) {
 		LcMessages: "en_US.UTF-8",
 		LcCollate:  "en_US.UTF-8",
 	}
+	t.Run("returns error when fails to get locale", func(t *testing.T) {
+		testStr := "test-error"
+		agent.GetAllAvailableLocales = func() (string, error) {
+			return "", fmt.Errorf(testStr)
+		}
+		err := agent.ValidateLocaleSettingsFn(locale)
+		if err != nil && !strings.Contains(err.Error(), testStr) {
+			t.Fatalf("got unexpected error %s", err)
+		}
+	})
 	t.Run("function does not return any error if all of the locale are available on the system", func(t *testing.T) {
 		agent.GetAllAvailableLocales = func() (string, error) {
 			return "en_US.UTF-8\nfi_FI.ISO8859-15\nko_KR.CP949\nhy_AM.UTF-8", nil
@@ -1118,5 +1142,13 @@ func TestValidateLocaleSettingsFn(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), expectedError) {
 			t.Fatalf("got %s, expected: %s", err, expectedError)
 		}
+	})
+}
+
+func TestGetAllAvailableLocalesFn(t *testing.T) {
+	testhelper.SetupTestLogger()
+	t.Run("returns error upon failure to get locale", func(t *testing.T) {
+		exectest.NewCommand(exectest.Failure)
+
 	})
 }

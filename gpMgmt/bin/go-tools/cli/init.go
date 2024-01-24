@@ -79,6 +79,8 @@ func initClusterCmd() *cobra.Command {
 
 	return initClusterCmd
 }
+
+// RunInitClusterCmd driving function gets called from cobra on gp init cluster command
 func RunInitClusterCmd(cmd *cobra.Command, args []string) error {
 	// initial basic cli validations
 	if len(args) == 0 {
@@ -295,20 +297,32 @@ func ValidateInputConfigAndSetDefaultsFn(request *idl.MakeClusterRequest) error 
 	return nil
 }
 
+/*
+CheckForDuplicatePortAndDataDirectoryFn checks for duplicate data-directories and ports on host.
+In case of data-directories, look for unique host-names.
+For checking duplicate port, checking if address is unique. A host can use same the port for a different address.
+*/
 func CheckForDuplicatePortAndDataDirectoryFn(primaries []*idl.Segment) error {
-	hostToPortDataDirectory := make(map[string]map[string]bool)
+	hostToDataDirectory := make(map[string]map[string]bool)
+	hostToPort := make(map[string]map[int32]bool)
 	for _, primary := range primaries {
-		if _, ok := hostToPortDataDirectory[primary.HostName]; !ok {
-			hostToPortDataDirectory[primary.HostName] = make(map[string]bool)
+		//Check for data-directory
+		if _, ok := hostToDataDirectory[primary.HostName]; !ok {
+			hostToDataDirectory[primary.HostName] = make(map[string]bool)
 		}
-		if hostToPortDataDirectory[primary.HostName][primary.DataDirectory] {
-			return fmt.Errorf("duplicate data directory entry %v found for host %v", primary.DataDirectory, primary.HostName)
+		if hostToDataDirectory[primary.HostName][primary.DataDirectory] {
+			return fmt.Errorf("duplicate data directory entry %v found for host %v", primary.DataDirectory, primary.HostAddress)
 		}
-		hostToPortDataDirectory[primary.HostName][primary.DataDirectory] = true
-		if hostToPortDataDirectory[primary.HostName][string(primary.Port)] {
+		hostToDataDirectory[primary.HostAddress][primary.DataDirectory] = true
+
+		// Check for port
+		if _, ok := hostToPort[primary.HostAddress]; !ok {
+			hostToPort[primary.HostAddress] = make(map[int32]bool)
+		}
+		if hostToPort[primary.HostName][primary.Port] {
 			return fmt.Errorf("duplicate port entry %v found for host %v", primary.Port, primary.HostName)
 		}
-		hostToPortDataDirectory[primary.HostName][string(primary.Port)] = true
+		hostToPort[primary.HostName][primary.Port] = true
 	}
 	return nil
 }

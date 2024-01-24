@@ -69,7 +69,7 @@ func TestInitClusterService(t *testing.T) {
 	setupTest(t)
 	defer teardownTest()
 
-	t.Run("InitClusterService fails if input config file does not exist", func(t *testing.T) {
+	t.Run("fails if input config file does not exist", func(t *testing.T) {
 		defer resetCLIVars()
 		err := cli.InitClusterService("/tmp/invalid_file", false, false)
 		if err == nil {
@@ -77,7 +77,7 @@ func TestInitClusterService(t *testing.T) {
 		}
 	})
 
-	t.Run("InitClusterService fails if LoadInputConfigToIdl returns error", func(t *testing.T) {
+	t.Run("fails if LoadInputConfigToIdl returns error", func(t *testing.T) {
 		testStr := "got an error"
 		defer resetCLIVars()
 		defer utils.ResetSystemFunctions()
@@ -92,7 +92,7 @@ func TestInitClusterService(t *testing.T) {
 			t.Fatalf("got %v, want %s", err, testStr)
 		}
 	})
-	t.Run("InitClusterService fails if ValidateInputConfigAndSetDefaults returns error", func(t *testing.T) {
+	t.Run("fails if ValidateInputConfigAndSetDefaults returns error", func(t *testing.T) {
 		testStr := "got an error"
 		defer resetCLIVars()
 		defer utils.ResetSystemFunctions()
@@ -110,7 +110,7 @@ func TestInitClusterService(t *testing.T) {
 			t.Fatalf("got %v, want %s", err, testStr)
 		}
 	})
-	t.Run("InitClusterService fails if ValidateInputConfigAndSetDefaults returns error", func(t *testing.T) {
+	t.Run("fails if ValidateInputConfigAndSetDefaults returns error", func(t *testing.T) {
 		testStr := "got an error"
 		defer resetCLIVars()
 		defer utils.ResetSystemFunctions()
@@ -214,14 +214,13 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 
 	_, _, logfile := testhelper.SetupTestLogger()
 	initializeRequest := func() {
-		cli.Conf.Hostnames = []string{"cdw", "sdw1", "sdw2", "sdw3"}
 		coordinator := &idl.Segment{
 			HostAddress:   "cdw",
 			HostName:      "cdw",
 			Port:          700,
 			DataDirectory: "/tmp/coordinator/",
 		}
-		gparray := &idl.GpArray{
+		gparray := idl.GpArray{
 			Coordinator: coordinator,
 			Primaries: []*idl.Segment{
 				{
@@ -250,7 +249,7 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 				},
 			},
 		}
-		clusterparamas := &idl.ClusterParams{
+		clusterparamas := idl.ClusterParams{
 			CoordinatorConfig: map[string]string{
 				"max_connections": "50",
 			},
@@ -278,17 +277,19 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 			DataChecksums: false,
 		}
 		request = &idl.MakeClusterRequest{
-			GpArray:       gparray,
-			ClusterParams: clusterparamas,
+			GpArray:       &gparray,
+			ClusterParams: &clusterparamas,
 			ForceFlag:     false,
 			Verbose:       false,
 		}
 	}
-	initializeRequest()
 
+	initializeRequest()
+	resetConfHostnames()
 	t.Run("fails if coordinator segment is not provided in input config", func(t *testing.T) {
 		defer resetCLIVars()
 		defer initializeRequest()
+
 		expectedError := "No coordinator segments are provided in input config file"
 		request.GpArray.Coordinator = nil
 		err := cli.ValidateInputConfigAndSetDefaults(request)
@@ -301,6 +302,7 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 		defer initializeRequest()
 		expectedError := "No primary segments are provided in input config file"
 		request.GpArray.Primaries = []*idl.Segment{}
+
 		err := cli.ValidateInputConfigAndSetDefaults(request)
 		if err == nil || !strings.Contains(err.Error(), expectedError) {
 			t.Fatalf("got %v, want %v", err, expectedError)
@@ -313,6 +315,7 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 		defer initializeRequest()
 		cli.Conf.Hostnames = []string{"cdw", "sdw1"}
 		expectedError := "following hostnames [sdw2 sdw2] do not have gp services configured. Please configure the services"
+
 		err := cli.ValidateInputConfigAndSetDefaults(request)
 		if err == nil || !strings.Contains(err.Error(), expectedError) {
 			t.Fatalf("got: %v, want: %v", err, expectedError)
@@ -321,11 +324,12 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 	t.Run("succeeds with info if encoding is not provided", func(t *testing.T) {
 		defer resetCLIVars()
 		defer initializeRequest()
+		defer resetConfHostnames()
 		cli.CheckForDuplicatPortAndDataDirectory = func(primaries []*idl.Segment) error {
 			return nil
 		}
 		request.ClusterParams.Encoding = ""
-		cli.Conf.Hostnames = []string{"cdw", "sdw1", "sdw2"}
+
 		err := cli.ValidateInputConfigAndSetDefaults(request)
 		if err != nil {
 			t.Fatalf("got an unexpected error %v", err)
@@ -336,8 +340,10 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 	t.Run("fails if provided encoding is SQL_ASCII", func(t *testing.T) {
 		defer resetCLIVars()
 		defer initializeRequest()
+		defer resetConfHostnames()
 		request.ClusterParams.Encoding = "SQL_ASCII"
 		expectedError := "SQL_ASCII is no longer supported as a server encoding"
+
 		err := cli.ValidateInputConfigAndSetDefaults(request)
 		if err == nil || !strings.Contains(err.Error(), expectedError) {
 			t.Fatalf("got %v, want %v", err, expectedError)
@@ -346,8 +352,10 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 	t.Run("succeeds with info if coordinator max_connection is not provided", func(t *testing.T) {
 		defer resetCLIVars()
 		defer initializeRequest()
+		defer resetConfHostnames()
 		delete(request.ClusterParams.CoordinatorConfig, "max_connections")
 		delete(request.ClusterParams.CommonConfig, "max_connections")
+
 		err := cli.ValidateInputConfigAndSetDefaults(request)
 		if err != nil {
 			t.Fatalf("got an unexpected error %v", err)
@@ -358,8 +366,10 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 	t.Run("fails if provided coordinator max_connection is less than 1", func(t *testing.T) {
 		defer resetCLIVars()
 		defer initializeRequest()
+		defer resetConfHostnames()
 		request.ClusterParams.CoordinatorConfig["max_connections"] = "-1"
 		expectedError := "COORDINATOR max_connections value -1 is too small. Should be more than 1"
+
 		err := cli.ValidateInputConfigAndSetDefaults(request)
 		if err == nil || !strings.Contains(err.Error(), expectedError) {
 			t.Fatalf("got %v, want %v", err, expectedError)
@@ -368,9 +378,11 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 	t.Run("fails if provided coordinator max_connection is less than 1 in common-config", func(t *testing.T) {
 		defer resetCLIVars()
 		defer initializeRequest()
+		defer resetConfHostnames()
 		delete(request.ClusterParams.CoordinatorConfig, "max_connections")
 		request.ClusterParams.CommonConfig["max_connections"] = "-1"
 		expectedError := "COORDINATOR max_connections value -1 is too small. Should be more than 1"
+
 		err := cli.ValidateInputConfigAndSetDefaults(request)
 		if err == nil || !strings.Contains(err.Error(), expectedError) {
 			t.Fatalf("got %v, want %v", err, expectedError)
@@ -379,9 +391,11 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 	t.Run("max_connections picks value from common config if not provided in coordinator-config", func(t *testing.T) {
 		defer resetCLIVars()
 		defer initializeRequest()
+		defer resetConfHostnames()
 		delete(request.ClusterParams.CoordinatorConfig, "max_connections")
 		request.ClusterParams.CommonConfig["max_connections"] = "300"
 		expectedLogMsg := "COORDINATOR max_connections set to value: 300"
+
 		err := cli.ValidateInputConfigAndSetDefaults(request)
 		if err != nil {
 			t.Fatalf("got %v, want no error", err)
@@ -391,7 +405,9 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 	t.Run("succeeds with info if shared_buffers are not provided", func(t *testing.T) {
 		defer resetCLIVars()
 		defer initializeRequest()
+		defer resetConfHostnames()
 		delete(request.ClusterParams.CommonConfig, "shared_buffers")
+
 		err := cli.ValidateInputConfigAndSetDefaults(request)
 		if err != nil {
 			t.Fatalf("got an unexpected error %v", err)
@@ -399,13 +415,14 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 		expectedLogMsg := `shared_buffers is not set, will set to default value 128000kB`
 		testutils.AssertLogMessage(t, logfile, expectedLogMsg)
 	})
-	t.Run("fails if CheckForDuplicatPortAndDataDirectory returns error", func(t *testing.T) {
+	t.Run("fails if port/directory duplicate check fails returns error", func(t *testing.T) {
 		defer resetCLIVars()
 		defer initializeRequest()
 		expectedError := "Got an error"
 		cli.CheckForDuplicatPortAndDataDirectory = func(primaries []*idl.Segment) error {
 			return errors.New(expectedError)
 		}
+
 		err := cli.ValidateInputConfigAndSetDefaults(request)
 		if err == nil || !strings.Contains(err.Error(), expectedError) {
 			t.Fatalf("got %v, want %v", err, expectedError)
@@ -413,59 +430,65 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 	})
 }
 
-func TestCheckForDuplicatPortAndDataDirectoryFn(t *testing.T) {
+func TestCheckForDuplicatePortAndDataDirectoryFn(t *testing.T) {
 	setupTest(t)
 	defer teardownTest()
-	var primary0 = &idl.Segment{
-		HostAddress:   "sdw1",
-		HostName:      "sdw1",
-		Port:          7002,
-		DataDirectory: "/tmp/demo/1",
-	}
-	var primary1 = &idl.Segment{
-		HostAddress:   "sdw1",
-		HostName:      "sdw1",
-		Port:          7003,
-		DataDirectory: "/tmp/demo/2",
-	}
-	var primary2 = &idl.Segment{
-		HostAddress:   "sdw2",
-		HostName:      "sdw2",
-		Port:          7004,
-		DataDirectory: "/tmp/demo/3",
-	}
-	var primary3 = &idl.Segment{
-		HostAddress:   "sdw2",
-		HostName:      "sdw2",
-		Port:          7005,
-		DataDirectory: "/tmp/demo/4",
-	}
-	var primaries = []*idl.Segment{
-		primary0, primary1, primary2, primary3,
+	var primaries = []*idl.Segment{}
+	initializeData := func() {
+		var primary0 = idl.Segment{
+			HostAddress:   "sdw1",
+			HostName:      "sdw1",
+			Port:          7002,
+			DataDirectory: "/tmp/demo/1",
+		}
+		var primary1 = idl.Segment{
+			HostAddress:   "sdw1",
+			HostName:      "sdw1",
+			Port:          7003,
+			DataDirectory: "/tmp/demo/2",
+		}
+		var primary2 = idl.Segment{
+			HostAddress:   "sdw2",
+			HostName:      "sdw2",
+			Port:          7004,
+			DataDirectory: "/tmp/demo/3",
+		}
+		var primary3 = idl.Segment{
+			HostAddress:   "sdw2",
+			HostName:      "sdw2",
+			Port:          7005,
+			DataDirectory: "/tmp/demo/4",
+		}
+		primaries = []*idl.Segment{
+			&primary0, &primary1, &primary2, &primary3,
+		}
 	}
 
-	t.Run("CheckForDuplicatPortAndDataDirectory fails if duplicate data-directory entry is found for a host", func(t *testing.T) {
+	initializeData()
+	t.Run("fails if duplicate data-directory entry is found for a host", func(t *testing.T) {
 		defer resetCLIVars()
+		defer initializeData()
 		expectedError := "duplicate data directory entry /tmp/demo/1 found for host sdw1"
-		primary1.DataDirectory = "/tmp/demo/1"
+		primaries[1].DataDirectory = "/tmp/demo/1"
 		err := cli.CheckForDuplicatPortAndDataDirectory(primaries)
 		if err == nil || !strings.Contains(err.Error(), expectedError) {
 			t.Fatalf("got %v, want %v", err, expectedError)
 		}
-		primary1.DataDirectory = "/tmp/demo/2"
+
 	})
-	t.Run("CheckForDuplicatPortAndDataDirectory fails if duplicate port entry is found for a host", func(t *testing.T) {
+	t.Run("fails if duplicate port entry is found for a host", func(t *testing.T) {
 		defer resetCLIVars()
+		defer initializeData()
 		expectedError := "duplicate port entry 7002 found for host sdw1"
-		primary1.Port = 7002
+		primaries[1].Port = 7002
 		err := cli.CheckForDuplicatPortAndDataDirectory(primaries)
 		if err == nil || !strings.Contains(err.Error(), expectedError) {
 			t.Fatalf("got %v, want %v", err, expectedError)
 		}
-		primary1.Port = 7003
 	})
-	t.Run("CheckForDuplicatPortAndDataDirectory succeeds if no duplicate port/datadir entry is found for any of the hosts", func(t *testing.T) {
+	t.Run("succeeds if no duplicate port/datadir entry is found for any of the hosts", func(t *testing.T) {
 		defer resetCLIVars()
+		defer initializeData()
 		err := cli.CheckForDuplicatPortAndDataDirectory(primaries)
 		if err != nil {
 			t.Fatalf("got an unexpected error")
