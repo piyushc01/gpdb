@@ -143,19 +143,20 @@ func InitClusterServiceFn(inputConfigFile string, force, verbose bool) error {
 LoadInputConfigToIdlFn reads config file and populates RPC IDL request structure
 */
 func LoadInputConfigToIdlFn(inputConfigFile string, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
-	viper.SetConfigFile(inputConfigFile)
+	v := viper.New()
+	v.SetConfigFile(inputConfigFile)
 
-	viper.SetDefault("common-config", make(map[string]string))
-	viper.SetDefault("coordinator-config", make(map[string]string))
-	viper.SetDefault("segment-config", make(map[string]string))
-	viper.SetDefault("data-checksums", true)
+	v.SetDefault("common-config", make(map[string]string))
+	v.SetDefault("coordinator-config", make(map[string]string))
+	v.SetDefault("segment-config", make(map[string]string))
+	v.SetDefault("data-checksums", true)
 
-	if err := viper.ReadInConfig(); err != nil {
+	if err := v.ReadInConfig(); err != nil {
 		return &idl.MakeClusterRequest{}, fmt.Errorf("while reading config file: %w", err)
 	}
 
 	var config InitConfig
-	if err := viper.Unmarshal(&config); err != nil {
+	if err := v.UnmarshalExact(&config); err != nil {
 		return &idl.MakeClusterRequest{}, fmt.Errorf("while unmarshaling config file: %w", err)
 	}
 
