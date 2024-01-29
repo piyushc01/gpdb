@@ -331,6 +331,7 @@ ExecMainCode=0
 ExecMainStatus=0
 
 Darwin:
+
 	{
 		"PID" = 19909;
 		"Program" = "/usr/local/gpdb/bin/gp";

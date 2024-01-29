@@ -164,6 +164,8 @@ Type=simple
 Environment=GPHOME=/test
 ExecStart=/test/bin/gp hub
 Restart=on-failure
+StandardOutput=file:/tmp/grpc_hub.log
+StandardError=file:/tmp/grpc_hub.log
 
 [Install]
 Alias=gp_hub.service
@@ -658,12 +660,14 @@ func TestParseServiceStatusMessage(t *testing.T) {
 			name: "ParseServiceStatusMessage gets status for linux when service is running",
 			os:   constants.PlatformLinux,
 			message: `
-			ExecMainStartTimestamp=Sun 2023-08-20 14:43:35 UTC
+			ActiveEnterTimestamp=Sun 2023-08-20 14:43:35 UTC
+			ExecMainStartTimestamp=Sat 2022-09-12 16:31:03 UTC
 			ExecMainStartTimestampMonotonic=286453245
 			ExecMainExitTimestampMonotonic=0
-			ExecMainPID=83008
+			ExecMainPID=83001
 			ExecMainCode=0
 			ExecMainStatus=0
+			MainPID=83008
 			`,
 			expected: &idl.ServiceStatus{Status: "running", Uptime: "Sun 2023-08-20 14:43:35 UTC", Pid: uint32(83008)},
 		},
@@ -673,9 +677,10 @@ func TestParseServiceStatusMessage(t *testing.T) {
 			message: `
 			ExecMainStartTimestampMonotonic=286453245
 			ExecMainExitTimestampMonotonic=0
-			ExecMainPID=0
+			ExecMainPID=83001
 			ExecMainCode=0
 			ExecMainStatus=0
+			MainPID=0
 			`,
 			expected: &idl.ServiceStatus{Status: "not running", Pid: uint32(0)},
 		},

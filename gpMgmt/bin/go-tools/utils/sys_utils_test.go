@@ -2,11 +2,12 @@ package utils_test
 
 import (
 	"errors"
-	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"net"
 	"os"
 	"reflect"
 	"testing"
+
+	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 
 	"github.com/greenplum-db/gpdb/gp/testutils"
 	"github.com/greenplum-db/gpdb/gp/utils"

@@ -58,10 +58,10 @@ func RunHub(cmd *cobra.Command, args []string) (err error) {
 
 func configureCmd() *cobra.Command {
 	configureCmd := &cobra.Command{
-		Use:    "configure",
-		Short:  "Configure gp as a systemd daemon",
+		Use:     "configure",
+		Short:   "Configure gp as a systemd daemon",
 		PreRunE: InitializeLogger,
-		RunE:   RunConfigure,
+		RunE:    RunConfigure,
 	}
 
 	viper.AutomaticEnv()
@@ -116,7 +116,7 @@ func RunConfigure(cmd *cobra.Command, args []string) (err error) {
 	if !cmd.Flags().Lookup("host").Changed && !cmd.Flags().Lookup("hostfile").Changed {
 		return errors.New("at least one hostname must be provided using either --host or --hostfile")
 	}
-	
+
 	if agentPort == hubPort {
 		return errors.New("hub port and agent port must be different")
 	}

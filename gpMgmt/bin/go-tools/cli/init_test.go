@@ -3,13 +3,14 @@ package cli_test
 import (
 	"errors"
 	"fmt"
+	"os"
+	"strings"
+	"testing"
+
 	"github.com/golang/mock/gomock"
 	"github.com/greenplum-db/gpdb/gp/idl/mock_idl"
 	"github.com/greenplum-db/gpdb/gp/utils"
 	"github.com/spf13/cobra"
-	"os"
-	"strings"
-	"testing"
 
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpdb/gp/cli"
