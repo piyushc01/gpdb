@@ -32,12 +32,11 @@ type Segment struct {
 }
 
 type InitConfig struct {
-	ClusterName          string            `mapstructure:"cluster-name"`
 	DbName               string            `mapstructure:"db-name"`
 	Encoding             string            `mapstructure:"encoding"`
 	HbaHostnames         bool              `mapstructure:"hba-hostnames"`
 	DataChecksums        bool              `mapstructure:"data-checksums"`
-	SuPassword           string            `mapstructure:"su-password"`
+	SuPassword           string            `mapstructure:"su-password"` //TODO set to default if not provided
 	Locale               Locale            `mapstructure:"locale"`
 	CommonConfig         map[string]string `mapstructure:"common-config"`
 	CoordinatorConfig    map[string]string `mapstructure:"coordinator-config"`
@@ -107,15 +106,17 @@ func InitClusterServiceFn(inputConfigFile string, force, verbose bool) error {
 	if _, err := utils.System.Stat(inputConfigFile); err != nil {
 		return err
 	}
+	// Viper instance to read the input config
+	cliHandler := viper.New()
 
 	// Load cluster-request from the config file
-	clusterReq, err := LoadInputConfigToIdl(inputConfigFile, force, verbose)
+	clusterReq, err := LoadInputConfigToIdl(inputConfigFile, cliHandler, force, verbose)
 	if err != nil {
 		return err
 	}
 
 	// Validate give input configuration
-	if err := ValidateInputConfigAndSetDefaults(clusterReq); err != nil {
+	if err := ValidateInputConfigAndSetDefaults(clusterReq, cliHandler); err != nil {
 		return err
 	}
 
@@ -142,21 +143,20 @@ func InitClusterServiceFn(inputConfigFile string, force, verbose bool) error {
 /*
 LoadInputConfigToIdlFn reads config file and populates RPC IDL request structure
 */
-func LoadInputConfigToIdlFn(inputConfigFile string, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
-	v := viper.New()
-	v.SetConfigFile(inputConfigFile)
+func LoadInputConfigToIdlFn(inputConfigFile string, cliHandler *viper.Viper, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
+	cliHandler.SetConfigFile(inputConfigFile)
 
-	v.SetDefault("common-config", make(map[string]string))
-	v.SetDefault("coordinator-config", make(map[string]string))
-	v.SetDefault("segment-config", make(map[string]string))
-	v.SetDefault("data-checksums", true)
+	cliHandler.SetDefault("common-config", make(map[string]string))
+	cliHandler.SetDefault("coordinator-config", make(map[string]string))
+	cliHandler.SetDefault("segment-config", make(map[string]string))
+	cliHandler.SetDefault("data-checksums", true)
 
-	if err := v.ReadInConfig(); err != nil {
+	if err := cliHandler.ReadInConfig(); err != nil {
 		return &idl.MakeClusterRequest{}, fmt.Errorf("while reading config file: %w", err)
 	}
 
 	var config InitConfig
-	if err := v.UnmarshalExact(&config); err != nil {
+	if err := cliHandler.UnmarshalExact(&config); err != nil {
 		return &idl.MakeClusterRequest{}, fmt.Errorf("while unmarshaling config file: %w", err)
 	}
 
@@ -217,14 +217,23 @@ func ClusterParamsToIdl(config *InitConfig) *idl.ClusterParams {
 /*
 ValidateInputConfigAndSetDefaultsFn performs various validation checks on the configuration
 */
-func ValidateInputConfigAndSetDefaultsFn(request *idl.MakeClusterRequest) error {
-	// Check if coordinator details are provided
-	if request.GpArray.Coordinator == nil {
-		return fmt.Errorf("No coordinator segments are provided in input config file")
+func ValidateInputConfigAndSetDefaultsFn(request *idl.MakeClusterRequest, cliHandler *viper.Viper) error {
+	//Check if coordinator details are provided
+	if !cliHandler.IsSet("coordinator") {
+		return fmt.Errorf("no coordinator segments are provided in input config file")
+	}
+
+	//Check if primary segment details are provided
+	if !cliHandler.IsSet("primary-segments-array") {
+		return fmt.Errorf("no primary segments are provided in input config file")
+	}
+	if !cliHandler.IsSet("locale") {
+		gplog.Warn("locale is not provided, setting it to system locale")
+		//TODO populate locale values with system locale
 	}
 	// Check if length of Gparray.PimarySegments is 0
 	if len(request.GpArray.Primaries) == 0 {
-		return fmt.Errorf("No primary segments are provided in input config file")
+		return fmt.Errorf("no primary segments are provided in input config file")
 	}
 
 	hostnames = []string{}
@@ -235,7 +244,7 @@ func ValidateInputConfigAndSetDefaultsFn(request *idl.MakeClusterRequest) error 
 
 	diff := utils.GetListDifference(hostnames, Conf.Hostnames)
 	if len(diff) != 0 {
-		return fmt.Errorf("following hostnames %s do not have gp services configured. Please configure the services.", diff)
+		return fmt.Errorf("following hostnames %s do not have gp services configured. Please configure the services", diff)
 	}
 
 	if request.ClusterParams.Encoding == "" {
@@ -291,9 +300,44 @@ func ValidateInputConfigAndSetDefaultsFn(request *idl.MakeClusterRequest) error 
 		gplog.Warn(fmt.Sprintf("Coordinator open file limit is %d should be >= %d", coordinatorOpenFileLimit, constants.OsOpenFiles))
 	}
 
+	// validate details of coordinator
+	err = ValidateSegment(request.GpArray.Coordinator)
+	if err != nil {
+		return err
+	}
+
+	// validate the details of primary segments
+	for _, segment := range request.GpArray.Primaries {
+		err = ValidateSegment(segment)
+		if err != nil {
+			return err
+		}
+	}
+
 	err = CheckForDuplicatPortAndDataDirectory(request.GpArray.Primaries)
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+func ValidateSegment(segment *idl.Segment) error {
+	if segment.HostName == "" && segment.HostAddress == "" {
+		return fmt.Errorf("neither hostName nor hostAddress is provided")
+	} else if segment.HostName == "" {
+		segment.HostName = segment.HostAddress
+		gplog.Warn("hostName has not been provided, populating it with same as hostAddress %v", segment.HostAddress)
+	} else if segment.HostAddress == "" {
+		segment.HostAddress = segment.HostName
+		gplog.Warn("hostAddress has not been provided, populating it with same as hostName %v", segment.HostName)
+	}
+
+	if segment.Port <= 0 {
+		return fmt.Errorf("invalid port has been provided")
+	}
+
+	if segment.DataDirectory == "" {
+		return fmt.Errorf("data_directory has not been provided")
 	}
 	return nil
 }

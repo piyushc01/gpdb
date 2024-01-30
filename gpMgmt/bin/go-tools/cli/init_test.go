@@ -3,6 +3,7 @@ package cli_test
 import (
 	"errors"
 	"fmt"
+	"github.com/spf13/viper"
 	"os"
 	"strings"
 	"testing"
@@ -85,7 +86,7 @@ func TestInitClusterService(t *testing.T) {
 		utils.System.Stat = func(name string) (os.FileInfo, error) {
 			return nil, nil
 		}
-		cli.LoadInputConfigToIdl = func(inputConfigFile string, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
+		cli.LoadInputConfigToIdl = func(inputConfigFile string, cliHandler *viper.Viper, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
 			return nil, fmt.Errorf(testStr)
 		}
 		err := cli.InitClusterService("/tmp/invalid_file", false, false)
@@ -100,10 +101,10 @@ func TestInitClusterService(t *testing.T) {
 		utils.System.Stat = func(name string) (os.FileInfo, error) {
 			return nil, nil
 		}
-		cli.LoadInputConfigToIdl = func(inputConfigFile string, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
+		cli.LoadInputConfigToIdl = func(inputConfigFile string, cliHandler *viper.Viper, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
 			return nil, nil
 		}
-		cli.ValidateInputConfigAndSetDefaults = func(request *idl.MakeClusterRequest) error {
+		cli.ValidateInputConfigAndSetDefaults = func(request *idl.MakeClusterRequest, cliHandler *viper.Viper) error {
 			return fmt.Errorf(testStr)
 		}
 		err := cli.InitClusterService("/tmp/invalid_file", false, false)
@@ -118,10 +119,10 @@ func TestInitClusterService(t *testing.T) {
 		utils.System.Stat = func(name string) (os.FileInfo, error) {
 			return nil, nil
 		}
-		cli.LoadInputConfigToIdl = func(inputConfigFile string, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
+		cli.LoadInputConfigToIdl = func(inputConfigFile string, cliHandler *viper.Viper, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
 			return nil, nil
 		}
-		cli.ValidateInputConfigAndSetDefaults = func(request *idl.MakeClusterRequest) error {
+		cli.ValidateInputConfigAndSetDefaults = func(request *idl.MakeClusterRequest, cliHandler *viper.Viper) error {
 			return fmt.Errorf(testStr)
 		}
 		err := cli.InitClusterService("/tmp/invalid_file", false, false)
@@ -136,10 +137,10 @@ func TestInitClusterService(t *testing.T) {
 		utils.System.Stat = func(name string) (os.FileInfo, error) {
 			return nil, nil
 		}
-		cli.LoadInputConfigToIdl = func(inputConfigFile string, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
+		cli.LoadInputConfigToIdl = func(inputConfigFile string, cliHandler *viper.Viper, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
 			return nil, nil
 		}
-		cli.ValidateInputConfigAndSetDefaults = func(request *idl.MakeClusterRequest) error {
+		cli.ValidateInputConfigAndSetDefaults = func(request *idl.MakeClusterRequest, cliHandler *viper.Viper) error {
 			return nil
 		}
 		cli.ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
@@ -158,10 +159,10 @@ func TestInitClusterService(t *testing.T) {
 		utils.System.Stat = func(name string) (os.FileInfo, error) {
 			return nil, nil
 		}
-		cli.LoadInputConfigToIdl = func(inputConfigFile string, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
+		cli.LoadInputConfigToIdl = func(inputConfigFile string, cliHandler *viper.Viper, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
 			return nil, nil
 		}
-		cli.ValidateInputConfigAndSetDefaults = func(request *idl.MakeClusterRequest) error {
+		cli.ValidateInputConfigAndSetDefaults = func(request *idl.MakeClusterRequest, cliHandler *viper.Viper) error {
 			return nil
 		}
 		cli.ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
@@ -183,10 +184,10 @@ func TestInitClusterService(t *testing.T) {
 		utils.System.Stat = func(name string) (os.FileInfo, error) {
 			return nil, nil
 		}
-		cli.LoadInputConfigToIdl = func(inputConfigFile string, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
+		cli.LoadInputConfigToIdl = func(inputConfigFile string, cliHandler *viper.Viper, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
 			return nil, nil
 		}
-		cli.ValidateInputConfigAndSetDefaults = func(request *idl.MakeClusterRequest) error {
+		cli.ValidateInputConfigAndSetDefaults = func(request *idl.MakeClusterRequest, cliHandler *viper.Viper) error {
 			return nil
 		}
 		cli.ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
@@ -285,15 +286,21 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 		}
 	}
 
+	cliHandler := viper.New()
+	cliHandler.Set("coordinator", idl.Segment{})
+	cliHandler.Set("primary-segments-array", []idl.Segment{})
+	cliHandler.Set("locale", idl.Locale{})
+
 	initializeRequest()
 	resetConfHostnames()
 	t.Run("fails if coordinator segment is not provided in input config", func(t *testing.T) {
 		defer resetCLIVars()
 		defer initializeRequest()
 
-		expectedError := "No coordinator segments are provided in input config file"
+		expectedError := "no coordinator segments are provided in input config file"
 		request.GpArray.Coordinator = nil
-		err := cli.ValidateInputConfigAndSetDefaults(request)
+		v := viper.New()
+		err := cli.ValidateInputConfigAndSetDefaults(request, v)
 		if err == nil || !strings.Contains(err.Error(), expectedError) {
 			t.Fatalf("got %v, want %v", err, expectedError)
 		}
@@ -301,10 +308,11 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 	t.Run("fails if 0 primary segments are provided in input config file", func(t *testing.T) {
 		defer resetCLIVars()
 		defer initializeRequest()
-		expectedError := "No primary segments are provided in input config file"
+		expectedError := "no primary segments are provided in input config file"
 		request.GpArray.Primaries = []*idl.Segment{}
-
-		err := cli.ValidateInputConfigAndSetDefaults(request)
+		v := viper.New()
+		v.Set("coordinator", idl.Segment{})
+		err := cli.ValidateInputConfigAndSetDefaults(request, v)
 		if err == nil || !strings.Contains(err.Error(), expectedError) {
 			t.Fatalf("got %v, want %v", err, expectedError)
 		}
@@ -317,7 +325,7 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 		cli.Conf.Hostnames = []string{"cdw", "sdw1"}
 		expectedError := "following hostnames [sdw2 sdw2] do not have gp services configured. Please configure the services"
 
-		err := cli.ValidateInputConfigAndSetDefaults(request)
+		err := cli.ValidateInputConfigAndSetDefaults(request, cliHandler)
 		if err == nil || !strings.Contains(err.Error(), expectedError) {
 			t.Fatalf("got: %v, want: %v", err, expectedError)
 		}
@@ -331,7 +339,7 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 		}
 		request.ClusterParams.Encoding = ""
 
-		err := cli.ValidateInputConfigAndSetDefaults(request)
+		err := cli.ValidateInputConfigAndSetDefaults(request, cliHandler)
 		if err != nil {
 			t.Fatalf("got an unexpected error %v", err)
 		}
@@ -345,7 +353,7 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 		request.ClusterParams.Encoding = "SQL_ASCII"
 		expectedError := "SQL_ASCII is no longer supported as a server encoding"
 
-		err := cli.ValidateInputConfigAndSetDefaults(request)
+		err := cli.ValidateInputConfigAndSetDefaults(request, cliHandler)
 		if err == nil || !strings.Contains(err.Error(), expectedError) {
 			t.Fatalf("got %v, want %v", err, expectedError)
 		}
@@ -357,7 +365,7 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 		delete(request.ClusterParams.CoordinatorConfig, "max_connections")
 		delete(request.ClusterParams.CommonConfig, "max_connections")
 
-		err := cli.ValidateInputConfigAndSetDefaults(request)
+		err := cli.ValidateInputConfigAndSetDefaults(request, cliHandler)
 		if err != nil {
 			t.Fatalf("got an unexpected error %v", err)
 		}
@@ -371,7 +379,7 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 		request.ClusterParams.CoordinatorConfig["max_connections"] = "-1"
 		expectedError := "COORDINATOR max_connections value -1 is too small. Should be more than 1"
 
-		err := cli.ValidateInputConfigAndSetDefaults(request)
+		err := cli.ValidateInputConfigAndSetDefaults(request, cliHandler)
 		if err == nil || !strings.Contains(err.Error(), expectedError) {
 			t.Fatalf("got %v, want %v", err, expectedError)
 		}
@@ -384,7 +392,7 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 		request.ClusterParams.CommonConfig["max_connections"] = "-1"
 		expectedError := "COORDINATOR max_connections value -1 is too small. Should be more than 1"
 
-		err := cli.ValidateInputConfigAndSetDefaults(request)
+		err := cli.ValidateInputConfigAndSetDefaults(request, cliHandler)
 		if err == nil || !strings.Contains(err.Error(), expectedError) {
 			t.Fatalf("got %v, want %v", err, expectedError)
 		}
@@ -397,7 +405,7 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 		request.ClusterParams.CommonConfig["max_connections"] = "300"
 		expectedLogMsg := "COORDINATOR max_connections set to value: 300"
 
-		err := cli.ValidateInputConfigAndSetDefaults(request)
+		err := cli.ValidateInputConfigAndSetDefaults(request, cliHandler)
 		if err != nil {
 			t.Fatalf("got %v, want no error", err)
 		}
@@ -409,7 +417,7 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 		defer resetConfHostnames()
 		delete(request.ClusterParams.CommonConfig, "shared_buffers")
 
-		err := cli.ValidateInputConfigAndSetDefaults(request)
+		err := cli.ValidateInputConfigAndSetDefaults(request, cliHandler)
 		if err != nil {
 			t.Fatalf("got an unexpected error %v", err)
 		}
@@ -424,7 +432,7 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 			return errors.New(expectedError)
 		}
 
-		err := cli.ValidateInputConfigAndSetDefaults(request)
+		err := cli.ValidateInputConfigAndSetDefaults(request, cliHandler)
 		if err == nil || !strings.Contains(err.Error(), expectedError) {
 			t.Fatalf("got %v, want %v", err, expectedError)
 		}
