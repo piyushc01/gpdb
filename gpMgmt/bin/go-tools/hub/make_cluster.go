@@ -223,7 +223,6 @@ func (s *Server) ValidateEnvironment(stream idl.Hub_MakeClusterServer, request *
 			msg.Message = fmt.Sprintf("Host: %s %s", conn.Hostname, msg.Message)
 			replies = append(replies, msg)
 		}
-		//replies = append(replies, reply.Messages...)
 
 		return nil
 	}

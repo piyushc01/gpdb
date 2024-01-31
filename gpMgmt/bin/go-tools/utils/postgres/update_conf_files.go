@@ -19,6 +19,7 @@ const (
 	pgHbaConfFile            = "pg_hba.conf"
 )
 
+// UpdatePostgresqlConf updates given config params to postgresql.conf file
 func UpdatePostgresqlConf(pgdata string, configParams map[string]string, overwrite bool) error {
 	gplog.Info("Updating %s for data directory %s with: %s", postgresqlConfFile, pgdata, configParams)
 	err := updateConfFile(postgresqlConfFile, pgdata, configParams, overwrite)
@@ -95,6 +96,11 @@ func BuildCoordinatorPgHbaConf(pgdata string, addrs []string) error {
 	return nil
 }
 
+/*
+	UpdateSegmentPgHbaConf updates pg_hba.conf file with the given addresses.
+
+For coordinator entry adds all users access and for other addresses, adds user level access.
+*/
 func UpdateSegmentPgHbaConf(pgdata string, coordinatorAddrs []string, addrs []string) error {
 	pgHbaFilePath := filepath.Join(pgdata, pgHbaConfFile)
 
@@ -131,6 +137,10 @@ func UpdateSegmentPgHbaConf(pgdata string, coordinatorAddrs []string, addrs []st
 	return nil
 }
 
+/*
+updateConfFile updates postresql.conf file with the provided config params.
+If the config exists, comments the existing line with a # and adds a new line.
+*/
 func updateConfFile(filename, pgdata string, configParams map[string]string, overwrite bool) error {
 	var line string
 	confFilePath := filepath.Join(pgdata, filename)
@@ -145,7 +155,11 @@ func updateConfFile(filename, pgdata string, configParams map[string]string, ove
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line = scanner.Text()
-
+		if strings.HasPrefix(line, "#") {
+			// Skip the commented line
+			updatedLines = append(updatedLines, line)
+			continue
+		}
 		for key, value := range configParams {
 			pattern, err := regexp.Compile(fmt.Sprintf("^%s[\\s=]+", key))
 			if err != nil {
@@ -158,6 +172,7 @@ func updateConfFile(filename, pgdata string, configParams map[string]string, ove
 				}
 				line = fmt.Sprintf("%s = %s", key, quoteIfString(value))
 				delete(configParams, key)
+				break
 			}
 		}
 

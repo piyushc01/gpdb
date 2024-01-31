@@ -1,9 +1,12 @@
 package hub_test
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"google.golang.org/grpc/test/bufconn"
 	"maps"
+	"net"
 	"os/exec"
 	"os/user"
 	"reflect"
@@ -40,6 +43,51 @@ func (m *MockStream) Send(reply *idl.HubReply) error {
 	return nil
 }
 
+func TestServer_MakeCluster(t *testing.T) {
+	testhelper.SetupTestLogger()
+	credentials := &testutils.MockCredentials{TlsConnection: insecure.NewCredentials()}
+	listener := bufconn.Listen(1024 * 1024)
+	hubConfig := &hub.Config{
+		1234,
+		5678,
+		[]string{"sdw1", "sdw2"},
+		"/tmp/logDir",
+		"gp",
+		"gphome",
+		credentials,
+	}
+	t.Run("returns error when fails to dial agents", func(t *testing.T) {
+		testStr := "could not connect to agent on host sdw1"
+		dialer := func(ctx context.Context, address string) (net.Conn, error) {
+			if strings.HasPrefix(address, "sdw2") {
+				return nil, errors.New("error")
+			}
+			return listener.Dial()
+		}
+		hubServer := hub.New(hubConfig, dialer)
+		request := idl.MakeClusterRequest{}
+
+		err := hubServer.MakeCluster(&request, nil)
+		if err == nil || !strings.Contains(err.Error(), testStr) {
+			t.Fatalf("Got:%v, expected:%s", err, testStr)
+		}
+
+	})
+	t.Run("returns error when fails to dial agents", func(t *testing.T) {
+		testStr := "could not connect to agent on host sdw1"
+		dialer := func(ctx context.Context, address string) (net.Conn, error) {
+			return listener.Dial()
+		}
+		hubServer := hub.New(hubConfig, dialer)
+		request := idl.MakeClusterRequest{}
+
+		err := hubServer.MakeCluster(&request, nil)
+		if err == nil || !strings.Contains(err.Error(), testStr) {
+			t.Fatalf("Got:%v, expected:%s", err, testStr)
+		}
+
+	})
+}
 func TestCreateSegments(t *testing.T) {
 	testhelper.SetupTestLogger()
 

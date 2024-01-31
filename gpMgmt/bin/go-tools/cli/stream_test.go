@@ -37,6 +37,10 @@ func TestParseStreamResponse(t *testing.T) {
 	_, _, logfile := testhelper.SetupTestLogger()
 
 	t.Run("displays the correct stream responses to the user", func(t *testing.T) {
+		infoLogMsg := "info log message"
+		warnLogMsg := "warning log message"
+		errLogMsg := "error log message"
+		dbgLogMsg := "debug log message"
 		msg := []*idl.HubReply{
 			{
 				Message: &idl.HubReply_StdoutMsg{
@@ -45,7 +49,22 @@ func TestParseStreamResponse(t *testing.T) {
 			},
 			{
 				Message: &idl.HubReply_LogMsg{
-					LogMsg: &idl.LogMessage{Message: "log message", Level: idl.LogLevel_INFO},
+					LogMsg: &idl.LogMessage{Message: infoLogMsg, Level: idl.LogLevel_INFO},
+				},
+			},
+			{
+				Message: &idl.HubReply_LogMsg{
+					LogMsg: &idl.LogMessage{Message: warnLogMsg, Level: idl.LogLevel_WARNING},
+				},
+			},
+			{
+				Message: &idl.HubReply_LogMsg{
+					LogMsg: &idl.LogMessage{Message: errLogMsg, Level: idl.LogLevel_ERROR},
+				},
+			},
+			{
+				Message: &idl.HubReply_LogMsg{
+					LogMsg: &idl.LogMessage{Message: dbgLogMsg, Level: idl.LogLevel_DEBUG},
 				},
 			},
 			{
@@ -86,9 +105,11 @@ func TestParseStreamResponse(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
 		}
-
-		expectedLogMsg := "log message"
-		testutils.AssertLogMessage(t, logfile, expectedLogMsg)
+		
+		testutils.AssertLogMessage(t, logfile, infoLogMsg)
+		testutils.AssertLogMessage(t, logfile, warnLogMsg)
+		testutils.AssertLogMessage(t, logfile, errLogMsg)
+		testutils.AssertLogMessage(t, logfile, dbgLogMsg)
 
 		expectedStdoutMsg := "stdout message"
 		if !bytes.Contains(out, []byte(expectedStdoutMsg)) {
