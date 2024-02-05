@@ -46,6 +46,8 @@ func resetCLIVars() {
 	cli.LoadInputConfigToIdl = cli.LoadInputConfigToIdlFn
 	cli.ValidateInputConfigAndSetDefaults = cli.ValidateInputConfigAndSetDefaultsFn
 	cli.CheckForDuplicatPortAndDataDirectory = cli.CheckForDuplicatePortAndDataDirectoryFn
+	cli.GetSystemLocale = cli.GetSystemLocaleFn
+	cli.SetDefaultLocale = cli.SetDefaultLocaleFn
 	cli.ParseStreamResponse = cli.ParseStreamResponseFn
 }
 

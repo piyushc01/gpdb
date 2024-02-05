@@ -504,3 +504,30 @@ func TestCheckForDuplicatePortAndDataDirectoryFn(t *testing.T) {
 		}
 	})
 }
+
+func TestSetDefaultLocaleFn(t *testing.T) {
+	setupTest(t)
+	defer teardownTest()
+	locale := &idl.Locale{}
+	t.Run("returns error if GetSystemLocale fails", func(t *testing.T) {
+		defer resetCLIVars()
+		expectedError := "failure"
+		cli.GetSystemLocale = func() ([]byte, error) {
+			return []byte(""), fmt.Errorf("failure")
+		}
+		err := cli.SetDefaultLocale(locale)
+		if err == nil || !strings.Contains(err.Error(), expectedError) {
+			t.Fatalf("got %v, want %v", err, expectedError)
+		}
+	})
+	t.Run("succeeds if GetSystemLocale gives output successfully", func(t *testing.T) {
+		defer resetCLIVars()
+		cli.GetSystemLocale = func() ([]byte, error) {
+			return []byte("LANG=\"\"\nLC_COLLATE=\"C\"\nLC_CTYPE=\"en_US.UTF-8\"\nLC_MESSAGES=\"C\"\nLC_MONETARY=\"C\"\nLC_NUMERIC=\"C\"\nLC_TIME=\"C\"\nLC_ALL="), nil
+		}
+		err := cli.SetDefaultLocale(locale)
+		if err != nil {
+			t.Fatalf("got an unexpected error")
+		}
+	})
+}

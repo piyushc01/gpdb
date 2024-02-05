@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"strconv"
@@ -51,6 +52,8 @@ var (
 	ValidateInputConfigAndSetDefaults    = ValidateInputConfigAndSetDefaultsFn
 	CheckForDuplicatPortAndDataDirectory = CheckForDuplicatePortAndDataDirectoryFn
 	ParseStreamResponse                  = ParseStreamResponseFn
+	GetSystemLocale                      = GetSystemLocaleFn
+	SetDefaultLocale                     = SetDefaultLocaleFn
 )
 var cliForceFlag bool
 
@@ -227,9 +230,14 @@ func ValidateInputConfigAndSetDefaultsFn(request *idl.MakeClusterRequest, cliHan
 	if !cliHandler.IsSet("primary-segments-array") {
 		return fmt.Errorf("no primary segments are provided in input config file")
 	}
+
+	//Check if locale is provided, if not set it to system locale
 	if !cliHandler.IsSet("locale") {
 		gplog.Warn("locale is not provided, setting it to system locale")
-		//TODO populate locale values with system locale
+		err := SetDefaultLocale(request.ClusterParams.Locale)
+		if err != nil {
+			return err
+		}
 	}
 	// Check if length of Gparray.PimarySegments is 0
 	if len(request.GpArray.Primaries) == 0 {
@@ -321,23 +329,28 @@ func ValidateInputConfigAndSetDefaultsFn(request *idl.MakeClusterRequest, cliHan
 	return nil
 }
 
+/*
+ValidateSegment checks if valid values have been provided for the segment hostname, address, port and data-directory.
+If both hostname and address are not provided then the function returns an error.
+If one of hostname or address is not provided it is populated with other non-empty value.
+*/
 func ValidateSegment(segment *idl.Segment) error {
 	if segment.HostName == "" && segment.HostAddress == "" {
-		return fmt.Errorf("neither hostName nor hostAddress is provided")
+		return fmt.Errorf("neither hostName nor hostAddress is provided for the segment with port %v and data_directory %v", segment.Port, segment.DataDirectory)
 	} else if segment.HostName == "" {
 		segment.HostName = segment.HostAddress
-		gplog.Warn("hostName has not been provided, populating it with same as hostAddress %v", segment.HostAddress)
+		gplog.Warn("hostName has not been provided, populating it with same as hostAddress %v for the segment with port %v and data_directory %v", segment.HostAddress, segment.Port, segment.DataDirectory)
 	} else if segment.HostAddress == "" {
 		segment.HostAddress = segment.HostName
-		gplog.Warn("hostAddress has not been provided, populating it with same as hostName %v", segment.HostName)
+		gplog.Warn("hostAddress has not been provided, populating it with same as hostName %v for the segment with port %v and data_directory %v", segment.HostName, segment.Port, segment.DataDirectory)
 	}
 
 	if segment.Port <= 0 {
-		return fmt.Errorf("invalid port has been provided")
+		return fmt.Errorf("invalid port has been provided for segment with hostname %v and data_directory %v", segment.HostName, segment.DataDirectory)
 	}
 
 	if segment.DataDirectory == "" {
-		return fmt.Errorf("data_directory has not been provided")
+		return fmt.Errorf("data_directory has not been provided for segment with hostname %v and data_directory %v", segment.HostName, segment.DataDirectory)
 	}
 	return nil
 }
@@ -369,5 +382,42 @@ func CheckForDuplicatePortAndDataDirectoryFn(primaries []*idl.Segment) error {
 		}
 		hostToPort[primary.HostName][primary.Port] = true
 	}
+	return nil
+}
+
+/*
+GetSystemLocaleFn returns system locales
+*/
+func GetSystemLocaleFn() ([]byte, error) {
+	cmd := utils.System.ExecCommand(fmt.Sprintf("/usr/bin/locale"))
+	output, err := cmd.Output()
+
+	if err != nil {
+		return []byte(""), fmt.Errorf("failed to get locale on this system: %w", err)
+	}
+
+	return output, nil
+}
+
+/*
+SetDefaultLocaleFn populates the locale struct with system locales
+*/
+func SetDefaultLocaleFn(locale *idl.Locale) error {
+	systemLocale, err := GetSystemLocale()
+	if err != nil {
+		return err
+	}
+	v := viper.New()
+	v.SetConfigType("properties")
+	v.ReadConfig(bytes.NewBuffer(systemLocale))
+
+	locale.LcAll = strings.Trim(v.GetString("LC_ALL"), "\"")
+	locale.LcCollate = strings.Trim(v.GetString("LC_COLLATE"), "\"")
+	locale.LcCtype = strings.Trim(v.GetString("LC_CTYPE"), "\"")
+	locale.LcMessages = strings.Trim(v.GetString("LC_MESSAGES"), "\"")
+	locale.LcMonetory = strings.Trim(v.GetString("LC_MONETARY"), "\"")
+	locale.LcNumeric = strings.Trim(v.GetString("LC_NUMERIC"), "\"")
+	locale.LcTime = strings.Trim(v.GetString("LC_TIME"), "\"")
+
 	return nil
 }
