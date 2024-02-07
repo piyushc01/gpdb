@@ -3,9 +3,12 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/greenplum-db/gpdb/gp/constants"
 	"github.com/greenplum-db/gpdb/gp/hub"
@@ -17,20 +20,21 @@ import (
 var (
 	Platform          = utils.GetPlatform()
 	DefaultServiceDir = Platform.GetDefaultServiceDir()
+	agentPort         int
+	caCertPath        string
+	caKeyPath         string
+	gphome            string
+	hubLogDir         string
+	hubPort           int
+	hostnames         []string
+	hostfilePath      string
+	serverCertPath    string
+	serverKeyPath     string
+	serviceDir        string // Provide the service file's directory and name separately so users can name different files for different clusters
+	serviceName       string
+	serviceUser       string
 
-	agentPort      int
-	caCertPath     string
-	caKeyPath      string
-	gphome         string
-	hubLogDir      string
-	hubPort        int
-	hostnames      []string
-	hostfilePath   string
-	serverCertPath string
-	serverKeyPath  string
-	serviceDir     string // Provide the service file's directory and name separately so users can name different files for different clusters
-	serviceName    string
-	serviceUser    string
+	GetUlimitSsh = GetUlimitSshFn
 )
 
 func hubCmd() *cobra.Command {
@@ -79,7 +83,7 @@ func configureCmd() *cobra.Command {
 	configureCmd.Flags().StringVar(&serverCertPath, "server-certificate", "", `Path to hub SSL/TLS server certificate`)
 	configureCmd.Flags().StringVar(&serverKeyPath, "server-key", "", `Path to hub SSL/TLS server private key`)
 	// Allow passing a hostfile for "real" use cases or a few host names for tests, but not both
-	configureCmd.Flags().StringArrayVar(&hostnames, "host", []string{}, `Segment hostname`)
+	configureCmd.Flags().StringArrayVar(&hostnames, "host", []string{}, `Segment Hostname`)
 	configureCmd.Flags().StringVar(&hostfilePath, "hostfile", "", `Path to file containing a list of segment hostnames`)
 	configureCmd.MarkFlagsMutuallyExclusive("host", "hostfile")
 
@@ -114,7 +118,7 @@ func RunConfigure(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	if !cmd.Flags().Lookup("host").Changed && !cmd.Flags().Lookup("hostfile").Changed {
-		return errors.New("at least one hostname must be provided using either --host or --hostfile")
+		return errors.New("at least one Hostname must be provided using either --host or --hostfile")
 	}
 
 	if agentPort == hubPort {
@@ -179,8 +183,76 @@ func RunConfigure(cmd *cobra.Command, args []string) (err error) {
 	if err != nil {
 		return err
 	}
+	CheckOpenFilesLimitOnHosts(hostnames)
 
 	return nil
+}
+
+/*
+CheckOpenFilesLimitOnHosts checks for open files limit by calling ulimit command
+Executes gpssh command to get the ulimit from remote hosts using go routine
+Prints a warning if ulimit is lower.
+This function depends on gpssh. Use only in the configure command.
+*/
+func CheckOpenFilesLimitOnHosts(hostnames []string) {
+	// check Ulimit on local host
+	ulimit, err := utils.ExecuteAndGetUlimit()
+	if err != nil {
+		gplog.Warn(err.Error())
+	} else if ulimit < constants.OsOpenFiles {
+		gplog.Warn("Open files limit for coordinator host. Value set to %d, expected:%d. For proper functioning make sure"+
+			" limit is set properly for system and services before starting gp services.",
+			ulimit, constants.OsOpenFiles)
+	}
+	var wg sync.WaitGroup
+	//Check ulimit on other hosts
+	channel := make(chan Response)
+	for _, host := range hostnames {
+		wg.Add(1)
+		go GetUlimitSsh(host, channel, &wg)
+	}
+	go func() {
+		wg.Wait()
+		close(channel)
+	}()
+	for hostlimits := range channel {
+		if hostlimits.Ulimit < constants.OsOpenFiles {
+			gplog.Warn("Open files limit for host: %s is set to %d, expected:%d. For proper functioning make sure"+
+				" limit is set properly for system and services before starting gp services.",
+				hostlimits.Hostname, hostlimits.Ulimit, constants.OsOpenFiles)
+		}
+	}
+}
+func GetUlimitSshFn(hostname string, channel chan Response, wg *sync.WaitGroup) {
+	defer wg.Done()
+	cmd := utils.System.ExecCommand(filepath.Join(gphome, "bin", constants.GpSSH), "-h", hostname, "-e", "ulimit -n")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		gplog.Warn("error executing command to fetch open files limit on host:%s, %v", hostname, err)
+		return
+	}
+
+	lines := strings.Split(string(out), "\n")
+	if len(lines) < 2 {
+		gplog.Warn("unexpected output when fetching open files limit on host:%s, gpssh output:%s", hostname, lines)
+		return
+	}
+	values := strings.Split(lines[1], " ")
+	if len(values) < 2 {
+		gplog.Warn("unexpected output when parsing open files limit output for host:%s, gpssh output:%s", hostname, lines)
+		return
+	}
+	ulimit, err := strconv.Atoi(values[1])
+	if err != nil {
+		gplog.Warn("unexpected output when converting open files limit value for host:%s, value:%s", hostname, values[1])
+		return
+	}
+	channel <- Response{Hostname: hostname, Ulimit: ulimit}
+}
+
+type Response struct {
+	Hostname string
+	Ulimit   int
 }
 
 func resolveAbsolutePaths(cmd *cobra.Command) error {

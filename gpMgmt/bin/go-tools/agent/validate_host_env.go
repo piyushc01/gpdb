@@ -1,17 +1,14 @@
 package agent
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io"
 	"net"
 	"os"
-	"os/user"
 	"path/filepath"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 	"syscall"
 
@@ -24,17 +21,16 @@ import (
 )
 
 var (
-	CheckDirEmpty             = CheckDirEmptyFn
-	CheckFileOwnerGroup       = CheckFileOwnerGroupFn
-	CheckExecutable           = CheckExecutableFn
-	OsIsNotExist              = os.IsNotExist
-	GetAllNonEmptyDir         = GetAllNonEmptyDirFn
-	CheckFilePermissions      = CheckFilePermissionsFn
-	GetAllAvailableLocales    = GetAllAvailableLocalesFn
-	ValidateLocaleSettings    = ValidateLocaleSettingsFn
-	ValidatePorts             = ValidatePortsFn
-	VerifyPgVersion           = ValidatePgVersionFn
-	GetMaxFilesFromLimitsFile = GetMaxFilesFromLimitsFileFn
+	CheckDirEmpty          = CheckDirEmptyFn
+	CheckFileOwnerGroup    = CheckFileOwnerGroupFn
+	CheckExecutable        = CheckExecutableFn
+	OsIsNotExist           = os.IsNotExist
+	GetAllNonEmptyDir      = GetAllNonEmptyDirFn
+	CheckFilePermissions   = CheckFilePermissionsFn
+	GetAllAvailableLocales = GetAllAvailableLocalesFn
+	ValidateLocaleSettings = ValidateLocaleSettingsFn
+	ValidatePorts          = ValidatePortsFn
+	VerifyPgVersion        = ValidatePgVersionFn
 )
 
 /*
@@ -136,157 +132,26 @@ func ValidatePgVersionFn(expectedVersion string, gpHome string) error {
 
 /*
 CheckOpenFilesLimit sends an warning to CLI if open files limit is not unlimited
-On McOS, by sourcing .bashrc, ulimit gives correct current limit.
-On Linux environment, issue happens because agent is running as a service.
-To get correct value of open files limit, need to check /etc/security/limits.conf and /etc/security/limits.d/*
-Preference is given to limits.d/* as it overrides limits.conf entry.
-Limits.d directory can contain multiple files and are sourced in alphabetical order. This function reads the directory,
-sort in decreasing order and look for first occurrence of open files limit.
 */
 
 func CheckOpenFilesLimit() []*idl.LogMessage {
 	var warnings []*idl.LogMessage
-	curUser, err := utils.System.CurrentUser()
+	ulimitVal, err := utils.ExecuteAndGetUlimit()
 	if err != nil {
-		warnMsg := fmt.Sprintf("error getting current user: %v", err)
+		warnMsg := fmt.Sprintf("error getting open files limit:%s", err.Error())
 		warnings = append(warnings, &idl.LogMessage{Message: warnMsg, Level: idl.LogLevel_WARNING})
 		gplog.Warn(warnMsg)
 		return warnings
 	}
 
-	out, err := utils.System.ExecCommand("bash", "-c", "source ~/.bashrc;ulimit -n").CombinedOutput()
-	if err != nil {
-		warnMsg := fmt.Sprintf("error fetching open file limit values:%v", err)
-		warnings = append(warnings, &idl.LogMessage{Message: warnMsg, Level: idl.LogLevel_WARNING})
-		gplog.Warn(warnMsg)
-		return warnings
-	}
-
-	ulimitVal, err := strconv.Atoi(strings.TrimSpace(string(out)))
-	if err != nil {
-		warnMsg := fmt.Sprintf("could not convert the ulimit value: %v", err)
-		warnings = append(warnings, &idl.LogMessage{Message: warnMsg, Level: idl.LogLevel_WARNING})
-		gplog.Warn(warnMsg)
-		return warnings
-	}
-	if platform.GetPlatformOS() == constants.PlatformDarwin {
-		if ulimitVal < constants.OsOpenFiles {
-			// In case of macOS, no limits file are present, return error
-			warnMsg := fmt.Sprintf("Host open file limit is %d should be >= %d", ulimitVal, constants.OsOpenFiles)
-			warnings = append(warnings, &idl.LogMessage{Message: warnMsg, Level: idl.LogLevel_WARNING})
-			gplog.Warn(warnMsg)
-			return warnings
-		}
-		return warnings
-	}
-	// Continue checking limits further for Linux platform
 	if ulimitVal < constants.OsOpenFiles {
-		// Sometime not able to get the correct value of open files limit using `ulimit -n`
-		// This happens because agent is running as a service and for services settings are applied through service file
-		// For linux platform, Check in limits.d/limits.conf and limits.conf file
-		// limits.d/*limit.conf settings override limits.conf
-
-		// look for entries like o extract nofile limit:
-		// * soft nofile 65536
-		// gpadmin soft nofile 65536
-		files, err := utils.System.ReadDir(constants.SecurityLimitsdDir)
-
-		if err != nil && !OsIsNotExist(err) {
-			warnMsg := fmt.Sprintf("error opening directory: %v", err)
-			warnings = append(warnings, &idl.LogMessage{Message: warnMsg, Level: idl.LogLevel_WARNING})
-			gplog.Warn(warnMsg)
-			return warnings
-		}
-
-		// In case of multiple files, files are sourced in ascending alphabetical order.
-		// To get effective value, sort files in descending alphabetical order
-		// on first detection of soft limit, extract value and return
-		for _, file := range files {
-			if file.IsDir() {
-				// skip if it's a directory
-				continue
-			}
-			// open file, read contents and get the entry for max open files limit for the user
-			fileLimit, err := GetMaxFilesFromLimitsFile(filepath.Join(constants.SecurityLimitsdDir, file.Name()), curUser)
-			if err != nil {
-				warnMsg := fmt.Sprintf(" %v", err)
-				warnings = append(warnings, &idl.LogMessage{Message: warnMsg, Level: idl.LogLevel_WARNING})
-				gplog.Warn(warnMsg)
-				return warnings
-			}
-			if fileLimit < constants.OsOpenFiles && fileLimit != -1 {
-				warnMsg := fmt.Sprintf("Host open file limit is %d should be >= %d", fileLimit, constants.OsOpenFiles)
-				warnings = append(warnings, &idl.LogMessage{Message: warnMsg, Level: idl.LogLevel_WARNING})
-				gplog.Warn(warnMsg)
-				return warnings
-			}
-		}
-
-		// in case not in limits.d/* files, check security/limits.conf file
-		fileLimit, err := GetMaxFilesFromLimitsFile(constants.SecurityLimitsConf, curUser)
-		if err != nil {
-			warnMsg := fmt.Sprintf(" %v", err)
-			warnings = append(warnings, &idl.LogMessage{Message: warnMsg, Level: idl.LogLevel_WARNING})
-			gplog.Warn(warnMsg)
-			return warnings
-		}
-		if fileLimit < constants.OsOpenFiles && fileLimit != -1 {
-
-			warnMsg := fmt.Sprintf("Host open file limit is %d should be >= %d", fileLimit, constants.OsOpenFiles)
-			warnings = append(warnings, &idl.LogMessage{Message: warnMsg, Level: idl.LogLevel_WARNING})
-			gplog.Warn(warnMsg)
-			return warnings
-		}
-		// Check if limit not defined in limits.conf or limits.d/* report warning based on value from ulimit
-		if fileLimit == -1 && ulimitVal < constants.OsOpenFiles {
-			warnMsg := fmt.Sprintf("Host open file limit is %d should be >= %d", ulimitVal, constants.OsOpenFiles)
-			warnings = append(warnings, &idl.LogMessage{Message: warnMsg, Level: idl.LogLevel_WARNING})
-			gplog.Warn(warnMsg)
-			return warnings
-		}
+		// In case of macOS, no limits file are present, return error
+		warnMsg := fmt.Sprintf("Host open file limit is %d should be >= %d. Set open files limit for user and systemd and start gp services again.", ulimitVal, constants.OsOpenFiles)
+		warnings = append(warnings, &idl.LogMessage{Message: warnMsg, Level: idl.LogLevel_WARNING})
+		gplog.Warn(warnMsg)
+		return warnings
 	}
-
 	return warnings
-}
-
-/*
-GetMaxFilesFromLimitsFileFn extracts open file limit from the conf file.
-Returns -1 if limit not defined in the file.
-Returns error if fails to open the file.
-*/
-func GetMaxFilesFromLimitsFileFn(fileName string, curUser *user.User) (int, error) {
-	fd, err := utils.System.Open(fileName)
-	if err != nil {
-		warnMsg := fmt.Sprintf("error opening file: %v", err)
-		gplog.Warn(warnMsg)
-		return -1, fmt.Errorf(warnMsg)
-	}
-	scanner := bufio.NewScanner(fd)
-	for scanner.Scan() {
-		// Form the regex and check if nofile is set
-		re := regexp.MustCompile(fmt.Sprintf("(^\\s*%s|\\*)\\s+soft\\s+nofile\\s+(\\d+)\\s*$", curUser.Name))
-		match := re.FindStringSubmatch(scanner.Text())
-		if match == nil {
-			continue
-		}
-		//if there's a regex match, check integer value
-		intMaxFiles, err := strconv.Atoi(match[2])
-		if err != nil {
-			warnMsg := fmt.Sprintf("error converting max files limit value: %v", err)
-			gplog.Warn(warnMsg)
-			return -1, fmt.Errorf(warnMsg)
-		}
-		gplog.Verbose("GetMaxFilesFromLimitsFile for file:%s, returned value:%d", fileName, intMaxFiles)
-		return intMaxFiles, nil
-
-	}
-	if scanner.Err() != nil {
-		warnMsg := fmt.Sprintf("error reading the file: %v", err)
-		gplog.Warn(warnMsg)
-		return -1, fmt.Errorf(warnMsg)
-	}
-	gplog.Verbose("GetMaxFilesFromLimitsFile for file:%s, No value found", fileName)
-	return -1, nil
 }
 
 /*

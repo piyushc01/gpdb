@@ -1,15 +1,18 @@
 package utils
 
 import (
+	"fmt"
 	"io/fs"
 	"net"
 	"os"
 	"os/exec"
 	"os/user"
+	"strconv"
 	"strings"
 )
 
 var System = InitializeSystemFunctions()
+var ExecuteAndGetUlimit = ExecuteAndGetUlimitFn
 
 type SystemFunctions struct {
 	CurrentUser    func() (*user.User, error)
@@ -23,7 +26,6 @@ type SystemFunctions struct {
 	Getgid         func() int
 	RemoveAll      func(path string) error
 	ReadFile       func(name string) ([]byte, error)
-	ReadDir        func(name string) ([]os.DirEntry, error)
 }
 
 func InitializeSystemFunctions() *SystemFunctions {
@@ -39,7 +41,6 @@ func InitializeSystemFunctions() *SystemFunctions {
 		Getgid:         os.Getgid,
 		RemoveAll:      os.RemoveAll,
 		ReadFile:       os.ReadFile,
-		ReadDir:        os.ReadDir,
 	}
 }
 
@@ -84,7 +85,7 @@ func GetHostAddrsNoLoopback() ([]string, error) {
 }
 
 /*
-This returns all the elements present in listA but not listB
+GetListDifference returns all the elements present in listA but not listB
 */
 func GetListDifference(listA, listB []string) []string {
 	var result []string
@@ -101,4 +102,17 @@ func GetListDifference(listA, listB []string) []string {
 	}
 
 	return result
+}
+
+func ExecuteAndGetUlimitFn() (int, error) {
+	out, err := System.ExecCommand("ulimit", "-n").CombinedOutput()
+	if err != nil {
+		return -1, fmt.Errorf("error fetching open file limit values:%v", err)
+	}
+
+	ulimitVal, err := strconv.Atoi(strings.TrimSpace(string(out)))
+	if err != nil {
+		return -1, fmt.Errorf("could not convert the ulimit value: %v", err)
+	}
+	return ulimitVal, nil
 }
