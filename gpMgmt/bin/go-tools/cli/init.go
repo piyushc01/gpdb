@@ -264,15 +264,15 @@ func ValidateInputConfigAndSetDefaultsFn(request *idl.MakeClusterRequest, cliHan
 		return fmt.Errorf("SQL_ASCII is no longer supported as a server encoding")
 	}
 
+	if _, ok := request.ClusterParams.CommonConfig["max_connections"]; !ok {
+		gplog.Info(" max_connections not set, will set to default value %v", constants.DefaultQdMaxConnect)
+		request.ClusterParams.CommonConfig["max_connections"] = strconv.Itoa(constants.DefaultQdMaxConnect)
+	}
+
 	if _, ok := request.ClusterParams.CoordinatorConfig["max_connections"]; !ok {
 		// Check if common-config has max-connections defined
-		if _, ok := request.ClusterParams.CommonConfig["max_connections"]; !ok {
-			gplog.Info("COORDINATOR max_connections not set, will set to default value %v", constants.DefaultQdMaxConnect)
-			request.ClusterParams.CoordinatorConfig["max_connections"] = strconv.Itoa(constants.DefaultQdMaxConnect)
-		} else {
-			gplog.Info("COORDINATOR max_connections set to value: %s", request.ClusterParams.CommonConfig["max_connections"])
-			request.ClusterParams.CoordinatorConfig["max_connections"] = request.ClusterParams.CommonConfig["max_connections"]
-		}
+		gplog.Info(" Coordinator max_connections not set, will set to value %v from CommonConfig", request.ClusterParams.CommonConfig["max_connections"])
+		request.ClusterParams.CoordinatorConfig["max_connections"] = request.ClusterParams.CommonConfig["max_connections"]
 	}
 	coordinatorMaxConnect, err := strconv.Atoi(request.ClusterParams.CoordinatorConfig["max_connections"])
 	if err != nil {
@@ -283,8 +283,17 @@ func ValidateInputConfigAndSetDefaultsFn(request *idl.MakeClusterRequest, cliHan
 	if coordinatorMaxConnect < 1 {
 		return fmt.Errorf("COORDINATOR max_connections value %d is too small. Should be more than 1. ", coordinatorMaxConnect)
 	}
+
+	// if max_connections not defined in SegmentConfig, set to commonConfigMaxConnections*QeConnectFactor
 	if _, ok := request.ClusterParams.SegmentConfig["max_connections"]; !ok {
-		request.ClusterParams.SegmentConfig["max_connections"] = strconv.Itoa(coordinatorMaxConnect * constants.QeConnectFactor)
+		maxConnections, err := strconv.Atoi(request.ClusterParams.CommonConfig["max_connections"])
+		if err != nil {
+			return fmt.Errorf("invalid value %s for max_connections, must be an integer. error: %v",
+				request.ClusterParams.CommonConfig["max_connections"], err)
+		}
+		segmentConfigMaxConnections := maxConnections * constants.QeConnectFactor
+		gplog.Info(" Segment max_connections not set, will set to value %v", segmentConfigMaxConnections)
+		request.ClusterParams.SegmentConfig["max_connections"] = strconv.Itoa(segmentConfigMaxConnections)
 	}
 
 	// check for shared_buffers if not provided in config then set the COORDINATOR_SHARED_BUFFERS and QE_SHARED_BUFFERS to DEFAULT_BUFFERS (128000 kB)
@@ -350,7 +359,7 @@ func ValidateSegment(segment *idl.Segment) error {
 	}
 
 	if segment.DataDirectory == "" {
-		return fmt.Errorf("data_directory has not been provided for segment with hostname %v and data_directory %v", segment.HostName, segment.DataDirectory)
+		return fmt.Errorf("data_directory has not been provided for segment with hostname %v and port %v", segment.HostName, segment.Port)
 	}
 	return nil
 }
@@ -368,7 +377,7 @@ func CheckForDuplicatePortAndDataDirectoryFn(primaries []*idl.Segment) error {
 		if _, ok := hostToDataDirectory[primary.HostName]; !ok {
 			hostToDataDirectory[primary.HostName] = make(map[string]bool)
 		}
-		if hostToDataDirectory[primary.HostName][primary.DataDirectory] {
+		if _, ok := hostToDataDirectory[primary.HostName][primary.DataDirectory]; ok {
 			return fmt.Errorf("duplicate data directory entry %v found for host %v", primary.DataDirectory, primary.HostAddress)
 		}
 		hostToDataDirectory[primary.HostAddress][primary.DataDirectory] = true
@@ -377,7 +386,7 @@ func CheckForDuplicatePortAndDataDirectoryFn(primaries []*idl.Segment) error {
 		if _, ok := hostToPort[primary.HostAddress]; !ok {
 			hostToPort[primary.HostAddress] = make(map[int32]bool)
 		}
-		if hostToPort[primary.HostName][primary.Port] {
+		if _, ok := hostToPort[primary.HostName][primary.Port]; ok {
 			return fmt.Errorf("duplicate port entry %v found for host %v", primary.Port, primary.HostName)
 		}
 		hostToPort[primary.HostName][primary.Port] = true

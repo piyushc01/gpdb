@@ -3,6 +3,7 @@ package cli_test
 import (
 	"errors"
 	"fmt"
+	"github.com/greenplum-db/gpdb/gp/testutils/exectest"
 	"github.com/spf13/viper"
 	"os"
 	"strings"
@@ -19,6 +20,17 @@ import (
 	"github.com/greenplum-db/gpdb/gp/idl"
 	"github.com/greenplum-db/gpdb/gp/testutils"
 )
+
+func init() {
+	exectest.RegisterMains(
+		CommandSuccess,
+		CommandFailure,
+	)
+}
+
+func TestMain(m *testing.M) {
+	os.Exit(exectest.Run(m))
+}
 
 func TestRunInitClusterCmd(t *testing.T) {
 	setupTest(t)
@@ -369,7 +381,7 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 		if err != nil {
 			t.Fatalf("got an unexpected error %v", err)
 		}
-		expectedLogMsg := `COORDINATOR max_connections not set, will set to default value 150`
+		expectedLogMsg := `Coordinator max_connections not set, will set to value 150 from CommonConfig`
 		testutils.AssertLogMessage(t, logfile, expectedLogMsg)
 	})
 	t.Run("fails if provided coordinator max_connection is less than 1", func(t *testing.T) {
@@ -403,7 +415,7 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 		defer resetConfHostnames()
 		delete(request.ClusterParams.CoordinatorConfig, "max_connections")
 		request.ClusterParams.CommonConfig["max_connections"] = "300"
-		expectedLogMsg := "COORDINATOR max_connections set to value: 300"
+		expectedLogMsg := "Coordinator max_connections not set, will set to value 300 from CommonConfig"
 
 		err := cli.ValidateInputConfigAndSetDefaults(request, cliHandler)
 		if err != nil {
@@ -505,6 +517,118 @@ func TestCheckForDuplicatePortAndDataDirectoryFn(t *testing.T) {
 	})
 }
 
+func TestValidateSegmentFn(t *testing.T) {
+	setupTest(t)
+	defer teardownTest()
+
+	_, _, logfile := testhelper.SetupTestLogger()
+
+	t.Run("Returns error if hostname and address both are empty string", func(t *testing.T) {
+		defer resetCLIVars()
+		expectedError := "neither hostName nor hostAddress is provided for the segment with port 5000 and data_directory /tmp/demo/gpseg1"
+		err := cli.ValidateSegment(&idl.Segment{
+			HostName:      "",
+			HostAddress:   "",
+			Port:          5000,
+			DataDirectory: "/tmp/demo/gpseg1",
+			Dbid:          2,
+			Contentid:     1,
+		})
+		if err == nil || !strings.Contains(err.Error(), expectedError) {
+			t.Fatalf("got %v, want %v", err, expectedError)
+		}
+	})
+
+	t.Run("Warns if hostname is not provided and sets it to same value as hostAddress", func(t *testing.T) {
+		defer resetCLIVars()
+		expectedWarning := "hostName has not been provided, populating it with same as hostAddress sdw1 for the segment with port 5000 and data_directory /tmp/demo/gpseg1"
+		err := cli.ValidateSegment(&idl.Segment{
+			HostName:      "",
+			HostAddress:   "sdw1",
+			Port:          5000,
+			DataDirectory: "/tmp/demo/gpseg1",
+			Dbid:          2,
+			Contentid:     1,
+		})
+		if err != nil {
+			t.Fatalf("got an unexpected error")
+		}
+		testutils.AssertLogMessage(t, logfile, expectedWarning)
+	})
+	t.Run("Warns if hostAddress is not provided and sets it to same value as hostname", func(t *testing.T) {
+		defer resetCLIVars()
+		expectedWarning := "hostAddress has not been provided, populating it with same as hostName sdw1 for the segment with port 5000 and data_directory /tmp/demo/gpseg1"
+		err := cli.ValidateSegment(&idl.Segment{
+			HostName:      "sdw1",
+			HostAddress:   "",
+			Port:          5000,
+			DataDirectory: "/tmp/demo/gpseg1",
+			Dbid:          2,
+			Contentid:     1,
+		})
+		if err != nil {
+			t.Fatalf("got an unexpected error")
+		}
+		testutils.AssertLogMessage(t, logfile, expectedWarning)
+	})
+
+	t.Run("Returns error if valid port is not provided", func(t *testing.T) {
+		defer resetCLIVars()
+		expectedError := "invalid port has been provided for segment with hostname sdw1 and data_directory /tmp/demo/gpseg1"
+		err := cli.ValidateSegment(&idl.Segment{
+			HostName:      "sdw1",
+			HostAddress:   "sdw1",
+			Port:          -189,
+			DataDirectory: "/tmp/demo/gpseg1",
+			Dbid:          2,
+			Contentid:     1,
+		})
+		if err == nil || !strings.Contains(err.Error(), expectedError) {
+			t.Fatalf("got %v, want %v", err, expectedError)
+		}
+	})
+
+	t.Run("Returns error if valid dataDir is not provided", func(t *testing.T) {
+		defer resetCLIVars()
+		expectedError := "data_directory has not been provided for segment with hostname sdw1 and port 5000"
+		err := cli.ValidateSegment(&idl.Segment{
+			HostName:      "sdw1",
+			HostAddress:   "sdw1",
+			Port:          5000,
+			DataDirectory: "",
+			Dbid:          2,
+			Contentid:     1,
+		})
+		if err == nil || !strings.Contains(err.Error(), expectedError) {
+			t.Fatalf("got %v, want %v", err, expectedError)
+		}
+	})
+}
+
+func TestGetSystemLocaleFn(t *testing.T) {
+	setupTest(t)
+	defer teardownTest()
+	t.Run("returns error if locale command fails", func(t *testing.T) {
+		defer resetCLIVars()
+		utils.System.ExecCommand = exectest.NewCommand(CommandFailure)
+		defer utils.ResetSystemFunctions()
+		expectedError := "failed to get locale on this system:"
+		_, err := cli.GetSystemLocale()
+		if err == nil || !strings.Contains(err.Error(), expectedError) {
+			t.Fatalf("got %v, want %v", err, expectedError)
+		}
+	})
+	t.Run("succeeds if locale command succeeds", func(t *testing.T) {
+		defer resetCLIVars()
+		utils.System.ExecCommand = exectest.NewCommand(CommandSuccess)
+		defer utils.ResetSystemFunctions()
+		_, err := cli.GetSystemLocale()
+		if err != nil {
+			t.Fatalf("got an unexpected error")
+		}
+	})
+}
+
 func TestSetDefaultLocaleFn(t *testing.T) {
 	setupTest(t)
 	defer teardownTest()
@@ -530,4 +654,14 @@ func TestSetDefaultLocaleFn(t *testing.T) {
 			t.Fatalf("got an unexpected error")
 		}
 	})
+}
+
+func CommandSuccess() {
+	os.Stdout.WriteString("Success")
+	os.Exit(0)
+}
+
+func CommandFailure() {
+	os.Stderr.WriteString("failure")
+	os.Exit(1)
 }
