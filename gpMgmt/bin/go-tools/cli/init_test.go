@@ -3,8 +3,6 @@ package cli_test
 import (
 	"errors"
 	"fmt"
-	"github.com/greenplum-db/gpdb/gp/testutils/exectest"
-	"github.com/spf13/viper"
 	"os"
 	"strings"
 	"testing"
@@ -13,12 +11,14 @@ import (
 	"github.com/greenplum-db/gpdb/gp/idl/mock_idl"
 	"github.com/greenplum-db/gpdb/gp/utils"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpdb/gp/cli"
 	"github.com/greenplum-db/gpdb/gp/hub"
 	"github.com/greenplum-db/gpdb/gp/idl"
 	"github.com/greenplum-db/gpdb/gp/testutils"
+	"github.com/greenplum-db/gpdb/gp/testutils/exectest"
 )
 
 func init() {

@@ -8,7 +8,7 @@ LINUX_ENV := env GOOS=linux GOARCH=amd64
 MAC_ENV := env GOOS=darwin GOARCH=amd64
 
 
-.PHONY: unit test
+.PHONY: unit integration test
 TEST_PACKAGES := ./...
 unit: TEST_PACKAGES := $(shell go list ./... | grep -v ./test/integration)
 unit:
@@ -18,10 +18,14 @@ unit:
 	$$3!="" { cov+=($$3==1?$$2:0); stat+=$$2; } \
     END {printf("\n\ntotal coverage: %.2f%% of statements\n", (cov/stat)*100);}'
 
-test: unit
+integration: TEST_PACKAGES := $(shell go list ./test/integration/...)
+integration:
+	go test -v -count=1 $(TEST_PACKAGES) -timeout 0 -p 1 -args -hostfile=$(FILE)
+
+test: unit integration
 
 .PHONY: test-coverage
-PACKAGE_DIRS := $(shell go list ./... | grep -vE "gp$$|constants$$|testutils|idl$$")
+PACKAGE_DIRS := $(shell go list ./... | grep -vE "gp$$|constants$$|testutils|idl$$|integration")
 test-coverage:
 	@for dir in $(PACKAGE_DIRS); do \
 		PACKAGE_NAME=$$(basename $$dir); \
@@ -29,7 +33,7 @@ test-coverage:
 		echo "$$dir: $$COVERAGE_PERCENTAGE"; \
 	done
 	@echo ""
-	@go test --count=1 -coverprofile=/tmp/coverage.out ./... > /dev/null 2>&1; \
+	@go test --count=1 -coverprofile=/tmp/coverage.out $(PACKAGE_DIRS) > /dev/null 2>&1; \
 	cat /tmp/coverage.out | \
 	awk 'BEGIN {cov=0; stat=0;} \
 	$$3!="" { cov+=($$3==1?$$2:0); stat+=$$2; } \
@@ -100,9 +104,3 @@ clean:
 
 uninstall:
 	rm -rf $(GPHOME)/bin/gp
-
-.PHONY: integration-test
-TEST_PACKAGES := ./test/integration/...
-integration-test: TEST_PACKAGES := $(shell go list ./test/integration/...)
-integration-test:
-	go test -v -count=1 $(TEST_PACKAGES) -timeout 0 -p 1 -args -hostfile=$(FILE)

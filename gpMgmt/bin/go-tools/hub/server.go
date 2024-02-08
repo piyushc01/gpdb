@@ -367,7 +367,7 @@ func (conf *Config) Write(ConfigFilePath string) error {
 	if err != nil {
 		return fmt.Errorf("could not write to configuration file %s: %w\n", ConfigFilePath, err)
 	}
-	gplog.Debug("Wrote configuration file to %s", ConfigFilePath)
+	gplog.Verbose("Wrote configuration file to %s", ConfigFilePath)
 
 	err = copyConfigFileToAgents(conf, ConfigFilePath)
 	if err != nil {
@@ -446,7 +446,7 @@ func streamExecCommand(stream streamSender, cmd *exec.Cmd, gphome string) error 
 		return err
 	}
 
-	gplog.Debug("Executing command: %s", cmd.String())
+	gplog.Verbose("Executing command: %s", cmd.String())
 	if err := cmd.Start(); err != nil {
 		return err
 	}

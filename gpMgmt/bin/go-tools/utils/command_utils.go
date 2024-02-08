@@ -33,7 +33,7 @@ func runCommand(cmd *exec.Cmd) (*bytes.Buffer, error) {
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 
-	gplog.Debug("Executing command: %s", cmd.String())
+	gplog.Verbose("Executing command: %s", cmd.String())
 	err := cmd.Run()
 
 	if err != nil {

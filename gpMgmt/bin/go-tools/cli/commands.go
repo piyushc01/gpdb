@@ -76,7 +76,7 @@ func InitializeLogger(cmd *cobra.Command, args []string) error {
 	gplog.InitializeLogging(logName, hubLogDir)
 
 	if Verbose {
-		gplog.SetVerbosity(gplog.LOGDEBUG)
+		gplog.SetVerbosity(gplog.LOGVERBOSE)
 	}
 
 	return nil

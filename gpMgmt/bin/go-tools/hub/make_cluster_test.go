@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"google.golang.org/grpc/test/bufconn"
 	"maps"
 	"net"
 	"os/exec"
@@ -17,6 +16,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/test/bufconn"
 
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
@@ -194,7 +194,7 @@ func TestCreateSegments(t *testing.T) {
 			expectedStreamResponse[i] = &idl.HubReply{
 				Message: &idl.HubReply_ProgressMsg{
 					ProgressMsg: &idl.ProgressMessage{
-						Label: "Initializing segments:",
+						Label: "Initializing primary segments:",
 						Total: 3,
 					},
 				},
@@ -252,7 +252,7 @@ func TestCreateSegments(t *testing.T) {
 			expectedStreamResponse[i] = &idl.HubReply{
 				Message: &idl.HubReply_ProgressMsg{
 					ProgressMsg: &idl.ProgressMessage{
-						Label: "Initializing segments:",
+						Label: "Initializing primary segments:",
 						Total: 3,
 					},
 				},

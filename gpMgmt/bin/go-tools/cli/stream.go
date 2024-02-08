@@ -39,7 +39,7 @@ func ParseStreamResponseFn(stream StreamReceiver) error {
 			logMsg := resp.GetLogMsg()
 			switch logMsg.Level {
 			case idl.LogLevel_DEBUG:
-				gplog.Debug(logMsg.Message)
+				gplog.Verbose(logMsg.Message)
 			case idl.LogLevel_WARNING:
 				gplog.Warn(logMsg.Message)
 			case idl.LogLevel_ERROR:

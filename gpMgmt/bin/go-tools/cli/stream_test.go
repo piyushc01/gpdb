@@ -105,7 +105,7 @@ func TestParseStreamResponse(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
 		}
-		
+
 		testutils.AssertLogMessage(t, logfile, infoLogMsg)
 		testutils.AssertLogMessage(t, logfile, warnLogMsg)
 		testutils.AssertLogMessage(t, logfile, errLogMsg)

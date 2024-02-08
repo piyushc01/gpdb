@@ -43,7 +43,7 @@ Performs various checks on host like gpdb version, permissions to initdb, data d
 */
 
 func (s *Server) ValidateHostEnv(ctx context.Context, request *idl.ValidateHostEnvRequest) (*idl.ValidateHostEnvReply, error) {
-	gplog.Debug("Starting ValidateHostEnvFn for request:%v", request)
+	gplog.Verbose("Starting ValidateHostEnvFn for request:%v", request)
 	dirList := request.DirectoryList
 	locale := request.Locale
 	socketAddressList := request.SocketAddressList
@@ -58,7 +58,7 @@ func (s *Server) ValidateHostEnv(ctx context.Context, request *idl.ValidateHostE
 		}
 		return &idl.ValidateHostEnvReply{}, fmt.Errorf("user:%s is a root user, Can't create cluster under root user", userInfo.Name)
 	}
-	gplog.Debug("Done with checking user is non root")
+	gplog.Verbose("Done with checking user is non root")
 
 	//Check for PGVersion
 	pgVersionErr := VerifyPgVersion(request.GpVersion, s.GpHome)
@@ -69,14 +69,14 @@ func (s *Server) ValidateHostEnv(ctx context.Context, request *idl.ValidateHostE
 
 	// Check for each directory, if directory is empty
 	nonEmptyDirList := GetAllNonEmptyDir(dirList)
-	gplog.Debug("Got the list of all non-empty directories")
+	gplog.Verbose("Got the list of all non-empty directories")
 
 	if len(nonEmptyDirList) > 0 && !forced {
 		return &idl.ValidateHostEnvReply{}, fmt.Errorf("directory not empty:%v", nonEmptyDirList)
 	}
 	if forced && len(nonEmptyDirList) > 0 {
 
-		gplog.Debug("Forced init. Deleting non-empty directories:%s", dirList)
+		gplog.Verbose("Forced init. Deleting non-empty directories:%s", dirList)
 		for _, dir := range nonEmptyDirList {
 			err := utils.System.RemoveAll(dir)
 			if err != nil {
@@ -86,7 +86,7 @@ func (s *Server) ValidateHostEnv(ctx context.Context, request *idl.ValidateHostE
 	}
 
 	// Validate permission to initdb ? Error will be returned upon running
-	gplog.Debug("Checking initdb for permissions")
+	gplog.Verbose("Checking initdb for permissions")
 	initdbPath := filepath.Join(s.GpHome, "bin", "initdb")
 	err := CheckFilePermissions(initdbPath)
 	if err != nil {
@@ -276,7 +276,7 @@ func GetMaxFilesFromLimitsFileFn(fileName string, curUser *user.User) (int, erro
 			gplog.Warn(warnMsg)
 			return -1, fmt.Errorf(warnMsg)
 		}
-		gplog.Debug("GetMaxFilesFromLimitsFile for file:%s, returned value:%d", fileName, intMaxFiles)
+		gplog.Verbose("GetMaxFilesFromLimitsFile for file:%s, returned value:%d", fileName, intMaxFiles)
 		return intMaxFiles, nil
 
 	}
@@ -285,7 +285,7 @@ func GetMaxFilesFromLimitsFileFn(fileName string, curUser *user.User) (int, erro
 		gplog.Warn(warnMsg)
 		return -1, fmt.Errorf(warnMsg)
 	}
-	gplog.Debug("GetMaxFilesFromLimitsFile for file:%s, No value found", fileName)
+	gplog.Verbose("GetMaxFilesFromLimitsFile for file:%s, No value found", fileName)
 	return -1, nil
 }
 
@@ -295,7 +295,7 @@ Returns a warning message to CLI if entry is detected
 */
 func CheckHostAddressInHostsFile(hostAddressList []string) []*idl.LogMessage {
 	var warnings []*idl.LogMessage
-	gplog.Debug("CheckHostAddressInHostsFile checking for address:%v", hostAddressList)
+	gplog.Verbose("CheckHostAddressInHostsFile checking for address:%v", hostAddressList)
 	content, err := utils.System.ReadFile(constants.EtcHostsFilepath)
 	if err != nil {
 		warnMsg := fmt.Sprintf("error reading file %s error:%v", constants.EtcHostsFilepath, err)
@@ -328,7 +328,7 @@ func CheckHostAddressInHostsFile(hostAddressList []string) []*idl.LogMessage {
 ValidatePortsFn checks if port is already in use.
 */
 func ValidatePortsFn(socketAddressList []string) error {
-	gplog.Debug("Started with ValidatePorts")
+	gplog.Verbose("Started with ValidatePorts")
 	var usedSocketAddressList []string
 	for _, socketAddress := range socketAddressList {
 		listener, err := net.Listen("tcp", socketAddress)

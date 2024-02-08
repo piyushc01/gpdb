@@ -182,7 +182,7 @@ func (s *Server) ValidateEnvironment(stream idl.Hub_MakeClusterServer, request *
 		}
 		hostAddressMap[seg.HostName][seg.HostAddress] = true
 	}
-	gplog.Debug("Host-Address-Map:[%v]", hostAddressMap)
+	gplog.Verbose("Host-Address-Map:[%v]", hostAddressMap)
 
 	// Get local gpVersion
 
@@ -196,13 +196,15 @@ func (s *Server) ValidateEnvironment(stream idl.Hub_MakeClusterServer, request *
 	progressTotal := len(hostDirMap)
 	streamProgressMsg(stream, progressLabel, progressTotal)
 	validateFn := func(conn *Connection) error {
+		gplog.Debug(fmt.Sprintf("Starting to validate host: %s", conn.Hostname))
+
 		dirList := hostDirMap[conn.Hostname]
 		socketAddress := hostSocketAddressMap[conn.Hostname]
 		var addressList []string
 		for address := range hostAddressMap[conn.Hostname] {
 			addressList = append(addressList, address)
 		}
-		gplog.Debug("AddressList:[%v]", addressList)
+		gplog.Verbose("AddressList:[%v]", addressList)
 
 		validateReq := idl.ValidateHostEnvRequest{
 			DirectoryList:     dirList,
@@ -218,6 +220,8 @@ func (s *Server) ValidateEnvironment(stream idl.Hub_MakeClusterServer, request *
 		}
 
 		streamProgressMsg(stream, progressLabel, progressTotal)
+		gplog.Debug(fmt.Sprintf("Successfully completed validation for host: %s", conn.Hostname))
+
 		// Add host-name to each reply message
 		for _, msg := range reply.Messages {
 			msg.Message = fmt.Sprintf("Host: %s %s", conn.Hostname, msg.Message)
@@ -324,7 +328,7 @@ func (s *Server) CreateSegments(stream idl.Hub_MakeClusterServer, segs []greenpl
 		}
 	}
 
-	progressLabel := "Initializing segments:"
+	progressLabel := "Initializing primary segments:"
 	progressTotal := len(segs)
 	streamProgressMsg(stream, progressLabel, progressTotal)
 
@@ -339,11 +343,13 @@ func (s *Server) CreateSegments(stream idl.Hub_MakeClusterServer, segs []greenpl
 			go func(seg *idl.Segment) {
 				defer wg.Done()
 
+				gplog.Debug(fmt.Sprintf("Starting to create primary segment: %s", seg))
 				err := CreateSingleSegment(conn, seg, clusterParams, coordinatorAddrs)
 				if err != nil {
 					errs <- err
 				} else {
 					streamProgressMsg(stream, progressLabel, progressTotal)
+					gplog.Debug(fmt.Sprintf("Successfully created primary segment: %s", seg))
 				}
 			}(seg)
 		}

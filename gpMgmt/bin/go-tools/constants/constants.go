@@ -1,7 +1,12 @@
 package constants
 
+import (
+	"path/filepath"
+
+	"github.com/greenplum-db/gp-common-go-libs/operating"
+)
+
 const (
-	DefaultHubLogDir    = "/tmp"
 	DefaultHubPort      = 4242
 	DefaultAgentPort    = 8000
 	DefaultServiceName  = "gp"
@@ -22,3 +27,9 @@ const (
 	SecurityLimitsConf  = "/etc/security/limits.conf"
 	SecurityLimitsdDir  = "/etc/security/limits.d/"
 )
+
+func GetDefaultHubLogDir() string {
+	currentUser, _ := operating.System.CurrentUser()
+
+	return filepath.Join(currentUser.HomeDir, "gpAdminLogs")
+}
