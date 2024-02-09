@@ -14,7 +14,6 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/jmoiron/sqlx"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
 
@@ -33,17 +32,7 @@ func init() {
 	exectest.RegisterMains()
 }
 
-type MockStream struct {
-	buf []*idl.HubReply
-	grpc.ServerStream
-}
-
-func (m *MockStream) Send(reply *idl.HubReply) error {
-	m.buf = append(m.buf, reply)
-	return nil
-}
-
-func TestServer_MakeCluster(t *testing.T) {
+func TestMakeCluster(t *testing.T) {
 	testhelper.SetupTestLogger()
 	credentials := &testutils.MockCredentials{TlsConnection: insecure.NewCredentials()}
 	listener := bufconn.Listen(1024 * 1024)
@@ -56,6 +45,7 @@ func TestServer_MakeCluster(t *testing.T) {
 		"gphome",
 		credentials,
 	}
+
 	t.Run("returns error when fails to dial agents", func(t *testing.T) {
 		testStr := "could not connect to agent on host sdw1"
 		dialer := func(ctx context.Context, address string) (net.Conn, error) {
@@ -73,6 +63,7 @@ func TestServer_MakeCluster(t *testing.T) {
 		}
 
 	})
+
 	t.Run("returns error when fails to dial agents", func(t *testing.T) {
 		testStr := "could not connect to agent on host sdw1"
 		dialer := func(ctx context.Context, address string) (net.Conn, error) {
@@ -85,9 +76,9 @@ func TestServer_MakeCluster(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), testStr) {
 			t.Fatalf("Got:%v, expected:%s", err, testStr)
 		}
-
 	})
 }
+
 func TestCreateSegments(t *testing.T) {
 	testhelper.SetupTestLogger()
 
@@ -183,8 +174,8 @@ func TestCreateSegments(t *testing.T) {
 			SegmentConfig:     segConfig,
 		}
 
-		mockStream := &MockStream{}
-		err := hubServer.CreateSegments(mockStream, segs, clusterParams, []string{})
+		mock, stream := testutils.NewMockStream()
+		err := hubServer.CreateSegments(mock, segs, clusterParams, []string{})
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
 		}
@@ -201,8 +192,8 @@ func TestCreateSegments(t *testing.T) {
 			}
 		}
 
-		if !reflect.DeepEqual(mockStream.buf, expectedStreamResponse) {
-			t.Fatalf("got %+v, want %+v", mockStream.buf, expectedStreamResponse)
+		if !reflect.DeepEqual(stream.GetBuffer(), expectedStreamResponse) {
+			t.Fatalf("got %+v, want %+v", stream.GetBuffer(), expectedStreamResponse)
 		}
 	})
 
@@ -241,8 +232,8 @@ func TestCreateSegments(t *testing.T) {
 			SegmentConfig:     segConfig,
 		}
 
-		mockStream := &MockStream{}
-		err := hubServer.CreateSegments(mockStream, segs, clusterParams, []string{})
+		mock, stream := testutils.NewMockStream()
+		err := hubServer.CreateSegments(mock, segs, clusterParams, []string{})
 		if !errors.Is(err, expectedErr) {
 			t.Fatalf("got %#v, want %#V", err, expectedErr)
 		}
@@ -259,8 +250,8 @@ func TestCreateSegments(t *testing.T) {
 			}
 		}
 
-		if !reflect.DeepEqual(mockStream.buf, expectedStreamResponse) {
-			t.Fatalf("got %+v, want %+v", mockStream.buf, expectedStreamResponse)
+		if !reflect.DeepEqual(stream.GetBuffer(), expectedStreamResponse) {
+			t.Fatalf("got %+v, want %+v", stream.GetBuffer(), expectedStreamResponse)
 		}
 	})
 
@@ -396,8 +387,8 @@ func TestStopCoordinator(t *testing.T) {
 		})
 		defer utils.ResetSystemFunctions()
 
-		mockStream := &MockStream{}
-		err := hubServer.StopCoordinator(mockStream, "gpseg-1")
+		mock, stream := testutils.NewMockStream()
+		err := hubServer.StopCoordinator(mock, "gpseg-1")
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
 		}
@@ -425,8 +416,8 @@ func TestStopCoordinator(t *testing.T) {
 			},
 		}
 
-		if !reflect.DeepEqual(mockStream.buf, expectedStreamResponse) {
-			t.Fatalf("got %+v, want %+v", mockStream.buf, expectedStreamResponse)
+		if !reflect.DeepEqual(stream.GetBuffer(), expectedStreamResponse) {
+			t.Fatalf("got %+v, want %+v", stream.GetBuffer(), expectedStreamResponse)
 		}
 	})
 
@@ -434,10 +425,10 @@ func TestStopCoordinator(t *testing.T) {
 		utils.System.ExecCommand = exectest.NewCommand(exectest.Failure)
 		defer utils.ResetSystemFunctions()
 
-		mockStream := &MockStream{}
+		mock, stream := testutils.NewMockStream()
 		expectedErrPrefix := "executing pg_ctl stop:"
 
-		err := hubServer.StopCoordinator(mockStream, "gpseg-1")
+		err := hubServer.StopCoordinator(mock, "gpseg-1")
 		if !strings.HasPrefix(err.Error(), expectedErrPrefix) {
 			t.Fatalf("got %v, want prefix %v", err, expectedErrPrefix)
 		}
@@ -458,8 +449,8 @@ func TestStopCoordinator(t *testing.T) {
 			},
 		}
 
-		if !reflect.DeepEqual(mockStream.buf, expectedStreamResponse) {
-			t.Fatalf("got %+v, want %+v", mockStream.buf, expectedStreamResponse)
+		if !reflect.DeepEqual(stream.GetBuffer(), expectedStreamResponse) {
+			t.Fatalf("got %+v, want %+v", stream.GetBuffer(), expectedStreamResponse)
 		}
 	})
 }
@@ -590,8 +581,8 @@ func TestValidateEnvironment(t *testing.T) {
 		})
 		defer utils.ResetSystemFunctions()
 
-		mockStream := &MockStream{}
-		err := hubServer.ValidateEnvironment(mockStream, req)
+		mock, stream := testutils.NewMockStream()
+		err := hubServer.ValidateEnvironment(mock, req)
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
 		}
@@ -621,8 +612,8 @@ func TestValidateEnvironment(t *testing.T) {
 			},
 		})
 
-		if !reflect.DeepEqual(mockStream.buf, expectedStreamResponse) {
-			t.Fatalf("got %+v, want %+v", mockStream.buf, expectedStreamResponse)
+		if !reflect.DeepEqual(stream.GetBuffer(), expectedStreamResponse) {
+			t.Fatalf("got %+v, want %+v", stream.GetBuffer(), expectedStreamResponse)
 		}
 	})
 
@@ -630,8 +621,8 @@ func TestValidateEnvironment(t *testing.T) {
 		utils.System.ExecCommand = exectest.NewCommand(exectest.Failure)
 		defer utils.ResetSystemFunctions()
 
-		mockStream := &MockStream{}
-		err := hubServer.ValidateEnvironment(mockStream, req)
+		mock, stream := testutils.NewMockStream()
+		err := hubServer.ValidateEnvironment(mock, req)
 
 		expectedErrPrefix := "fetching postgres gp-version:"
 		if !strings.HasPrefix(err.Error(), expectedErrPrefix) {
@@ -643,8 +634,8 @@ func TestValidateEnvironment(t *testing.T) {
 			t.Fatalf("got %T, want %T", err, expectedErr)
 		}
 
-		if len(mockStream.buf) != 0 {
-			t.Fatalf("expected no stream responses, got %+v", mockStream.buf)
+		if len(stream.GetBuffer()) != 0 {
+			t.Fatalf("expected no stream responses, got %+v", stream.GetBuffer())
 		}
 	})
 
@@ -682,8 +673,8 @@ func TestValidateEnvironment(t *testing.T) {
 		utils.System.ExecCommand = exectest.NewCommand(exectest.Success)
 		defer utils.ResetSystemFunctions()
 
-		mockStream := &MockStream{}
-		err := hubServer.ValidateEnvironment(mockStream, req)
+		mock, stream := testutils.NewMockStream()
+		err := hubServer.ValidateEnvironment(mock, req)
 
 		expectedErrPrefix := "host: sdw1"
 		if !strings.HasPrefix(err.Error(), expectedErrPrefix) {
@@ -706,8 +697,8 @@ func TestValidateEnvironment(t *testing.T) {
 			}
 		}
 
-		if !reflect.DeepEqual(mockStream.buf, expectedStreamResponse) {
-			t.Fatalf("got %+v, want %+v", mockStream.buf, expectedStreamResponse)
+		if !reflect.DeepEqual(stream.GetBuffer(), expectedStreamResponse) {
+			t.Fatalf("got %+v, want %+v", stream.GetBuffer(), expectedStreamResponse)
 		}
 	})
 }

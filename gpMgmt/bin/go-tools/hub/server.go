@@ -35,10 +35,6 @@ var (
 
 type Dialer func(context.Context, string) (net.Conn, error)
 
-type streamSender interface {
-	Send(*idl.HubReply) error
-}
-
 type Config struct {
 	Port        int      `json:"hubPort"`
 	AgentPort   int      `json:"agentPort"`
@@ -407,98 +403,6 @@ func getConnByHost(conns []*Connection, hostnames []string) []*Connection {
 	}
 
 	return result
-}
-
-func streamLogMsg(stream streamSender, logMsg *idl.LogMessage) {
-	message := &idl.HubReply{
-		Message: &idl.HubReply_LogMsg{
-			LogMsg: logMsg,
-		},
-	}
-
-	err := stream.Send(message)
-	if err != nil {
-		gplog.Error("unable to stream message %q: %s", message, err)
-	}
-}
-
-func streamStdoutMsg(stream streamSender, msg string) {
-	message := &idl.HubReply{
-		Message: &idl.HubReply_StdoutMsg{
-			StdoutMsg: msg,
-		},
-	}
-
-	err := stream.Send(message)
-	if err != nil {
-		gplog.Error("unable to stream message %q: %s", message, err)
-	}
-}
-
-func streamExecCommand(stream streamSender, cmd *exec.Cmd, gphome string) error {
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
-
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return err
-	}
-
-	gplog.Verbose("Executing command: %s", cmd.String())
-	if err := cmd.Start(); err != nil {
-		return err
-	}
-
-	go func() {
-		buf := make([]byte, 1024)
-		for {
-			n, err := stdout.Read(buf)
-			if err != nil {
-				break
-			}
-
-			output := string(buf[:n])
-			streamStdoutMsg(stream, output)
-		}
-	}()
-
-	go func() {
-		buf := make([]byte, 1024)
-		for {
-			n, err := stderr.Read(buf)
-			if err != nil {
-				break
-			}
-
-			output := string(buf[:n])
-			streamStdoutMsg(stream, output)
-		}
-	}()
-
-	if err := cmd.Wait(); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func streamProgressMsg(stream streamSender, label string, total int) {
-
-	message := &idl.HubReply{
-		Message: &idl.HubReply_ProgressMsg{
-			ProgressMsg: &idl.ProgressMessage{
-				Label: label,
-				Total: int32(total),
-			},
-		},
-	}
-
-	err := stream.Send(message)
-	if err != nil {
-		gplog.Error("unable to stream message %q: %s", message, err)
-	}
 }
 
 // SetEnsureConnectionsAreReady used only for testing

@@ -380,7 +380,7 @@ func CheckForDuplicatePortAndDataDirectoryFn(primaries []*idl.Segment) error {
 		if _, ok := hostToDataDirectory[primary.HostName][primary.DataDirectory]; ok {
 			return fmt.Errorf("duplicate data directory entry %v found for host %v", primary.DataDirectory, primary.HostAddress)
 		}
-		hostToDataDirectory[primary.HostAddress][primary.DataDirectory] = true
+		hostToDataDirectory[primary.HostName][primary.DataDirectory] = true
 
 		// Check for port
 		if _, ok := hostToPort[primary.HostAddress]; !ok {
@@ -389,7 +389,7 @@ func CheckForDuplicatePortAndDataDirectoryFn(primaries []*idl.Segment) error {
 		if _, ok := hostToPort[primary.HostName][primary.Port]; ok {
 			return fmt.Errorf("duplicate port entry %v found for host %v", primary.Port, primary.HostName)
 		}
-		hostToPort[primary.HostName][primary.Port] = true
+		hostToPort[primary.HostAddress][primary.Port] = true
 	}
 	return nil
 }

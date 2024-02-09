@@ -18,7 +18,8 @@ unit:
 	$$3!="" { cov+=($$3==1?$$2:0); stat+=$$2; } \
     END {printf("\n\ntotal coverage: %.2f%% of statements\n", (cov/stat)*100);}'
 
-integration: TEST_PACKAGES := $(shell go list ./test/integration/...)
+UTILITY = ''
+integration: TEST_PACKAGES := $(shell go list ./test/integration/... | grep -E $(UTILITY))
 integration:
 	go test -v -count=1 $(TEST_PACKAGES) -timeout 0 -p 1 -args -hostfile=$(FILE)
 

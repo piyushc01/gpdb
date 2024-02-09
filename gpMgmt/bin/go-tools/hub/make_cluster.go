@@ -23,11 +23,13 @@ func (s *Server) MakeCluster(request *idl.MakeClusterRequest, stream idl.Hub_Mak
 	var err error
 	var shutdownCoordinator bool
 
+	hubStream := NewHubStream(stream)
+
 	// shutdown the coordinator segment if any error occurs
 	defer func() {
 		if err != nil && shutdownCoordinator {
-			streamLogMsg(stream, &idl.LogMessage{Message: "Not able to create the the cluster, proceeding to shutdown the coordinator segment", Level: idl.LogLevel_INFO})
-			err := s.StopCoordinator(stream, request.GpArray.Coordinator.DataDirectory)
+			hubStream.StreamLogMsg("Not able to create the the cluster, proceeding to shutdown the coordinator segment")
+			err := s.StopCoordinator(&hubStream, request.GpArray.Coordinator.DataDirectory)
 			if err != nil {
 				gplog.Error(err.Error())
 			}
@@ -39,23 +41,23 @@ func (s *Server) MakeCluster(request *idl.MakeClusterRequest, stream idl.Hub_Mak
 		return err
 	}
 
-	streamLogMsg(stream, &idl.LogMessage{Message: "Starting MakeCluster", Level: idl.LogLevel_INFO})
-	err = s.ValidateEnvironment(stream, request)
+	hubStream.StreamLogMsg("Starting MakeCluster")
+	err = s.ValidateEnvironment(&hubStream, request)
 	if err != nil {
 		gplog.Error("Error during validation:%v", err)
 		return err
 	}
 
-	streamLogMsg(stream, &idl.LogMessage{Message: "Creating coordinator segment", Level: idl.LogLevel_INFO})
+	hubStream.StreamLogMsg("Creating coordinator segment")
 	err = s.CreateAndStartCoordinator(request.GpArray.Coordinator, request.ClusterParams)
 	if err != nil {
 		return err
 	}
-	streamLogMsg(stream, &idl.LogMessage{Message: "Successfully created coordinator segment", Level: idl.LogLevel_INFO})
+	hubStream.StreamLogMsg("Successfully created coordinator segment")
 
 	shutdownCoordinator = true
 
-	streamLogMsg(stream, &idl.LogMessage{Message: "Starting to register primary segments with the coordinator", Level: idl.LogLevel_INFO})
+	hubStream.StreamLogMsg("Starting to register primary segments with the coordinator")
 
 	conn, err := greenplum.ConnectDatabase(request.GpArray.Coordinator.HostName, int(request.GpArray.Coordinator.Port))
 	if err != nil {
@@ -76,7 +78,7 @@ func (s *Server) MakeCluster(request *idl.MakeClusterRequest, stream idl.Hub_Mak
 	if err != nil {
 		return err
 	}
-	streamLogMsg(stream, &idl.LogMessage{Message: "Successfully registered primary segments with the coordinator", Level: idl.LogLevel_INFO})
+	hubStream.StreamLogMsg("Successfully registered primary segments with the coordinator")
 
 	gpArray := greenplum.NewGpArray()
 	err = gpArray.ReadGpSegmentConfig(conn)
@@ -102,17 +104,17 @@ func (s *Server) MakeCluster(request *idl.MakeClusterRequest, stream idl.Hub_Mak
 		coordinatorAddrs = append(coordinatorAddrs, addrs...)
 	}
 
-	streamLogMsg(stream, &idl.LogMessage{Message: "Creating primary segments", Level: idl.LogLevel_INFO})
-	err = s.CreateSegments(stream, primarySegs, request.ClusterParams, coordinatorAddrs)
+	hubStream.StreamLogMsg("Creating primary segments")
+	err = s.CreateSegments(&hubStream, primarySegs, request.ClusterParams, coordinatorAddrs)
 	if err != nil {
 		return err
 	}
-	streamLogMsg(stream, &idl.LogMessage{Message: "Successfully created primary segments", Level: idl.LogLevel_INFO})
+	hubStream.StreamLogMsg("Successfully created primary segments")
 
 	shutdownCoordinator = false
 
-	streamLogMsg(stream, &idl.LogMessage{Message: "Restarting the Greenplum cluster in production mode", Level: idl.LogLevel_INFO})
-	err = s.StopCoordinator(stream, request.GpArray.Coordinator.DataDirectory)
+	hubStream.StreamLogMsg("Restarting the Greenplum cluster in production mode")
+	err = s.StopCoordinator(&hubStream, request.GpArray.Coordinator.DataDirectory)
 	if err != nil {
 		return err
 	}
@@ -122,34 +124,34 @@ func (s *Server) MakeCluster(request *idl.MakeClusterRequest, stream idl.Hub_Mak
 		Verbose:       request.Verbose,
 	}
 	cmd := utils.NewGpSourcedCommand(gpstartOptions, s.GpHome)
-	err = streamExecCommand(stream, cmd, s.GpHome)
+	err = hubStream.StreamExecCommand(cmd, s.GpHome)
 	if err != nil {
 		return fmt.Errorf("executing gpstart: %w", err)
 	}
-	streamLogMsg(stream, &idl.LogMessage{Message: "Completed restart of Greenplum cluster in production mode", Level: idl.LogLevel_INFO})
+	hubStream.StreamLogMsg("Completed restart of Greenplum cluster in production mode")
 
-	streamLogMsg(stream, &idl.LogMessage{Message: "Creating core GPDB extensions", Level: idl.LogLevel_INFO})
+	hubStream.StreamLogMsg("Creating core GPDB extensions")
 	err = CreateGpToolkitExt(conn)
 	if err != nil {
 		return err
 	}
-	streamLogMsg(stream, &idl.LogMessage{Message: "Successfully created core GPDB extensions", Level: idl.LogLevel_INFO})
+	hubStream.StreamLogMsg("Successfully created core GPDB extensions")
 
-	streamLogMsg(stream, &idl.LogMessage{Message: "Importing system collations", Level: idl.LogLevel_INFO})
+	hubStream.StreamLogMsg("Importing system collations")
 	err = ImportCollation(conn)
 	if err != nil {
 		return err
 	}
 
 	if request.ClusterParams.DbName != "" {
-		streamLogMsg(stream, &idl.LogMessage{Message: fmt.Sprintf("Creating database %q", request.ClusterParams.DbName), Level: idl.LogLevel_INFO})
+		hubStream.StreamLogMsg(fmt.Sprintf("Creating database %q", request.ClusterParams.DbName))
 		err = CreateDatabase(conn, request.ClusterParams.DbName)
 		if err != nil {
 			return err
 		}
 	}
 
-	streamLogMsg(stream, &idl.LogMessage{Message: "Setting Greenplum superuser password", Level: idl.LogLevel_INFO})
+	hubStream.StreamLogMsg("Setting Greenplum superuser password")
 	err = SetGpUserPasswd(conn, request.ClusterParams.SuPassword)
 	if err != nil {
 		return err
@@ -158,7 +160,7 @@ func (s *Server) MakeCluster(request *idl.MakeClusterRequest, stream idl.Hub_Mak
 	return nil
 }
 
-func (s *Server) ValidateEnvironment(stream idl.Hub_MakeClusterServer, request *idl.MakeClusterRequest) error {
+func (s *Server) ValidateEnvironment(stream hubStreamer, request *idl.MakeClusterRequest) error {
 	var replies []*idl.LogMessage
 
 	gparray := request.GpArray
@@ -194,7 +196,7 @@ func (s *Server) ValidateEnvironment(stream idl.Hub_MakeClusterServer, request *
 
 	progressLabel := "Validating Hosts:"
 	progressTotal := len(hostDirMap)
-	streamProgressMsg(stream, progressLabel, progressTotal)
+	stream.StreamProgressMsg(progressLabel, progressTotal)
 	validateFn := func(conn *Connection) error {
 		gplog.Debug(fmt.Sprintf("Starting to validate host: %s", conn.Hostname))
 
@@ -219,7 +221,7 @@ func (s *Server) ValidateEnvironment(stream idl.Hub_MakeClusterServer, request *
 			return utils.FormatGrpcError(err)
 		}
 
-		streamProgressMsg(stream, progressLabel, progressTotal)
+		stream.StreamProgressMsg(progressLabel, progressTotal)
 		gplog.Debug(fmt.Sprintf("Successfully completed validation for host: %s", conn.Hostname))
 
 		// Add host-name to each reply message
@@ -237,7 +239,7 @@ func (s *Server) ValidateEnvironment(stream idl.Hub_MakeClusterServer, request *
 	}
 
 	for _, msg := range replies {
-		streamLogMsg(stream, msg)
+		stream.StreamLogMsg(msg.Message, msg.Level)
 	}
 
 	return nil
@@ -294,8 +296,8 @@ func (s *Server) CreateAndStartCoordinator(seg *idl.Segment, clusterParams *idl.
 	return ExecuteRPC(coordinatorConn, request)
 }
 
-func (s *Server) StopCoordinator(stream idl.Hub_MakeClusterServer, pgdata string) error {
-	streamLogMsg(stream, &idl.LogMessage{Message: "Shutting down coordinator segment", Level: idl.LogLevel_INFO})
+func (s *Server) StopCoordinator(stream hubStreamer, pgdata string) error {
+	stream.StreamLogMsg("Shutting down coordinator segment")
 	pgCtlStopCmd := &postgres.PgCtlStop{
 		PgData: pgdata,
 	}
@@ -304,12 +306,12 @@ func (s *Server) StopCoordinator(stream idl.Hub_MakeClusterServer, pgdata string
 	if err != nil {
 		return fmt.Errorf("executing pg_ctl stop: %s, %w", out, err)
 	}
-	streamLogMsg(stream, &idl.LogMessage{Message: "Successfully shut down coordinator segment", Level: idl.LogLevel_INFO})
+	stream.StreamLogMsg("Successfully shut down coordinator segment")
 
 	return nil
 }
 
-func (s *Server) CreateSegments(stream idl.Hub_MakeClusterServer, segs []greenplum.Segment, clusterParams *idl.ClusterParams, coordinatorAddrs []string) error {
+func (s *Server) CreateSegments(stream hubStreamer, segs []greenplum.Segment, clusterParams *idl.ClusterParams, coordinatorAddrs []string) error {
 	hostSegmentMap := map[string][]*idl.Segment{}
 	for _, seg := range segs {
 		segReq := &idl.Segment{
@@ -330,7 +332,7 @@ func (s *Server) CreateSegments(stream idl.Hub_MakeClusterServer, segs []greenpl
 
 	progressLabel := "Initializing primary segments:"
 	progressTotal := len(segs)
-	streamProgressMsg(stream, progressLabel, progressTotal)
+	stream.StreamProgressMsg(progressLabel, progressTotal)
 
 	request := func(conn *Connection) error {
 		var wg sync.WaitGroup
@@ -348,7 +350,7 @@ func (s *Server) CreateSegments(stream idl.Hub_MakeClusterServer, segs []greenpl
 				if err != nil {
 					errs <- err
 				} else {
-					streamProgressMsg(stream, progressLabel, progressTotal)
+					stream.StreamProgressMsg(progressLabel, progressTotal)
 					gplog.Debug(fmt.Sprintf("Successfully created primary segment: %s", seg))
 				}
 			}(seg)
