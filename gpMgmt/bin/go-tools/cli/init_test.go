@@ -330,12 +330,16 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 		}
 	})
 
-	t.Run("fails if some of hosts do not have gp services configured", func(t *testing.T) {
+	t.Run("fails if IsGpServicesEnabled returns error", func(t *testing.T) {
 		defer resetCLIVars()
 		defer resetConfHostnames()
 		defer initializeRequest()
 		cli.Conf.Hostnames = []string{"cdw", "sdw1"}
 		expectedError := "following hostnames [sdw2 sdw2] do not have gp services configured. Please configure the services"
+
+		cli.IsGpServicesEnabled = func(gpArray *idl.GpArray) error {
+			return fmt.Errorf(expectedError)
+		}
 
 		err := cli.ValidateInputConfigAndSetDefaults(request, cliHandler)
 		if err == nil || !strings.Contains(err.Error(), expectedError) {
@@ -433,7 +437,7 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 		if err != nil {
 			t.Fatalf("got an unexpected error %v", err)
 		}
-		expectedLogMsg := `shared_buffers is not set, will set to default value 128000kB`
+		expectedLogMsg := `shared_buffers is not set in CommonConfig, will set to default value 128000kB`
 		testutils.AssertLogMessage(t, logfile, expectedLogMsg)
 	})
 	t.Run("fails if port/directory duplicate check fails returns error", func(t *testing.T) {
@@ -539,9 +543,9 @@ func TestValidateSegmentFn(t *testing.T) {
 		}
 	})
 
-	t.Run("Warns if hostname is not provided and sets it to same value as hostAddress", func(t *testing.T) {
+	t.Run("Returns error if hostname is not provided", func(t *testing.T) {
 		defer resetCLIVars()
-		expectedWarning := "hostName has not been provided, populating it with same as hostAddress sdw1 for the segment with port 5000 and data_directory /tmp/demo/gpseg1"
+		expectedError := "hostName has not been provided for the segment with port 5000 and data_directory /tmp/demo/gpseg1"
 		err := cli.ValidateSegment(&idl.Segment{
 			HostName:      "",
 			HostAddress:   "sdw1",
@@ -550,10 +554,9 @@ func TestValidateSegmentFn(t *testing.T) {
 			Dbid:          2,
 			Contentid:     1,
 		})
-		if err != nil {
-			t.Fatalf("got an unexpected error")
+		if err == nil || !strings.Contains(err.Error(), expectedError) {
+			t.Fatalf("got %v, want %v", err, expectedError)
 		}
-		testutils.AssertLogMessage(t, logfile, expectedWarning)
 	})
 	t.Run("Warns if hostAddress is not provided and sets it to same value as hostname", func(t *testing.T) {
 		defer resetCLIVars()
@@ -664,4 +667,54 @@ func CommandSuccess() {
 func CommandFailure() {
 	os.Stderr.WriteString("failure")
 	os.Exit(1)
+}
+
+func TestIsGpServicesEnabledFn(t *testing.T) {
+	setupTest(t)
+	defer teardownTest()
+	coordinator := &idl.Segment{
+		HostAddress:   "cdw",
+		HostName:      "cdw",
+		Port:          700,
+		DataDirectory: "/tmp/coordinator/",
+	}
+	gparray := idl.GpArray{
+		Coordinator: coordinator,
+		Primaries: []*idl.Segment{
+			{
+				HostAddress:   "sdw1",
+				HostName:      "sdw1",
+				Port:          7002,
+				DataDirectory: "/tmp/demo/1",
+			},
+			{
+				HostAddress:   "sdw1",
+				HostName:      "sdw1",
+				Port:          7003,
+				DataDirectory: "/tmp/demo/2",
+			},
+			{
+				HostAddress:   "sdw2",
+				HostName:      "sdw2",
+				Port:          7004,
+				DataDirectory: "/tmp/demo/3",
+			},
+			{
+				HostAddress:   "sdw2",
+				HostName:      "sdw2",
+				Port:          7005,
+				DataDirectory: "/tmp/demo/4",
+			},
+		},
+	}
+	t.Run("fails if some of hosts do not have gp services configured", func(t *testing.T) {
+		defer resetCLIVars()
+		defer resetConfHostnames()
+		cli.Conf.Hostnames = []string{"cdw", "sdw1"}
+		expectedError := "following hostnames [sdw2 sdw2] do not have gp services configured. Please configure the services"
+		err := cli.IsGpServicesEnabled(&gparray)
+		if err == nil || !strings.Contains(err.Error(), expectedError) {
+			t.Fatalf("got %v, want %v", err, expectedError)
+		}
+	})
 }

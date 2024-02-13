@@ -49,6 +49,7 @@ func resetCLIVars() {
 	cli.GetSystemLocale = cli.GetSystemLocaleFn
 	cli.SetDefaultLocale = cli.SetDefaultLocaleFn
 	cli.ParseStreamResponse = cli.ParseStreamResponseFn
+	cli.IsGpServicesEnabled = cli.IsGpServicesEnabledFn
 }
 
 func funcNilError() func() error {

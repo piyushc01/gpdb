@@ -54,6 +54,7 @@ var (
 	ParseStreamResponse                  = ParseStreamResponseFn
 	GetSystemLocale                      = GetSystemLocaleFn
 	SetDefaultLocale                     = SetDefaultLocaleFn
+	IsGpServicesEnabled                  = IsGpServicesEnabledFn
 )
 var cliForceFlag bool
 
@@ -243,82 +244,8 @@ func ValidateInputConfigAndSetDefaultsFn(request *idl.MakeClusterRequest, cliHan
 	if len(request.GpArray.Primaries) == 0 {
 		return fmt.Errorf("no primary segments are provided in input config file")
 	}
-
-	hostnames = []string{}
-	hostnames = append(hostnames, request.GpArray.Coordinator.HostName)
-	for _, seg := range request.GpArray.Primaries {
-		hostnames = append(hostnames, seg.HostName)
-	}
-
-	diff := utils.GetListDifference(hostnames, Conf.Hostnames)
-	if len(diff) != 0 {
-		return fmt.Errorf("following hostnames %s do not have gp services configured. Please configure the services", diff)
-	}
-
-	if request.ClusterParams.Encoding == "" {
-		gplog.Info(fmt.Sprintf("Could not find encoding in cluster config, defaulting to %v", constants.DefaultEncoding))
-		request.ClusterParams.Encoding = "UTF-8"
-	}
-
-	if request.ClusterParams.Encoding == "SQL_ASCII" {
-		return fmt.Errorf("SQL_ASCII is no longer supported as a server encoding")
-	}
-
-	if _, ok := request.ClusterParams.CommonConfig["max_connections"]; !ok {
-		gplog.Info(" max_connections not set, will set to default value %v", constants.DefaultQdMaxConnect)
-		request.ClusterParams.CommonConfig["max_connections"] = strconv.Itoa(constants.DefaultQdMaxConnect)
-	}
-
-	if _, ok := request.ClusterParams.CoordinatorConfig["max_connections"]; !ok {
-		// Check if common-config has max-connections defined
-		gplog.Info(" Coordinator max_connections not set, will set to value %v from CommonConfig", request.ClusterParams.CommonConfig["max_connections"])
-		request.ClusterParams.CoordinatorConfig["max_connections"] = request.ClusterParams.CommonConfig["max_connections"]
-	}
-	coordinatorMaxConnect, err := strconv.Atoi(request.ClusterParams.CoordinatorConfig["max_connections"])
-	if err != nil {
-		return fmt.Errorf("invalid value %s for max_connections, must be an integer. error: %v",
-			request.ClusterParams.CoordinatorConfig["max_connections"], err)
-	}
-
-	if coordinatorMaxConnect < 1 {
-		return fmt.Errorf("COORDINATOR max_connections value %d is too small. Should be more than 1. ", coordinatorMaxConnect)
-	}
-
-	// if max_connections not defined in SegmentConfig, set to commonConfigMaxConnections*QeConnectFactor
-	if _, ok := request.ClusterParams.SegmentConfig["max_connections"]; !ok {
-		maxConnections, err := strconv.Atoi(request.ClusterParams.CommonConfig["max_connections"])
-		if err != nil {
-			return fmt.Errorf("invalid value %s for max_connections, must be an integer. error: %v",
-				request.ClusterParams.CommonConfig["max_connections"], err)
-		}
-		segmentConfigMaxConnections := maxConnections * constants.QeConnectFactor
-		gplog.Info(" Segment max_connections not set, will set to value %v", segmentConfigMaxConnections)
-		request.ClusterParams.SegmentConfig["max_connections"] = strconv.Itoa(segmentConfigMaxConnections)
-	}
-
-	// check for shared_buffers if not provided in config then set the COORDINATOR_SHARED_BUFFERS and QE_SHARED_BUFFERS to DEFAULT_BUFFERS (128000 kB)
-	if _, ok := request.ClusterParams.CommonConfig["shared_buffers"]; !ok {
-		gplog.Info(fmt.Sprintf("shared_buffers is not set, will set to default value %v", constants.DefaultBuffer))
-		request.ClusterParams.CommonConfig["shared_buffers"] = constants.DefaultBuffer
-	}
-
-	// check coordinator open file values
-	out, err := utils.System.ExecCommand("ulimit", "-n").CombinedOutput()
-	if err != nil {
-		return err
-	}
-
-	coordinatorOpenFileLimit, err := strconv.Atoi(strings.TrimSpace(string(out)))
-	if err != nil {
-		return fmt.Errorf("could not convert the ulimit value: %w", err)
-	}
-
-	if coordinatorOpenFileLimit < constants.OsOpenFiles {
-		gplog.Warn(fmt.Sprintf("Coordinator open file limit is %d should be >= %d", coordinatorOpenFileLimit, constants.OsOpenFiles))
-	}
-
 	// validate details of coordinator
-	err = ValidateSegment(request.GpArray.Coordinator)
+	err := ValidateSegment(request.GpArray.Coordinator)
 	if err != nil {
 		return err
 	}
@@ -331,10 +258,36 @@ func ValidateInputConfigAndSetDefaultsFn(request *idl.MakeClusterRequest, cliHan
 		}
 	}
 
+	// check for conflicting port and data-dir on a host
 	err = CheckForDuplicatPortAndDataDirectory(request.GpArray.Primaries)
 	if err != nil {
 		return err
 	}
+
+	// check if gp services enabled on hosts
+	err = IsGpServicesEnabled(request.GpArray)
+	if err != nil {
+		return err
+	}
+
+	if request.ClusterParams.Encoding == "" {
+		gplog.Info(fmt.Sprintf("Could not find encoding in cluster config, defaulting to %v", constants.DefaultEncoding))
+		request.ClusterParams.Encoding = "UTF-8"
+	}
+
+	if request.ClusterParams.Encoding == "SQL_ASCII" {
+		return fmt.Errorf("SQL_ASCII is no longer supported as a server encoding")
+	}
+
+	// Validate max_connections
+	err = ValidateMaxConnections(request.ClusterParams)
+	if err != nil {
+		return err
+	}
+
+	// if shared_buffers not provided in config then set the COORDINATOR_SHARED_BUFFERS and QE_SHARED_BUFFERS to DEFAULT_BUFFERS (128000 kB)
+	CheckAndSetDefaultConfigParams(request.ClusterParams, "shared_buffers", constants.DefaultBuffer)
+
 	return nil
 }
 
@@ -347,8 +300,8 @@ func ValidateSegment(segment *idl.Segment) error {
 	if segment.HostName == "" && segment.HostAddress == "" {
 		return fmt.Errorf("neither hostName nor hostAddress is provided for the segment with port %v and data_directory %v", segment.Port, segment.DataDirectory)
 	} else if segment.HostName == "" {
-		segment.HostName = segment.HostAddress
-		gplog.Warn("hostName has not been provided, populating it with same as hostAddress %v for the segment with port %v and data_directory %v", segment.HostAddress, segment.Port, segment.DataDirectory)
+		//TODO Call RPC to get the hostname from hostAddress and populate here as segment.HostName
+		return fmt.Errorf("hostName has not been provided for the segment with port %v and data_directory %v", segment.Port, segment.DataDirectory)
 	} else if segment.HostAddress == "" {
 		segment.HostAddress = segment.HostName
 		gplog.Warn("hostAddress has not been provided, populating it with same as hostName %v for the segment with port %v and data_directory %v", segment.HostName, segment.Port, segment.DataDirectory)
@@ -398,7 +351,7 @@ func CheckForDuplicatePortAndDataDirectoryFn(primaries []*idl.Segment) error {
 GetSystemLocaleFn returns system locales
 */
 func GetSystemLocaleFn() ([]byte, error) {
-	cmd := utils.System.ExecCommand(fmt.Sprintf("/usr/bin/locale"))
+	cmd := utils.System.ExecCommand("/usr/bin/locale")
 	output, err := cmd.Output()
 
 	if err != nil {
@@ -418,7 +371,10 @@ func SetDefaultLocaleFn(locale *idl.Locale) error {
 	}
 	v := viper.New()
 	v.SetConfigType("properties")
-	v.ReadConfig(bytes.NewBuffer(systemLocale))
+	err = v.ReadConfig(bytes.NewBuffer(systemLocale))
+	if err != nil {
+		return err
+	}
 
 	locale.LcAll = strings.Trim(v.GetString("LC_ALL"), "\"")
 	locale.LcCollate = strings.Trim(v.GetString("LC_COLLATE"), "\"")
@@ -429,4 +385,85 @@ func SetDefaultLocaleFn(locale *idl.Locale) error {
 	locale.LcTime = strings.Trim(v.GetString("LC_TIME"), "\"")
 
 	return nil
+}
+
+/*
+IsGpServicesEnabledFn returns error if any of the hosts from config does not have gp services enabled
+*/
+func IsGpServicesEnabledFn(gpArray *idl.GpArray) error {
+	hostnames = []string{}
+	hostnames = append(hostnames, gpArray.Coordinator.HostName)
+	for _, seg := range gpArray.Primaries {
+		hostnames = append(hostnames, seg.HostName)
+	}
+
+	diff := utils.GetListDifference(hostnames, Conf.Hostnames)
+	if len(diff) != 0 {
+		return fmt.Errorf("following hostnames %s do not have gp services configured. Please configure the services", diff)
+	}
+	return nil
+}
+
+/*
+ValidateMaxConnections sets the default value of max_connections if not provided in config. Also returns error if valid value is not provided
+if max_connections not defined in CommonConfig set it to default value
+if max_connections not defined in CoordinatorConfig set to CommonConfig value
+if max_connections not defined in SegmentConfig set it to strconv.Atoi(clusterParams.CommonConfig["max_connections"])*constants.QeConnectFactor
+*/
+func ValidateMaxConnections(clusterParams *idl.ClusterParams) error {
+	if _, ok := clusterParams.CommonConfig["max_connections"]; !ok {
+		gplog.Info(" max_connections not set, will set to default value %v", constants.DefaultQdMaxConnect)
+		clusterParams.CommonConfig["max_connections"] = strconv.Itoa(constants.DefaultQdMaxConnect)
+	}
+
+	if _, ok := clusterParams.CoordinatorConfig["max_connections"]; !ok {
+		// Check if common-config has max-connections defined
+		gplog.Info(" Coordinator max_connections not set, will set to value %v from CommonConfig", clusterParams.CommonConfig["max_connections"])
+		clusterParams.CoordinatorConfig["max_connections"] = clusterParams.CommonConfig["max_connections"]
+	}
+	coordinatorMaxConnect, err := strconv.Atoi(clusterParams.CoordinatorConfig["max_connections"])
+	if err != nil {
+		return fmt.Errorf("invalid value %s for max_connections, must be an integer. error: %v",
+			clusterParams.CoordinatorConfig["max_connections"], err)
+	}
+
+	if coordinatorMaxConnect < 1 {
+		return fmt.Errorf("COORDINATOR max_connections value %d is too small. Should be more than 1. ", coordinatorMaxConnect)
+	}
+
+	// if max_connections not defined in SegmentConfig, set to commonConfigMaxConnections*QeConnectFactor
+	if _, ok := clusterParams.SegmentConfig["max_connections"]; !ok {
+		maxConnections, err := strconv.Atoi(clusterParams.CommonConfig["max_connections"])
+		if err != nil {
+			return fmt.Errorf("invalid value %s for max_connections, must be an integer. error: %v",
+				clusterParams.CommonConfig["max_connections"], err)
+		}
+		segmentConfigMaxConnections := maxConnections * constants.QeConnectFactor
+		gplog.Info(" Segment max_connections not set, will set to value %v", segmentConfigMaxConnections)
+		clusterParams.SegmentConfig["max_connections"] = strconv.Itoa(segmentConfigMaxConnections)
+	}
+	return nil
+}
+
+/*
+CheckAndSetDefaultConfigParams sets the default value for parameters not defined in config
+if configParam is not defined in CommonConfig , the value will be set to defaultValue provided
+if configParam is not defined in CoordinatorConfig or SegmentConfig, the value will be set to same as configParam from CommonConfig
+*/
+func CheckAndSetDefaultConfigParams(clusterParams *idl.ClusterParams, configParam string, defaultValue string) {
+	if _, ok := clusterParams.CommonConfig[configParam]; !ok {
+		gplog.Info(fmt.Sprintf("%v is not set in CommonConfig, will set to default value %v", configParam, defaultValue))
+		clusterParams.CommonConfig[configParam] = defaultValue
+	}
+
+	if _, ok := clusterParams.CoordinatorConfig[configParam]; !ok {
+		// Check if common-config has configParam defined
+		gplog.Info(" Coordinator %v not set, will set to value %v from CommonConfig", configParam, clusterParams.CommonConfig[configParam])
+		clusterParams.CoordinatorConfig[configParam] = clusterParams.CommonConfig[configParam]
+	}
+	if _, ok := clusterParams.SegmentConfig[configParam]; !ok {
+		// Check if common-config has configParam defined
+		gplog.Info(" Segment %v not set, will set to value %v from CommonConfig", configParam, clusterParams.CommonConfig[configParam])
+		clusterParams.SegmentConfig[configParam] = clusterParams.CommonConfig[configParam]
+	}
 }
