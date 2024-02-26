@@ -2,6 +2,8 @@ package greenplum
 
 import (
 	"fmt"
+	"github.com/greenplum-db/gp-common-go-libs/operating"
+	"path/filepath"
 	"strings"
 
 	"github.com/greenplum-db/gpdb/gp/utils"
@@ -16,4 +18,10 @@ func GetPostgresGpVersion(gphome string) (string, error) {
 	}
 
 	return strings.TrimSpace(out.String()), nil
+}
+
+func GetDefaultHubLogDir() string {
+	currentUser, _ := operating.System.CurrentUser()
+
+	return filepath.Join(currentUser.HomeDir, "gpAdminLogs")
 }

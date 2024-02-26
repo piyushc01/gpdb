@@ -3,6 +3,7 @@ package postgres
 import (
 	"bufio"
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
@@ -21,7 +22,7 @@ const (
 
 // UpdatePostgresqlConf updates given config params to postgresql.conf file
 func UpdatePostgresqlConf(pgdata string, configParams map[string]string, overwrite bool) error {
-	gplog.Info("Updating %s for data directory %s with: %s", postgresqlConfFile, pgdata, configParams)
+	gplog.Debug("Updating %s for data directory %s with: %s", postgresqlConfFile, pgdata, configParams)
 	err := updateConfFile(postgresqlConfFile, pgdata, configParams, overwrite)
 	if err != nil {
 		return err
@@ -33,7 +34,7 @@ func UpdatePostgresqlConf(pgdata string, configParams map[string]string, overwri
 
 func CreatePostgresInternalConf(pgdata string, dbid int) error {
 	postgresInternalConfFilePath := filepath.Join(pgdata, postgresInternalConfFile)
-	file, err := utils.System.Create(postgresInternalConfFilePath)
+	file, err := utils.System.OpenFile(postgresInternalConfFilePath, os.O_APPEND, 0644)
 	if err != nil {
 		return err
 	}

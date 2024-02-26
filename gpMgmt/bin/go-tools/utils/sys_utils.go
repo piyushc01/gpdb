@@ -18,6 +18,7 @@ type SystemFunctions struct {
 	CurrentUser    func() (*user.User, error)
 	InterfaceAddrs func() ([]net.Addr, error)
 	Open           func(name string) (*os.File, error)
+	OpenFile       func(name string, flag int, perm os.FileMode) (*os.File, error)
 	Create         func(name string) (*os.File, error)
 	WriteFile      func(name string, data []byte, perm fs.FileMode) error
 	ExecCommand    func(name string, arg ...string) *exec.Cmd
@@ -33,6 +34,7 @@ func InitializeSystemFunctions() *SystemFunctions {
 		CurrentUser:    user.Current,
 		InterfaceAddrs: net.InterfaceAddrs,
 		Open:           os.Open,
+		OpenFile:       os.OpenFile,
 		Create:         os.Create,
 		WriteFile:      os.WriteFile,
 		ExecCommand:    exec.Command,

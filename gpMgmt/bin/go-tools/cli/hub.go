@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
+	"github.com/greenplum-db/gpdb/gp/utils/greenplum"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -73,7 +74,7 @@ func configureCmd() *cobra.Command {
 	configureCmd.Flags().IntVar(&agentPort, "agent-port", constants.DefaultAgentPort, `Port on which the agents should listen`)
 	configureCmd.Flags().StringVar(&gphome, "gphome", "/usr/local/greenplum-db", `Path to GPDB installation`)
 	configureCmd.Flags().IntVar(&hubPort, "hub-port", constants.DefaultHubPort, `Port on which the hub should listen`)
-	configureCmd.Flags().StringVar(&hubLogDir, "log-dir", constants.GetDefaultHubLogDir(), `Path to gp hub log directory`)
+	configureCmd.Flags().StringVar(&hubLogDir, "log-dir", greenplum.GetDefaultHubLogDir(), `Path to gp hub log directory`)
 	configureCmd.Flags().StringVar(&serviceName, "service-name", constants.DefaultServiceName, `Name for the generated systemd service file`)
 	configureCmd.Flags().StringVar(&serviceDir, "service-dir", fmt.Sprintf(DefaultServiceDir, os.Getenv("USER")), `Path to service file directory`)
 	configureCmd.Flags().StringVar(&serviceUser, "service-user", os.Getenv("USER"), `User for whom to configure the service`)

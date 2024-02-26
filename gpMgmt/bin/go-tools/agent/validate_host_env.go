@@ -49,8 +49,9 @@ func (s *Server) ValidateHostEnv(ctx context.Context, request *idl.ValidateHostE
 	if utils.System.Getuid() == 0 {
 		userInfo, err := utils.System.CurrentUser()
 		if err != nil {
-			gplog.Error("failed to get user name Error:%v. Current user is a root user. Can't create cluster under root", err)
-			return &idl.ValidateHostEnvReply{}, fmt.Errorf("failed to get user name Error:%v. Current user is a root user. Can't create cluster under root", err)
+			errString := fmt.Sprintf("failed to get user name Error:%v. Current user is a root user. Can't create cluster under root", err)
+			gplog.Error(errString)
+			return &idl.ValidateHostEnvReply{}, fmt.Errorf(errString)
 		}
 		return &idl.ValidateHostEnvReply{}, fmt.Errorf("user:%s is a root user, Can't create cluster under root user", userInfo.Name)
 	}
