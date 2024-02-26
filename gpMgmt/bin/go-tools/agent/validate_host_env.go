@@ -42,7 +42,7 @@ func (s *Server) ValidateHostEnv(ctx context.Context, request *idl.ValidateHostE
 	gplog.Verbose("Starting ValidateHostEnvFn for request:%v", request)
 	dirList := request.DirectoryList
 	locale := request.Locale
-	socketAddressList := request.SocketAddressList
+	portList := request.PortList
 	forced := request.Forced
 
 	// Check if user is non-root
@@ -98,7 +98,7 @@ func (s *Server) ValidateHostEnv(ctx context.Context, request *idl.ValidateHostE
 	}
 
 	// Check if port in use
-	err = ValidatePorts(socketAddressList)
+	err = ValidatePorts(portList)
 	if err != nil {
 		return &idl.ValidateHostEnvReply{}, err
 	}
@@ -193,21 +193,67 @@ func CheckHostAddressInHostsFile(hostAddressList []string) []*idl.LogMessage {
 /*
 ValidatePortsFn checks if port is already in use.
 */
-func ValidatePortsFn(socketAddressList []string) error {
+func ValidatePortsFn(portList []string) error {
 	gplog.Verbose("Started with ValidatePorts")
-	var usedSocketAddressList []string
-	for _, socketAddress := range socketAddressList {
-		listener, err := net.Listen("tcp", socketAddress)
+	usedPortList := make(map[string]bool)
+
+	// Let's check on all interfaces if port is in use
+	var ipList []string
+
+	// Check if listening on loopback addresses
+	ipList = append(ipList, "0.0.0.0")
+	ipList = append(ipList, "::")
+
+	// Get a list of network interfaces and their addresses
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		strErr := fmt.Sprintf("error getting list of interfaces to check port in use:%v", err)
+		gplog.Error(strErr)
+		return fmt.Errorf(strErr)
+	}
+	for _, iface := range ifaces {
+		addrs, err := iface.Addrs()
 		if err != nil {
-			usedSocketAddressList = append(usedSocketAddressList, socketAddress)
-		} else {
-			_ = listener.Close()
+			strErr := fmt.Sprintf("error getting list of addreses for interface %s. Error:%v", iface.Name, err)
+			gplog.Error(strErr)
+			return fmt.Errorf(strErr)
+		}
+		for _, addr := range addrs {
+			switch v := addr.(type) {
+			case *net.IPNet:
+				ip := v.IP
+				if ip != nil {
+					if ip.To4() != nil {
+						// if it's an IPv4 address
+						ipList = append(ipList, ip.String())
+					} else {
+						// it's an IPv6 address, append interface name to make it routable
+						ipList = append(ipList, fmt.Sprintf("%s%%%s", ip.String(), iface.Name))
+					}
+				}
+			}
 		}
 	}
-	if len(usedSocketAddressList) > 0 {
-		gplog.Error("ports already in use: %v, check if cluster already running", usedSocketAddressList)
-		return fmt.Errorf("ports already in use: %v, check if cluster already running", usedSocketAddressList)
+	// now check each port on portlist
+	for _, port := range portList {
+		for _, ip := range ipList {
+			listener, err := net.Listen("tcp", net.JoinHostPort(ip, port))
+			if err != nil {
+				usedPortList[port] = true
+				strErr := fmt.Sprintf("ports already in use: %s, address:%s check if cluster already running. Error:%v", port, ip, err)
+				gplog.Error(strErr)
+				return fmt.Errorf(strErr)
+			}
+			listener.Close()
+		}
 	}
+
+	if len(usedPortList) > 0 {
+		strErr := fmt.Sprintf("ports already in use: %v, check if cluster already running", usedPortList)
+		gplog.Error(strErr)
+		return fmt.Errorf(strErr)
+	}
+
 	return nil
 }
 

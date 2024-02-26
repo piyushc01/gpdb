@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"sync"
 
 	"golang.org/x/exp/maps"
@@ -165,19 +164,19 @@ func (s *Server) ValidateEnvironment(stream hubStreamer, request *idl.MakeCluste
 
 	gparray := request.GpArray
 	hostDirMap := make(map[string][]string)
-	hostSocketAddressMap := make(map[string][]string)
+	hostPortMap := make(map[string][]string)
 	hostAddressMap := make(map[string]map[string]bool)
 
 	// Add coordinator to the map
 	hostDirMap[gparray.Coordinator.HostName] = append(hostDirMap[gparray.Coordinator.HostName], gparray.Coordinator.DataDirectory)
-	hostSocketAddressMap[gparray.Coordinator.HostName] = append(hostSocketAddressMap[gparray.Coordinator.HostName], net.JoinHostPort(gparray.Coordinator.HostAddress, fmt.Sprintf("%d", gparray.Coordinator.Port)))
+	hostPortMap[gparray.Coordinator.HostName] = append(hostPortMap[gparray.Coordinator.HostName], fmt.Sprintf("%d", gparray.Coordinator.Port))
 	hostAddressMap[gparray.Coordinator.HostName] = make(map[string]bool)
 	hostAddressMap[gparray.Coordinator.HostName][gparray.Coordinator.HostAddress] = true
 
 	// Add primaries to the map
 	for _, seg := range gparray.Primaries {
 		hostDirMap[seg.HostName] = append(hostDirMap[seg.HostName], seg.DataDirectory)
-		hostSocketAddressMap[seg.HostName] = append(hostSocketAddressMap[seg.HostName], net.JoinHostPort(seg.HostAddress, fmt.Sprintf("%d", seg.Port)))
+		hostPortMap[seg.HostName] = append(hostPortMap[seg.HostName], fmt.Sprintf("%d", seg.Port))
 
 		if hostAddressMap[seg.HostName] == nil {
 			hostAddressMap[seg.HostName] = make(map[string]bool)
@@ -201,7 +200,7 @@ func (s *Server) ValidateEnvironment(stream hubStreamer, request *idl.MakeCluste
 		gplog.Debug(fmt.Sprintf("Starting to validate host: %s", conn.Hostname))
 
 		dirList := hostDirMap[conn.Hostname]
-		socketAddress := hostSocketAddressMap[conn.Hostname]
+		portList := hostPortMap[conn.Hostname]
 		var addressList []string
 		for address := range hostAddressMap[conn.Hostname] {
 			addressList = append(addressList, address)
@@ -209,12 +208,12 @@ func (s *Server) ValidateEnvironment(stream hubStreamer, request *idl.MakeCluste
 		gplog.Verbose("AddressList:[%v]", addressList)
 
 		validateReq := idl.ValidateHostEnvRequest{
-			DirectoryList:     dirList,
-			Locale:            request.ClusterParams.Locale,
-			SocketAddressList: socketAddress,
-			Forced:            request.ForceFlag,
-			HostAddressList:   addressList,
-			GpVersion:         localPgVersion,
+			DirectoryList:   dirList,
+			Locale:          request.ClusterParams.Locale,
+			PortList:        portList,
+			Forced:          request.ForceFlag,
+			HostAddressList: addressList,
+			GpVersion:       localPgVersion,
 		}
 		reply, err := conn.AgentClient.ValidateHostEnv(context.Background(), &validateReq)
 		if err != nil {

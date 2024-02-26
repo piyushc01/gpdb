@@ -84,7 +84,7 @@ func configureCmd() *cobra.Command {
 	configureCmd.Flags().StringVar(&serverCertPath, "server-certificate", "", `Path to hub SSL/TLS server certificate`)
 	configureCmd.Flags().StringVar(&serverKeyPath, "server-key", "", `Path to hub SSL/TLS server private key`)
 	// Allow passing a hostfile for "real" use cases or a few host names for tests, but not both
-	configureCmd.Flags().StringArrayVar(&hostnames, "host", []string{}, `Segment Hostname`)
+	configureCmd.Flags().StringArrayVar(&hostnames, "host", []string{}, `Segment hostname`)
 	configureCmd.Flags().StringVar(&hostfilePath, "hostfile", "", `Path to file containing a list of segment hostnames`)
 	configureCmd.MarkFlagsMutuallyExclusive("host", "hostfile")
 
@@ -119,7 +119,7 @@ func RunConfigure(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	if !cmd.Flags().Lookup("host").Changed && !cmd.Flags().Lookup("hostfile").Changed {
-		return errors.New("at least one Hostname must be provided using either --host or --hostfile")
+		return errors.New("at least one hostname must be provided using either --host or --hostfile")
 	}
 
 	if agentPort == hubPort {

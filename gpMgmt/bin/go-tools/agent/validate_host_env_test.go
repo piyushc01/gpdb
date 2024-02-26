@@ -207,16 +207,48 @@ func TestValidatePgVersionFn(t *testing.T) {
 func TestValidatePorts(t *testing.T) {
 	testhelper.SetupTestLogger()
 	t.Run("returns no error when ports are not in use", func(t *testing.T) {
-		testPort := []string{":11456", ":11457", ":11458"}
+		testPort := []string{"11456", "11457", "11458"}
 		err := agent.ValidatePorts(testPort)
 		if err != nil {
 			t.Fatalf("got %v, expected no error", err)
 		}
 	})
-	t.Run("returns error when ports are in use", func(t *testing.T) {
-		testPort := []string{":11456", ":11457", ":11458"}
+	t.Run("returns error when ports are in use localhost", func(t *testing.T) {
+		testPort := []string{"11456", "11457", "11458"}
 
-		listener, err := net.Listen("tcp", testPort[0])
+		listener, err := net.Listen("tcp", net.JoinHostPort("localhost", testPort[0]))
+		if err != nil {
+			t.Fatalf("error while listening to test port %v Please change test port", testPort[0])
+		}
+		defer listener.Close()
+
+		err = agent.ValidatePorts(testPort)
+
+		testStr := "ports already in use:"
+		if err == nil || !strings.Contains(err.Error(), testStr) {
+			t.Fatalf("got %v, expected:%s", err, testStr)
+		}
+	})
+	t.Run("returns error when ports are in use 0.0.0.0", func(t *testing.T) {
+		testPort := []string{"11456", "11457", "11458"}
+
+		listener, err := net.Listen("tcp", net.JoinHostPort("0.0.0.0", testPort[0]))
+		if err != nil {
+			t.Fatalf("error while listening to test port %v Please change test port", testPort[0])
+		}
+		defer listener.Close()
+
+		err = agent.ValidatePorts(testPort)
+
+		testStr := "ports already in use:"
+		if err == nil || !strings.Contains(err.Error(), testStr) {
+			t.Fatalf("got %v, expected:%s", err, testStr)
+		}
+	})
+	t.Run("returns error when ports are in use default", func(t *testing.T) {
+		testPort := []string{"11456", "11457", "11458"}
+
+		listener, err := net.Listen("tcp", net.JoinHostPort("", testPort[0]))
 		if err != nil {
 			t.Fatalf("error while listening to test port %v Please change test port", testPort[0])
 		}

@@ -26,7 +26,7 @@ type Locale struct {
 }
 
 type Segment struct {
-	Hostname      string `mapstructure:"Hostname"`
+	Hostname      string `mapstructure:"hostname"`
 	Address       string `mapstructure:"address"`
 	Port          int    `mapstructure:"port"`
 	DataDirectory string `mapstructure:"data-directory"`
