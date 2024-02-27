@@ -34,7 +34,7 @@ func UpdatePostgresqlConf(pgdata string, configParams map[string]string, overwri
 
 func CreatePostgresInternalConf(pgdata string, dbid int) error {
 	postgresInternalConfFilePath := filepath.Join(pgdata, postgresInternalConfFile)
-	file, err := utils.System.OpenFile(postgresInternalConfFilePath, os.O_APPEND, 0644)
+	file, err := utils.System.OpenFile(postgresInternalConfFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}

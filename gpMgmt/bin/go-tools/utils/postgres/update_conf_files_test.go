@@ -182,8 +182,7 @@ func TestCreatePostgresInternalConf(t *testing.T) {
 	t.Run("errors out when not able to write to the file", func(t *testing.T) {
 		dname, _ := createTempConfFile(t, "", "", 0644)
 		defer os.RemoveAll(dname)
-
-		utils.System.Create = func(name string) (*os.File, error) {
+		utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) {
 			_, writer, _ := os.Pipe()
 			writer.Close()
 

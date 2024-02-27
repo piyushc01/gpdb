@@ -3,6 +3,7 @@ package configure
 import (
 	"flag"
 	"fmt"
+	"github.com/greenplum-db/gpdb/gp/utils/greenplum"
 	"os"
 	"testing"
 
@@ -52,7 +53,7 @@ func init() {
 		Port:        constants.DefaultHubPort,
 		AgentPort:   constants.DefaultAgentPort,
 		Hostnames:   []string{},
-		LogDir:      constants.GetDefaultHubLogDir(),
+		LogDir:      greenplum.GetDefaultHubLogDir(),
 		ServiceName: constants.DefaultServiceName,
 		GpHome:      testutils.GpHome,
 		Credentials: cred,
