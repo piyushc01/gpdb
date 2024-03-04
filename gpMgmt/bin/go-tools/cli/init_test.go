@@ -8,8 +8,6 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/greenplum-db/gpdb/gp/idl/mock_idl"
-	"github.com/greenplum-db/gpdb/gp/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -17,8 +15,10 @@ import (
 	"github.com/greenplum-db/gpdb/gp/cli"
 	"github.com/greenplum-db/gpdb/gp/hub"
 	"github.com/greenplum-db/gpdb/gp/idl"
+	"github.com/greenplum-db/gpdb/gp/idl/mock_idl"
 	"github.com/greenplum-db/gpdb/gp/testutils"
 	"github.com/greenplum-db/gpdb/gp/testutils/exectest"
+	"github.com/greenplum-db/gpdb/gp/utils"
 )
 
 func init() {
@@ -236,30 +236,38 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 		}
 		gparray := idl.GpArray{
 			Coordinator: coordinator,
-			Primaries: []*idl.Segment{
+			SegmentArray: []*idl.SegmentPair{
 				{
-					HostAddress:   "sdw1",
-					HostName:      "sdw1",
-					Port:          7002,
-					DataDirectory: "/tmp/demo/1",
+					Primary: &idl.Segment{
+						HostAddress:   "sdw1",
+						HostName:      "sdw1",
+						Port:          7002,
+						DataDirectory: "/tmp/demo/1",
+					},
 				},
 				{
-					HostAddress:   "sdw1",
-					HostName:      "sdw1",
-					Port:          7003,
-					DataDirectory: "/tmp/demo/2",
+					Primary: &idl.Segment{
+						HostAddress:   "sdw1",
+						HostName:      "sdw1",
+						Port:          7003,
+						DataDirectory: "/tmp/demo/2",
+					},
 				},
 				{
-					HostAddress:   "sdw2",
-					HostName:      "sdw2",
-					Port:          7004,
-					DataDirectory: "/tmp/demo/3",
+					Primary: &idl.Segment{
+						HostAddress:   "sdw2",
+						HostName:      "sdw2",
+						Port:          7004,
+						DataDirectory: "/tmp/demo/3",
+					},
 				},
 				{
-					HostAddress:   "sdw2",
-					HostName:      "sdw2",
-					Port:          7005,
-					DataDirectory: "/tmp/demo/4",
+					Primary: &idl.Segment{
+						HostAddress:   "sdw2",
+						HostName:      "sdw2",
+						Port:          7005,
+						DataDirectory: "/tmp/demo/4",
+					},
 				},
 			},
 		}
@@ -300,7 +308,7 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 
 	cliHandler := viper.New()
 	cliHandler.Set("coordinator", idl.Segment{})
-	cliHandler.Set("primary-segments-array", []idl.Segment{})
+	cliHandler.Set("segment-array", []idl.Segment{})
 	cliHandler.Set("locale", idl.Locale{})
 
 	initializeRequest()
@@ -321,7 +329,7 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 		defer resetCLIVars()
 		defer initializeRequest()
 		expectedError := "no primary segments are provided in input config file"
-		request.GpArray.Primaries = []*idl.Segment{}
+		request.GpArray.SegmentArray = []*idl.SegmentPair{}
 		v := viper.New()
 		v.Set("coordinator", idl.Segment{})
 		err := cli.ValidateInputConfigAndSetDefaults(request, v)
@@ -337,7 +345,7 @@ func TestValidateInputConfigAndSetDefaults(t *testing.T) {
 		cli.Conf.Hostnames = []string{"cdw", "sdw1"}
 		expectedError := "following hostnames [sdw2 sdw2] do not have gp services configured. Please configure the services"
 
-		cli.IsGpServicesEnabled = func(gpArray *idl.GpArray) error {
+		cli.IsGpServicesEnabled = func(req *idl.MakeClusterRequest) error {
 			return fmt.Errorf(expectedError)
 		}
 
@@ -680,30 +688,38 @@ func TestIsGpServicesEnabledFn(t *testing.T) {
 	}
 	gparray := idl.GpArray{
 		Coordinator: coordinator,
-		Primaries: []*idl.Segment{
+		SegmentArray: []*idl.SegmentPair{
 			{
-				HostAddress:   "sdw1",
-				HostName:      "sdw1",
-				Port:          7002,
-				DataDirectory: "/tmp/demo/1",
+				Primary: &idl.Segment{
+					HostAddress:   "sdw1",
+					HostName:      "sdw1",
+					Port:          7002,
+					DataDirectory: "/tmp/demo/1",
+				},
 			},
 			{
-				HostAddress:   "sdw1",
-				HostName:      "sdw1",
-				Port:          7003,
-				DataDirectory: "/tmp/demo/2",
+				Primary: &idl.Segment{
+					HostAddress:   "sdw1",
+					HostName:      "sdw1",
+					Port:          7003,
+					DataDirectory: "/tmp/demo/2",
+				},
 			},
 			{
-				HostAddress:   "sdw2",
-				HostName:      "sdw2",
-				Port:          7004,
-				DataDirectory: "/tmp/demo/3",
+				Primary: &idl.Segment{
+					HostAddress:   "sdw2",
+					HostName:      "sdw2",
+					Port:          7004,
+					DataDirectory: "/tmp/demo/3",
+				},
 			},
 			{
-				HostAddress:   "sdw2",
-				HostName:      "sdw2",
-				Port:          7005,
-				DataDirectory: "/tmp/demo/4",
+				Primary: &idl.Segment{
+					HostAddress:   "sdw2",
+					HostName:      "sdw2",
+					Port:          7005,
+					DataDirectory: "/tmp/demo/4",
+				},
 			},
 		},
 	}
@@ -712,7 +728,7 @@ func TestIsGpServicesEnabledFn(t *testing.T) {
 		defer resetConfHostnames()
 		cli.Conf.Hostnames = []string{"cdw", "sdw1"}
 		expectedError := "following hostnames [sdw2 sdw2] do not have gp services configured. Please configure the services"
-		err := cli.IsGpServicesEnabled(&gparray)
+		err := cli.IsGpServicesEnabled(&idl.MakeClusterRequest{GpArray: &gparray})
 		if err == nil || !strings.Contains(err.Error(), expectedError) {
 			t.Fatalf("got %v, want %v", err, expectedError)
 		}

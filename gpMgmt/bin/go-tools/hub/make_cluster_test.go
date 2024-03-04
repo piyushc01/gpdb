@@ -501,10 +501,16 @@ func TestValidateEnvironment(t *testing.T) {
 	req := &idl.MakeClusterRequest{
 		GpArray: &idl.GpArray{
 			Coordinator: segmentToProto(segs[0]),
-			Primaries: []*idl.Segment{
-				segmentToProto(segs[1]),
-				segmentToProto(segs[2]),
-				segmentToProto(segs[3]),
+			SegmentArray: []*idl.SegmentPair{
+				{
+					Primary: segmentToProto(segs[1]),
+				},
+				{
+					Primary: segmentToProto(segs[2]),
+				},
+				{
+					Primary: segmentToProto(segs[3]),
+				},
 			},
 		},
 		ClusterParams: &idl.ClusterParams{

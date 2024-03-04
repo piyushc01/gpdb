@@ -7,12 +7,13 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpdb/gp/constants"
 	"github.com/greenplum-db/gpdb/gp/idl"
 	"github.com/greenplum-db/gpdb/gp/utils"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 type Locale struct {
@@ -32,18 +33,23 @@ type Segment struct {
 	DataDirectory string `mapstructure:"data-directory"`
 }
 
+type SegmentPair struct {
+	Primary *Segment `mapstructure:"primary"`
+	Mirror  *Segment `mapstructure:"mirror"`
+}
+
 type InitConfig struct {
-	DbName               string            `mapstructure:"db-name"`
-	Encoding             string            `mapstructure:"encoding"`
-	HbaHostnames         bool              `mapstructure:"hba-hostnames"`
-	DataChecksums        bool              `mapstructure:"data-checksums"`
-	SuPassword           string            `mapstructure:"su-password"` //TODO set to default if not provided
-	Locale               Locale            `mapstructure:"locale"`
-	CommonConfig         map[string]string `mapstructure:"common-config"`
-	CoordinatorConfig    map[string]string `mapstructure:"coordinator-config"`
-	SegmentConfig        map[string]string `mapstructure:"segment-config"`
-	Coordinator          Segment           `mapstructure:"coordinator"`
-	PrimarySegmentsArray []Segment         `mapstructure:"primary-segments-array"`
+	DbName            string            `mapstructure:"db-name"`
+	Encoding          string            `mapstructure:"encoding"`
+	HbaHostnames      bool              `mapstructure:"hba-hostnames"`
+	DataChecksums     bool              `mapstructure:"data-checksums"`
+	SuPassword        string            `mapstructure:"su-password"` //TODO set to default if not provided
+	Locale            Locale            `mapstructure:"locale"`
+	CommonConfig      map[string]string `mapstructure:"common-config"`
+	CoordinatorConfig map[string]string `mapstructure:"coordinator-config"`
+	SegmentConfig     map[string]string `mapstructure:"segment-config"`
+	Coordinator       Segment           `mapstructure:"coordinator"`
+	SegmentArray      []SegmentPair     `mapstructure:"segment-array"`
 }
 
 var (
@@ -171,15 +177,15 @@ func LoadInputConfigToIdlFn(inputConfigFile string, cliHandler *viper.Viper, for
 CreateMakeClusterReq helper function to populate cluster request from the config
 */
 func CreateMakeClusterReq(config *InitConfig, forceFlag bool, verbose bool) *idl.MakeClusterRequest {
-	var primarySegs []*idl.Segment
-	for _, seg := range config.PrimarySegmentsArray {
-		primarySegs = append(primarySegs, SegmentToIdl(seg))
+	var segmentPairs []*idl.SegmentPair
+	for _, pair := range config.SegmentArray {
+		segmentPairs = append(segmentPairs, SegmentPairToIdl(&pair))
 	}
 
 	return &idl.MakeClusterRequest{
 		GpArray: &idl.GpArray{
-			Coordinator: SegmentToIdl(config.Coordinator),
-			Primaries:   primarySegs,
+			Coordinator:  SegmentToIdl(&config.Coordinator),
+			SegmentArray: segmentPairs,
 		},
 		ClusterParams: ClusterParamsToIdl(config),
 		ForceFlag:     forceFlag,
@@ -187,12 +193,22 @@ func CreateMakeClusterReq(config *InitConfig, forceFlag bool, verbose bool) *idl
 	}
 }
 
-func SegmentToIdl(seg Segment) *idl.Segment {
+func SegmentToIdl(seg *Segment) *idl.Segment {
+	if seg == nil {
+		return nil
+	}
 	return &idl.Segment{
 		Port:          int32(seg.Port),
 		DataDirectory: seg.DataDirectory,
 		HostName:      seg.Hostname,
 		HostAddress:   seg.Address,
+	}
+}
+
+func SegmentPairToIdl(pair *SegmentPair) *idl.SegmentPair {
+	return &idl.SegmentPair{
+		Primary: SegmentToIdl(pair.Primary),
+		Mirror:  SegmentToIdl(pair.Mirror),
 	}
 }
 
@@ -228,7 +244,7 @@ func ValidateInputConfigAndSetDefaultsFn(request *idl.MakeClusterRequest, cliHan
 	}
 
 	//Check if primary segment details are provided
-	if !cliHandler.IsSet("primary-segments-array") {
+	if !cliHandler.IsSet("segment-array") {
 		return fmt.Errorf("no primary segments are provided in input config file")
 	}
 
@@ -240,8 +256,8 @@ func ValidateInputConfigAndSetDefaultsFn(request *idl.MakeClusterRequest, cliHan
 			return err
 		}
 	}
-	// Check if length of Gparray.PimarySegments is 0
-	if len(request.GpArray.Primaries) == 0 {
+
+	if len(request.GetPrimarySegments()) == 0 {
 		return fmt.Errorf("no primary segments are provided in input config file")
 	}
 	// validate details of coordinator
@@ -251,21 +267,21 @@ func ValidateInputConfigAndSetDefaultsFn(request *idl.MakeClusterRequest, cliHan
 	}
 
 	// validate the details of primary segments
-	for _, segment := range request.GpArray.Primaries {
-		err = ValidateSegment(segment)
+	for _, seg := range request.GetPrimarySegments() {
+		err = ValidateSegment(seg)
 		if err != nil {
 			return err
 		}
 	}
 
 	// check for conflicting port and data-dir on a host
-	err = CheckForDuplicatPortAndDataDirectory(request.GpArray.Primaries)
+	err = CheckForDuplicatPortAndDataDirectory(request.GetPrimarySegments())
 	if err != nil {
 		return err
 	}
 
 	// check if gp services enabled on hosts
-	err = IsGpServicesEnabled(request.GpArray)
+	err = IsGpServicesEnabled(request)
 	if err != nil {
 		return err
 	}
@@ -390,10 +406,10 @@ func SetDefaultLocaleFn(locale *idl.Locale) error {
 /*
 IsGpServicesEnabledFn returns error if any of the hosts from config does not have gp services enabled
 */
-func IsGpServicesEnabledFn(gpArray *idl.GpArray) error {
+func IsGpServicesEnabledFn(req *idl.MakeClusterRequest) error {
 	hostnames = []string{}
-	hostnames = append(hostnames, gpArray.Coordinator.HostName)
-	for _, seg := range gpArray.Primaries {
+	hostnames = append(hostnames, req.GpArray.Coordinator.HostName)
+	for _, seg := range req.GetPrimarySegments() {
 		hostnames = append(hostnames, seg.HostName)
 	}
 

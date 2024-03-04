@@ -69,7 +69,7 @@ message ProgressMessage {
 
 message gpArray {
     Segment Coordinator = 1;
-    repeated Segment Primaries = 2;
+    repeated SegmentPair SegmentArray = 2;
 }
 
 message Segment {
@@ -79,6 +79,11 @@ message Segment {
     string hostAddress = 4;
     int32 contentid = 5;
     int32 dbid = 6;
+}
+
+message SegmentPair {
+    Segment primary = 1;
+    Segment mirror = 2;
 }
 
 message ClusterParams{

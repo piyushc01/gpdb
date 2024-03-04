@@ -73,7 +73,7 @@ func (s *Server) MakeCluster(request *idl.MakeClusterRequest, stream idl.Hub_Mak
 		return err
 	}
 
-	err = greenplum.RegisterPrimaries(request.GpArray.Primaries, conn)
+	err = greenplum.RegisterPrimaries(request.GetPrimarySegments(), conn)
 	if err != nil {
 		return err
 	}
@@ -174,7 +174,7 @@ func (s *Server) ValidateEnvironment(stream hubStreamer, request *idl.MakeCluste
 	hostAddressMap[gparray.Coordinator.HostName][gparray.Coordinator.HostAddress] = true
 
 	// Add primaries to the map
-	for _, seg := range gparray.Primaries {
+	for _, seg := range request.GetPrimarySegments() {
 		hostDirMap[seg.HostName] = append(hostDirMap[seg.HostName], seg.DataDirectory)
 		hostPortMap[seg.HostName] = append(hostPortMap[seg.HostName], fmt.Sprintf("%d", seg.Port))
 

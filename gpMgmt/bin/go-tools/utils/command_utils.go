@@ -3,11 +3,12 @@ package utils
 import (
 	"bytes"
 	"fmt"
-	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"strconv"
+
+	"github.com/greenplum-db/gp-common-go-libs/gplog"
 )
 
 type CommandBuilder interface {

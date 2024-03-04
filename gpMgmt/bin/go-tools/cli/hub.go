@@ -3,19 +3,20 @@ package cli
 import (
 	"errors"
 	"fmt"
-	"github.com/greenplum-db/gp-common-go-libs/gplog"
-	"github.com/greenplum-db/gpdb/gp/utils/greenplum"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
 
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
+	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpdb/gp/constants"
 	"github.com/greenplum-db/gpdb/gp/hub"
 	"github.com/greenplum-db/gpdb/gp/utils"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
+	"github.com/greenplum-db/gpdb/gp/utils/greenplum"
 )
 
 var (

@@ -2,10 +2,10 @@ package greenplum
 
 import (
 	"fmt"
-	"github.com/greenplum-db/gp-common-go-libs/operating"
 	"path/filepath"
 	"strings"
 
+	"github.com/greenplum-db/gp-common-go-libs/operating"
 	"github.com/greenplum-db/gpdb/gp/utils"
 	"github.com/greenplum-db/gpdb/gp/utils/postgres"
 )

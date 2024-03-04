@@ -3,10 +3,6 @@ package cli_test
 import (
 	"errors"
 	"fmt"
-	"github.com/greenplum-db/gpdb/gp/constants"
-	"github.com/greenplum-db/gpdb/gp/testutils"
-	"github.com/greenplum-db/gpdb/gp/testutils/exectest"
-	"github.com/greenplum-db/gpdb/gp/utils"
 	"os"
 	"reflect"
 	"sync"
@@ -14,6 +10,10 @@ import (
 
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpdb/gp/cli"
+	"github.com/greenplum-db/gpdb/gp/constants"
+	"github.com/greenplum-db/gpdb/gp/testutils"
+	"github.com/greenplum-db/gpdb/gp/testutils/exectest"
+	"github.com/greenplum-db/gpdb/gp/utils"
 )
 
 func init() {
