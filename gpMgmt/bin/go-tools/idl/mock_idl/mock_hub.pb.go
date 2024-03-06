@@ -36,6 +36,26 @@ func (m *MockHubClient) EXPECT() *MockHubClientMockRecorder {
 	return m.recorder
 }
 
+// GetAllHostNames mocks base method.
+func (m *MockHubClient) GetAllHostNames(arg0 context.Context, arg1 *idl.GetAllHostNamesRequest, arg2 ...grpc.CallOption) (*idl.GetAllHostNamesReply, error) {
+	m.ctrl.T.Helper()
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "GetAllHostNames", varargs...)
+	ret0, _ := ret[0].(*idl.GetAllHostNamesReply)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAllHostNames indicates an expected call of GetAllHostNames.
+func (mr *MockHubClientMockRecorder) GetAllHostNames(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllHostNames", reflect.TypeOf((*MockHubClient)(nil).GetAllHostNames), varargs...)
+}
+
 // MakeCluster mocks base method.
 func (m *MockHubClient) MakeCluster(arg0 context.Context, arg1 *idl.MakeClusterRequest, arg2 ...grpc.CallOption) (idl.Hub_MakeClusterClient, error) {
 	m.ctrl.T.Helper()
@@ -157,6 +177,21 @@ func NewMockHubServer(ctrl *gomock.Controller) *MockHubServer {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockHubServer) EXPECT() *MockHubServerMockRecorder {
 	return m.recorder
+}
+
+// GetAllHostNames mocks base method.
+func (m *MockHubServer) GetAllHostNames(arg0 context.Context, arg1 *idl.GetAllHostNamesRequest) (*idl.GetAllHostNamesReply, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAllHostNames", arg0, arg1)
+	ret0, _ := ret[0].(*idl.GetAllHostNamesReply)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAllHostNames indicates an expected call of GetAllHostNames.
+func (mr *MockHubServerMockRecorder) GetAllHostNames(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllHostNames", reflect.TypeOf((*MockHubServer)(nil).GetAllHostNames), arg0, arg1)
 }
 
 // MakeCluster mocks base method.

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -31,19 +32,29 @@ type Segment struct {
 	Port          int    `mapstructure:"port"`
 	DataDirectory string `mapstructure:"data-directory"`
 }
+type SegmentPair struct {
+	Primary Segment
+	Mirror  Segment
+}
 
 type InitConfig struct {
-	DbName               string            `mapstructure:"db-name"`
-	Encoding             string            `mapstructure:"encoding"`
-	HbaHostnames         bool              `mapstructure:"hba-hostnames"`
-	DataChecksums        bool              `mapstructure:"data-checksums"`
-	SuPassword           string            `mapstructure:"su-password"` //TODO set to default if not provided
-	Locale               Locale            `mapstructure:"locale"`
-	CommonConfig         map[string]string `mapstructure:"common-config"`
-	CoordinatorConfig    map[string]string `mapstructure:"coordinator-config"`
-	SegmentConfig        map[string]string `mapstructure:"segment-config"`
-	Coordinator          Segment           `mapstructure:"coordinator"`
-	PrimarySegmentsArray []Segment         `mapstructure:"primary-segments-array"`
+	DbName                 string            `mapstructure:"db-name"`
+	Encoding               string            `mapstructure:"encoding"`
+	HbaHostnames           bool              `mapstructure:"hba-hostnames"`
+	DataChecksums          bool              `mapstructure:"data-checksums"`
+	SuPassword             string            `mapstructure:"su-password"` //TODO set to default if not provided
+	Locale                 Locale            `mapstructure:"locale"`
+	CommonConfig           map[string]string `mapstructure:"common-config"`
+	CoordinatorConfig      map[string]string `mapstructure:"coordinator-config"`
+	SegmentConfig          map[string]string `mapstructure:"segment-config"`
+	Coordinator            Segment           `mapstructure:"coordinator"`
+	PrimarySegmentsArray   []Segment         `mapstructure:"primary-segments-array"`
+	PrimaryBasePort        int               `mapstructure:"primary-base-port"`
+	PrimaryDataDirectories []string          `mapstructure:"primary-data-directories"`
+	HostList               []string          `mapstructure:"hostlist"`
+	MirrorDataDirectories  []string          `mapstructure:"mirror-data-directories"`
+	MirrorBasePort         int               `mapstructure:"mirror-base-port"`
+	MirroringType          string            `mapstructure:"mirroring-type"`
 }
 
 var (
@@ -57,6 +68,7 @@ var (
 	IsGpServicesEnabled                  = IsGpServicesEnabledFn
 )
 var cliForceFlag bool
+var containsMirror bool
 
 // initCmd adds support for command "gp init <config-file> [--force]
 func initCmd() *cobra.Command {
@@ -119,6 +131,8 @@ func InitClusterServiceFn(inputConfigFile string, force, verbose bool) error {
 		return err
 	}
 
+	// Check if expansion is required
+
 	// Validate give input configuration
 	if err := ValidateInputConfigAndSetDefaults(clusterReq, cliHandler); err != nil {
 		return err
@@ -154,7 +168,15 @@ func LoadInputConfigToIdlFn(inputConfigFile string, cliHandler *viper.Viper, for
 	cliHandler.SetDefault("coordinator-config", make(map[string]string))
 	cliHandler.SetDefault("segment-config", make(map[string]string))
 	cliHandler.SetDefault("data-checksums", true)
-
+	// Expansion config parameters
+	/*
+		cliHandler.SetDefault("hostlist", []string{})
+		cliHandler.SetDefault("primary-data-directories", []string{})
+		cliHandler.SetDefault("primary-base-port", 0)
+		cliHandler.SetDefault("mirror-data-directories", []string{})
+		cliHandler.SetDefault("mirror-base-port", 0)
+		cliHandler.SetDefault("mirroring-type", "")
+	*/
 	if err := cliHandler.ReadInConfig(); err != nil {
 		return &idl.MakeClusterRequest{}, fmt.Errorf("while reading config file: %w", err)
 	}
@@ -163,8 +185,177 @@ func LoadInputConfigToIdlFn(inputConfigFile string, cliHandler *viper.Viper, for
 	if err := cliHandler.UnmarshalExact(&config); err != nil {
 		return &idl.MakeClusterRequest{}, fmt.Errorf("while unmarshaling config file: %w", err)
 	}
+	if AnyExpansionConfigPresent(cliHandler) {
+		// Validate expansion config
+		err := ValidateExpansionConfigAndSetDefault(&config, cliHandler)
+		if err != nil {
+			return &idl.MakeClusterRequest{}, err
+		}
+		//Expand details to config for primary
+		ExpandPrimaryArray(config)
+		if AnyExpansionMirrorConfigPresent(cliHandler) {
+			// Expand configuration for mirror
+		}
+	}
 
 	return CreateMakeClusterReq(&config, force, verbose), nil
+}
+
+func AnyExpansionConfigPresent(cliHandle *viper.Viper) bool {
+	expansionKeys := []string{"hostlist", "primary-base-port", "primary-data-directories", "mirroring-type", "mirror-base-port", "mirror-data-directories"}
+	for _, key := range expansionKeys {
+		if cliHandle.IsSet(key) {
+			return true
+		}
+	}
+	return false
+}
+
+func AnyExpansionMirrorConfigPresent(cliHandle *viper.Viper) bool {
+	expansionKeys := []string{"mirroring-type", "mirror-base-port", "mirror-data-directories"}
+	for _, key := range expansionKeys {
+		if cliHandle.IsSet(key) {
+			return true
+		}
+	}
+	return false
+}
+func ValidateExpansionConfigAndSetDefault(config *InitConfig, cliHandle *viper.Viper) error {
+	// Check if mandatory primary expansion parameters are provided
+	if len(config.PrimaryDataDirectories) < 1 {
+		strErr := fmt.Sprintf("Empty primary-data-direcotiers provided")
+		gplog.Error(strErr)
+		return fmt.Errorf(strErr)
+	}
+	if len(config.HostList) < 1 {
+		strErr := fmt.Sprintf("Empty hostlist provided")
+		gplog.Error(strErr)
+		return fmt.Errorf(strErr)
+	}
+	if config.PrimaryBasePort < 1 {
+		defaultPrimaryBasePort := config.Coordinator.Port + 2
+		gplog.Warn("No primary-base-port value provided. Setting default to:%d", defaultPrimaryBasePort)
+		config.PrimaryBasePort = defaultPrimaryBasePort
+	}
+
+	// Check if mandatory mirror expansion parameters are provided
+	if AnyExpansionMirrorConfigPresent(cliHandle) {
+		containsMirror = true
+		if len(config.PrimaryDataDirectories) != len(config.MirrorDataDirectories) {
+			strErr := "number of primary-data-directories should be equal to number of mirror-data-directories"
+			gplog.Error(strErr)
+			return fmt.Errorf(strErr)
+		}
+		if config.MirrorBasePort < 1 {
+			defaultMirrorBasePort := config.Coordinator.Port + 1002
+			gplog.Warn("No primary-base-port value provided. Setting default to:%d", defaultMirrorBasePort)
+			config.MirrorBasePort = defaultMirrorBasePort
+		}
+
+		if config.MirroringType == "" {
+			// Default is spread mirroring
+			config.MirroringType = "spread"
+		} else if strings.ToLower(config.MirroringType) != "spread" && strings.ToLower(config.MirroringType) != "group" {
+			strErr := fmt.Sprintf("mirroring-Type: %s is not supported. Only 'group' or 'spread' mirroring is supported",
+				config.MirroringType)
+			gplog.Error(strErr)
+			return fmt.Errorf(strErr)
+		}
+		config.MirroringType = strings.ToLower(config.MirroringType)
+	} else {
+		// Mirror-less configuration
+		strErr := fmt.Sprintf("No mirror-data-direcotiers provided. Will create a mirrorless cluster")
+		gplog.Warn(strErr)
+		containsMirror = false
+	}
+
+	// If provided expansion config wand primary/mirrors array is also defined
+	if len(config.PrimarySegmentsArray) > 0 {
+		strErr := "segments-array list should be empty when configuration contains primary-base-directories and hostlist"
+		gplog.Error(strErr)
+		return fmt.Errorf(strErr)
+	}
+
+	// TODO Check related to multi-homing
+	return nil
+}
+
+func ExpandPrimaryArray(config InitConfig) []SegmentPair {
+	segPairList := []SegmentPair{}
+
+	/*
+		hostNameAddressMap := make(map[string][]string)
+		hostAddressNameMap := make(map[string]string)
+		// Get hostname for the given hostlist
+		for _, address := range config.HostList {
+			err := ExecuteRPC(s.Conns, validateFn)
+			if err != nil {
+				return err
+			}
+
+			for _, msg := range replies {
+				stream.StreamLogMsg(msg.Message, msg.Level)
+			}
+		}
+	*/
+	// TODO check if multi-home
+
+	// non-multi-home
+	segNum := 0
+	for _, hostAddress := range config.HostList {
+		for segIdx, directory := range config.PrimaryDataDirectories {
+			seg := Segment{
+				Hostname:      hostAddress, //TODO should be hostname
+				Address:       hostAddress,
+				Port:          config.PrimaryBasePort + segIdx,
+				DataDirectory: filepath.Join(directory, fmt.Sprintf("gpseg-%d", segNum)),
+			}
+			segPairList = append(segPairList, SegmentPair{Primary: seg})
+		}
+	}
+	if containsMirror {
+		// Configure mirrors
+		hostListLen := len(config.HostList)
+		if config.MirroringType == "group" {
+			// Perform group mirroring
+			segNum = 0
+			for hostIdx, _ := range config.HostList {
+				for segIdx, directory := range config.MirrorDataDirectories {
+					hostAddress := config.HostList[(hostIdx+1)%hostListLen]
+					seg := Segment{
+						Hostname:      hostAddress,
+						Address:       hostAddress,
+						Port:          config.MirrorBasePort + segIdx,
+						DataDirectory: filepath.Join(directory, fmt.Sprintf("gpseg-%d", segNum)),
+					}
+					segPairList[segNum].Mirror = seg
+					segNum++
+				}
+			}
+
+		} else {
+			// Perform spread mirroring
+			segmentsPerHost := len(config.MirrorDataDirectories)
+			segNum := 0
+			for hostIndex, _ := range config.HostList {
+				mirrorHostIndex := (hostIndex + 1) % hostListLen
+				for localSeg := 0; localSeg < segmentsPerHost; localSeg++ {
+					hostAddress := config.HostList[mirrorHostIndex]
+					seg := Segment{
+						Hostname:      hostAddress, //TODO fetch name from address
+						Address:       hostAddress,
+						Port:          config.MirrorBasePort + localSeg,
+						DataDirectory: filepath.Join(config.MirrorDataDirectories[localSeg], fmt.Sprintf("gpseg-%d", segNum)),
+					}
+					segPairList[segNum].Mirror = seg
+					segNum++
+					mirrorHostIndex = (mirrorHostIndex + 1) % hostListLen
+				}
+			}
+		}
+	}
+	// TODO Populate segPairList to config
+	return segPairList
 }
 
 /*
