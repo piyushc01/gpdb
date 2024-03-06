@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
+	"github.com/greenplum-db/gpdb/gp/testutils"
 	"github.com/greenplum-db/gpdb/gp/testutils/exectest"
 	"github.com/greenplum-db/gpdb/gp/utils"
 	"github.com/greenplum-db/gpdb/gp/utils/postgres"
@@ -25,10 +26,9 @@ func TestRunExecCommand(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	cmd := &postgres.Initdb{
-		PgData:         "pgdata",
-		Encoding:       "encoding",
-		Locale:         "locale",
-		MaxConnections: 50,
+		PgData:   "pgdata",
+		Encoding: "encoding",
+		Locale:   "locale",
 	}
 
 	t.Run("succesfully runs the command", func(t *testing.T) {
@@ -96,22 +96,82 @@ func TestRunExecCommand(t *testing.T) {
 	})
 }
 
-func TestAppendIfNotEmpty(t *testing.T) {
-	testhelper.SetupTestLogger()
+// CommandBuilder object for testing purpose
+type testCmd struct {
+	FlagA string  `flag:"--flagA"`
+	FlagB int     `flag:"--flagB"`
+	FlagC float64 `flag:"--flagC"`
+	FlagD bool    `flag:"--flagD"`
+	FlagE string
+}
 
-	t.Run("appends the arguments correctly", func(t *testing.T) {
-		args := []string{}
+func (c *testCmd) BuildExecCommand(gphome string) *exec.Cmd {
+	return nil
+}
 
-		args = utils.AppendIfNotEmpty(args, "string", "value")
-		args = utils.AppendIfNotEmpty(args, "int", 1)
-		args = utils.AppendIfNotEmpty(args, "float", 1.2)
-		args = utils.AppendIfNotEmpty(args, "bool", true)
-		args = utils.AppendIfNotEmpty(args, "boolFalse", false)
+// Invalid CommandBuilder object with unsupported type int8
+type invalidTestCmd struct {
+	FlagA string  `flag:"--flagA"`
+	FlagB int     `flag:"--flagB"`
+	FlagC float64 `flag:"--flagC"`
+	FlagD int8    `flag:"--flagD"`
+}
 
-		expectedArgs := []string{"string", "value", "int", "1", "float", "1.2", "bool"}
-		if !reflect.DeepEqual(args, expectedArgs) {
-			t.Fatalf("got %+v, want %+v", args, expectedArgs)
+func (c *invalidTestCmd) BuildExecCommand(gphome string) *exec.Cmd {
+	return nil
+}
+
+func TestGenerateArgs(t *testing.T) {
+	_, _, logfile := testhelper.SetupTestLogger()
+
+	cases := []struct {
+		cmd      utils.CommandBuilder
+		expected []string
+	}{
+		{
+			cmd: &testCmd{
+				FlagA: "valueA",
+				FlagB: 123,
+				FlagC: 1.23,
+				FlagD: true,
+				FlagE: "valueE",
+			},
+			expected: []string{"--flagA", "valueA", "--flagB", "123", "--flagC", "1.230000", "--flagD"},
+		},
+		{
+			cmd: &testCmd{
+				FlagA: "valueA",
+				FlagB: 123,
+				FlagD: false,
+			},
+			expected: []string{"--flagA", "valueA", "--flagB", "123"},
+		},
+		{
+			cmd: &testCmd{
+				FlagB: 123,
+			},
+			expected: []string{"--flagB", "123"},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run("succesfully generates the arguments for a command", func(t *testing.T) {
+			result := utils.GenerateArgs(tc.cmd)
+
+			if !reflect.DeepEqual(result, tc.expected) {
+				t.Fatalf("got %+v, want %+v", result, tc.expected)
+			}
+		})
+	}
+
+	t.Run("logs error when an unsupported data type is found", func(t *testing.T) {
+		cmd := &invalidTestCmd{
+			FlagA: "valueA",
+			FlagD: int8(1),
 		}
+		utils.GenerateArgs(cmd)
+
+		testutils.AssertLogMessage(t, logfile, `\[ERROR\]:-unsupported data type int8 while generating command arguments for invalidTestCmd`)
 	})
 }
 

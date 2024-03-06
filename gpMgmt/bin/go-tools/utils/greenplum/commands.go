@@ -12,33 +12,26 @@ const (
 )
 
 type GpStop struct {
-	DataDirectory   string
-	CoordinatorOnly bool
-	Verbose         bool
+	DataDirectory   string `flag:"-d"`
+	CoordinatorOnly bool   `flag:"--coordinator_only"`
+	Verbose         bool   `flag:"-v"`
 }
 
 func (cmd *GpStop) BuildExecCommand(gphome string) *exec.Cmd {
 	utility := utils.GetGpUtilityPath(gphome, gpstop)
-	args := []string{"-a"}
-
-	args = utils.AppendIfNotEmpty(args, "-d", cmd.DataDirectory)
-	args = utils.AppendIfNotEmpty(args, "--coordinator_only", cmd.CoordinatorOnly)
-	args = utils.AppendIfNotEmpty(args, "-v", cmd.Verbose)
+	args := append([]string{"-a"}, utils.GenerateArgs(cmd)...)
 
 	return utils.System.ExecCommand(utility, args...)
 }
 
 type GpStart struct {
-	DataDirectory string
-	Verbose       bool
+	DataDirectory string `flag:"-d"`
+	Verbose       bool   `flag:"-v"`
 }
 
 func (cmd *GpStart) BuildExecCommand(gphome string) *exec.Cmd {
 	utility := utils.GetGpUtilityPath(gphome, gpstart)
-	args := []string{"-a"}
-
-	args = utils.AppendIfNotEmpty(args, "-d", cmd.DataDirectory)
-	args = utils.AppendIfNotEmpty(args, "-v", cmd.Verbose)
+	args := append([]string{"-a"}, utils.GenerateArgs(cmd)...)
 
 	return utils.System.ExecCommand(utility, args...)
 }

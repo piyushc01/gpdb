@@ -13,90 +13,62 @@ const (
 )
 
 type Initdb struct {
-	PgData         string
-	Encoding       string
-	Locale         string
-	LcCollate      string
-	LcCtype        string
-	LcMessages     string
-	LcMonetory     string
-	LcNumeric      string
-	LcTime         string
-	SharedBuffers  string
-	MaxConnections int
-	DataChecksums  bool
+	PgData        string `flag:"--pgdata"`
+	Encoding      string `flag:"--encoding"`
+	Locale        string `flag:"--locale"`
+	LcCollate     string `flag:"--lc-collate"`
+	LcCtype       string `flag:"--lc-ctype"`
+	LcMessages    string `flag:"--lc-messages"`
+	LcMonetory    string `flag:"--lc-monetary"`
+	LcNumeric     string `flag:"--lc-numeric"`
+	LcTime        string `flag:"--lc-time"`
+	DataChecksums bool   `flag:"--data-checksums"`
 }
 
 func (cmd *Initdb) BuildExecCommand(gphome string) *exec.Cmd {
 	utility := utils.GetGpUtilityPath(gphome, initdbUtility)
-	args := []string{}
-
-	args = utils.AppendIfNotEmpty(args, "--pgdata", cmd.PgData)
-	args = utils.AppendIfNotEmpty(args, "--encoding", cmd.Encoding)
-	args = utils.AppendIfNotEmpty(args, "--locale", cmd.Locale)
-	args = utils.AppendIfNotEmpty(args, "--lc-collate", cmd.LcCollate)
-	args = utils.AppendIfNotEmpty(args, "--lc-ctype", cmd.LcCtype)
-	args = utils.AppendIfNotEmpty(args, "--lc-messages", cmd.LcMessages)
-	args = utils.AppendIfNotEmpty(args, "--lc-monetary", cmd.LcMonetory)
-	args = utils.AppendIfNotEmpty(args, "--lc-numeric", cmd.LcNumeric)
-	args = utils.AppendIfNotEmpty(args, "--lc-time", cmd.LcTime)
-	args = utils.AppendIfNotEmpty(args, "--max_connections", cmd.MaxConnections)
-	args = utils.AppendIfNotEmpty(args, "--shared_buffers", cmd.SharedBuffers)
-	args = utils.AppendIfNotEmpty(args, "--data-checksums", cmd.DataChecksums)
+	args := utils.GenerateArgs(cmd)
 
 	return utils.System.ExecCommand(utility, args...)
 }
 
 type PgCtlStart struct {
-	PgData  string
-	Timeout int
-	Wait    bool
-	NoWait  bool
-	Logfile string
-	Options string
+	PgData  string `flag:"--pgdata"`
+	Timeout int    `flag:"--timeout"`
+	Wait    bool   `flag:"--wait"`
+	NoWait  bool   `flag:"--no-wait"`
+	Logfile string `flag:"--log"`
+	Options string `flag:"--options"`
 }
 
 func (cmd *PgCtlStart) BuildExecCommand(gphome string) *exec.Cmd {
 	utility := utils.GetGpUtilityPath(gphome, pgCtlUtility)
-	args := []string{"start"}
-
-	args = utils.AppendIfNotEmpty(args, "--pgdata", cmd.PgData)
-	args = utils.AppendIfNotEmpty(args, "--timeout", cmd.Timeout)
-	args = utils.AppendIfNotEmpty(args, "--wait", cmd.Wait)
-	args = utils.AppendIfNotEmpty(args, "--no-wait", cmd.NoWait)
-	args = utils.AppendIfNotEmpty(args, "--log", cmd.Logfile)
-	args = utils.AppendIfNotEmpty(args, "--options", cmd.Options)
+	args := append([]string{"start"}, utils.GenerateArgs(cmd)...)
 
 	return utils.System.ExecCommand(utility, args...)
 }
 
 type PgCtlStop struct {
-	PgData  string
-	Timeout int
-	Wait    bool
-	NoWait  bool
-	Mode    string
+	PgData  string `flag:"--pgdata"`
+	Timeout int    `flag:"--timeout"`
+	Wait    bool   `flag:"--wait"`
+	NoWait  bool   `flag:"--no-wait"`
+	Mode    string `flag:"--mode"`
 }
 
 func (cmd *PgCtlStop) BuildExecCommand(gphome string) *exec.Cmd {
 	utility := utils.GetGpUtilityPath(gphome, pgCtlUtility)
-	args := []string{"stop"}
-
-	args = utils.AppendIfNotEmpty(args, "--pgdata", cmd.PgData)
-	args = utils.AppendIfNotEmpty(args, "--timeout", cmd.Timeout)
-	args = utils.AppendIfNotEmpty(args, "--wait", cmd.Wait)
-	args = utils.AppendIfNotEmpty(args, "--no-wait", cmd.NoWait)
-	args = utils.AppendIfNotEmpty(args, "--mode", cmd.Mode)
+	args := append([]string{"stop"}, utils.GenerateArgs(cmd)...)
 
 	return utils.System.ExecCommand(utility, args...)
 }
 
-type PostgresGpVersion struct {
-	GpVersion bool
+type Postgres struct {
+	GpVersion bool `flag:"--gp-version"`
 }
 
-func (cmd *PostgresGpVersion) BuildExecCommand(gphome string) *exec.Cmd {
+func (cmd *Postgres) BuildExecCommand(gphome string) *exec.Cmd {
 	utililty := utils.GetGpUtilityPath(gphome, postgresUtility)
-	args := []string{"--gp-version"}
+	args := utils.GenerateArgs(cmd)
 	return utils.System.ExecCommand(utililty, args...)
 }

@@ -128,7 +128,7 @@ func RunConfigure(cmd *cobra.Command, args []string) (err error) {
 	}
 
 	// Convert file/directory paths to absolute path before writing to gp.Conf file
-	err = resolveAbsolutePaths(cmd)
+	err = resolveAbsolutePaths()
 	if err != nil {
 		return err
 	}
@@ -257,7 +257,7 @@ type Response struct {
 	Ulimit   int
 }
 
-func resolveAbsolutePaths(cmd *cobra.Command) error {
+func resolveAbsolutePaths() error {
 	paths := []*string{&caCertPath, &caKeyPath, &serverCertPath, &serverKeyPath, &hubLogDir, &gphome}
 	for _, path := range paths {
 		p, err := filepath.Abs(*path)

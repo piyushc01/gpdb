@@ -11,7 +11,7 @@ import (
 )
 
 func GetPostgresGpVersion(gphome string) (string, error) {
-	pgGpVersionCmd := &postgres.PostgresGpVersion{GpVersion: true}
+	pgGpVersionCmd := &postgres.Postgres{GpVersion: true}
 	out, err := utils.RunExecCommand(pgGpVersionCmd, gphome)
 	if err != nil {
 		return "", fmt.Errorf("fetching postgres gp-version: %w", err)

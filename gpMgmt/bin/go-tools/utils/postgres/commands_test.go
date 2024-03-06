@@ -33,12 +33,11 @@ func TestPgCommand(t *testing.T) {
 	}{
 		{
 			pgCmdOptions: &postgres.Initdb{
-				PgData:         "pgdata",
-				Encoding:       "encoding",
-				Locale:         "locale",
-				MaxConnections: 50,
+				PgData:   "pgdata",
+				Encoding: "encoding",
+				Locale:   "locale",
 			},
-			expected: `gphome/bin/initdb --pgdata pgdata --encoding encoding --locale locale --max_connections 50`,
+			expected: `gphome/bin/initdb --pgdata pgdata --encoding encoding --locale locale`,
 		},
 		{
 			pgCmdOptions: &postgres.PgCtlStart{
@@ -61,7 +60,7 @@ func TestPgCommand(t *testing.T) {
 			expected: `gphome/bin/pg_ctl stop --pgdata pgdata --timeout 10 --wait --mode smart`,
 		},
 		{
-			pgCmdOptions: &postgres.PostgresGpVersion{
+			pgCmdOptions: &postgres.Postgres{
 				GpVersion: true,
 			},
 			expected: `gphome/bin/postgres --gp-version`,

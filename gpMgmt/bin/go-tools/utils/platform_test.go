@@ -30,13 +30,13 @@ func TestMain(m *testing.M) {
 	os.Exit(exectest.Run(m))
 }
 
-func setMocks(t *testing.T) {
+func setMocks() {
 	utils.GpsyncCommand = nil
 	utils.LoadServiceCommand = nil
 	utils.UnloadServiceCommand = nil
 }
 
-func resetMocks(t *testing.T) {
+func resetMocks() {
 	utils.GpsyncCommand = exec.Command
 	utils.LoadServiceCommand = exec.Command
 	utils.UnloadServiceCommand = exec.Command
@@ -220,8 +220,8 @@ func TestReloadServices(t *testing.T) {
 			var err error
 			platform := GetPlatform(tc.os, t)
 
-			setMocks(t)
-			defer resetMocks(t)
+			setMocks()
+			defer resetMocks()
 			utils.UnloadServiceCommand = exectest.NewCommand(exectest.Success)
 			utils.LoadServiceCommand = exectest.NewCommand(exectest.Success)
 
@@ -249,8 +249,8 @@ func TestReloadServices(t *testing.T) {
 			var err error
 			platform := GetPlatform(tc.os, t)
 
-			setMocks(t)
-			defer resetMocks(t)
+			setMocks()
+			defer resetMocks()
 			utils.UnloadServiceCommand = exectest.NewCommand(exectest.Failure)
 			utils.LoadServiceCommand = exectest.NewCommand(exectest.Success)
 
@@ -270,8 +270,8 @@ func TestReloadServices(t *testing.T) {
 			var err error
 			platform := GetPlatform(constants.PlatformDarwin, t)
 
-			setMocks(t)
-			defer resetMocks(t)
+			setMocks()
+			defer resetMocks()
 			utils.UnloadServiceCommand = exectest.NewCommand(exectest.Success)
 			utils.LoadServiceCommand = exectest.NewCommand(exectest.Failure)
 
@@ -383,8 +383,8 @@ func TestCreateAndInstallAgentServiceFile(t *testing.T) {
 		})
 		defer utils.ResetWriteServiceFileFunc()
 
-		setMocks(t)
-		defer resetMocks(t)
+		setMocks()
+		defer resetMocks()
 		utils.GpsyncCommand = exectest.NewCommandWithVerifier(exectest.Success, func(utility string, args ...string) {
 			if !strings.HasSuffix(utility, "gpsync") {
 				t.Fatalf("got %q, want gpsync", utility)
@@ -413,8 +413,8 @@ func TestCreateAndInstallAgentServiceFile(t *testing.T) {
 		})
 		defer utils.ResetWriteServiceFileFunc()
 
-		setMocks(t)
-		defer resetMocks(t)
+		setMocks()
+		defer resetMocks()
 		utils.GpsyncCommand = exectest.NewCommandWithVerifier(exectest.Failure, func(utility string, args ...string) {
 			if !strings.HasSuffix(utility, "gpsync") {
 				t.Fatalf("got %q, want gpsync", utility)
@@ -444,8 +444,8 @@ func TestCreateAndInstallAgentServiceFile(t *testing.T) {
 		})
 		defer utils.ResetWriteServiceFileFunc()
 
-		setMocks(t)
-		defer resetMocks(t)
+		setMocks()
+		defer resetMocks()
 		utils.GpsyncCommand = exectest.NewCommand(exectest.Success)
 
 		utils.SetExecCommand(exectest.NewCommand(exectest.Success))
@@ -466,8 +466,8 @@ func TestCreateAndInstallAgentServiceFile(t *testing.T) {
 		})
 		defer utils.ResetWriteServiceFileFunc()
 
-		setMocks(t)
-		defer resetMocks(t)
+		setMocks()
+		defer resetMocks()
 		utils.GpsyncCommand = exectest.NewCommand(exectest.Success)
 
 		utils.SetExecCommand(exectest.NewCommand(exectest.Failure))
