@@ -324,8 +324,8 @@ func TestValidateHostEnv(t *testing.T) {
 		agent.VerifyPgVersion = func(expectedVersion string, gpHome string) error {
 			return nil
 		}
-		agent.GetAllNonEmptyDir = func(dirList []string) []string {
-			return []string{"/tmp/1", "/tmp/2"}
+		agent.GetAllNonEmptyDir = func(dirList []string) ([]string, error) {
+			return []string{"/tmp/1", "/tmp/2"}, nil
 		}
 
 		req := idl.ValidateHostEnvRequest{Forced: false}
@@ -344,8 +344,8 @@ func TestValidateHostEnv(t *testing.T) {
 		agent.VerifyPgVersion = func(expectedVersion string, gpHome string) error {
 			return nil
 		}
-		agent.GetAllNonEmptyDir = func(dirList []string) []string {
-			return []string{"/tmp/1", "/tmp/2"}
+		agent.GetAllNonEmptyDir = func(dirList []string) ([]string, error) {
+			return []string{"/tmp/1", "/tmp/2"}, nil
 		}
 		utils.System.RemoveAll = func(path string) error {
 			return fmt.Errorf(testStr)
@@ -367,8 +367,8 @@ func TestValidateHostEnv(t *testing.T) {
 		agent.VerifyPgVersion = func(expectedVersion string, gpHome string) error {
 			return nil
 		}
-		agent.GetAllNonEmptyDir = func(dirList []string) []string {
-			return []string{}
+		agent.GetAllNonEmptyDir = func(dirList []string) ([]string, error) {
+			return []string{}, nil
 		}
 		agent.CheckFilePermissions = func(filePath string) error {
 			return fmt.Errorf(testStr)
@@ -390,8 +390,8 @@ func TestValidateHostEnv(t *testing.T) {
 		agent.VerifyPgVersion = func(expectedVersion string, gpHome string) error {
 			return nil
 		}
-		agent.GetAllNonEmptyDir = func(dirList []string) []string {
-			return []string{}
+		agent.GetAllNonEmptyDir = func(dirList []string) ([]string, error) {
+			return []string{}, nil
 		}
 		agent.CheckFilePermissions = func(filePath string) error {
 			return nil
@@ -416,8 +416,8 @@ func TestValidateHostEnv(t *testing.T) {
 		agent.VerifyPgVersion = func(expectedVersion string, gpHome string) error {
 			return nil
 		}
-		agent.GetAllNonEmptyDir = func(dirList []string) []string {
-			return []string{}
+		agent.GetAllNonEmptyDir = func(dirList []string) ([]string, error) {
+			return []string{}, nil
 		}
 		agent.CheckFilePermissions = func(filePath string) error {
 			return nil
@@ -444,8 +444,8 @@ func TestValidateHostEnv(t *testing.T) {
 		agent.VerifyPgVersion = func(expectedVersion string, gpHome string) error {
 			return nil
 		}
-		agent.GetAllNonEmptyDir = func(dirList []string) []string {
-			return []string{}
+		agent.GetAllNonEmptyDir = func(dirList []string) ([]string, error) {
+			return []string{}, nil
 		}
 		agent.CheckFilePermissions = func(filePath string) error {
 			return nil
@@ -472,8 +472,8 @@ func TestValidateHostEnv(t *testing.T) {
 		agent.VerifyPgVersion = func(expectedVersion string, gpHome string) error {
 			return nil
 		}
-		agent.GetAllNonEmptyDir = func(dirList []string) []string {
-			return []string{}
+		agent.GetAllNonEmptyDir = func(dirList []string) ([]string, error) {
+			return []string{}, nil
 		}
 		agent.CheckFilePermissions = func(filePath string) error {
 			return nil
@@ -693,7 +693,7 @@ func TestCheckDirEmptyFn(t *testing.T) {
 		expectedErr := "error opening file"
 		defer resetAgentFunctions()
 		utils.System.Open = func(name string) (*os.File, error) {
-			return nil, fmt.Errorf("test error")
+			return nil, fmt.Errorf(expectedErr)
 		}
 		agent.OsIsNotExist = func(err error) bool {
 			return false
@@ -772,28 +772,30 @@ func TestGetAllNonEmptyDir(t *testing.T) {
 			}
 			return false, nil
 		}
-		emptyList := agent.GetAllNonEmptyDir(dirList)
+		emptyList, err := agent.GetAllNonEmptyDir(dirList)
+		if err != nil {
+			t.Fatalf("got error:%v, want no error", err)
+		}
 		if len(emptyList) != 1 || emptyList[0] != expectedStr {
 			t.Fatalf("got %q, want %q", emptyList, expectedStr)
 		}
 	})
-	t.Run("function returns non-empty when got error checking directory empty", func(t *testing.T) {
-		var dirList []string
-		testString := "/tmp/1"
-		expectedStr := "/tmp/2"
-		dirList = append(dirList, testString)
-		dirList = append(dirList, expectedStr)
+	t.Run("function returns error when got error checking directory empty", func(t *testing.T) {
+		strErr := "test Error checking directory"
+		dirList := []string{"/tmp/1", "/tmp/2"}
+
 		defer resetAgentFunctions()
 		agent.CheckDirEmpty = func(dirPath string) (bool, error) {
-			if dirPath == testString {
+			if dirPath == dirList[0] {
 				return true, nil
 			}
-			return false, fmt.Errorf("test Error checking directory")
+			return false, fmt.Errorf(strErr)
 		}
-		emptyList := agent.GetAllNonEmptyDir(dirList)
-		if len(emptyList) != 1 || emptyList[0] != expectedStr {
-			t.Fatalf("got %q, want %q", emptyList, expectedStr)
+		_, err := agent.GetAllNonEmptyDir(dirList)
+		if err == nil || !strings.Contains(err.Error(), strErr) {
+			t.Fatalf("got error:%v, want error:%s", err, strErr)
 		}
+
 	})
 }
 

@@ -57,16 +57,18 @@ func (s *Server) ValidateHostEnv(ctx context.Context, request *idl.ValidateHostE
 	}
 	gplog.Verbose("Done with checking user is non root")
 
-	//Check for PGVersion
-	pgVersionErr := VerifyPgVersion(request.GpVersion, s.GpHome)
-	if pgVersionErr != nil {
-		gplog.Error("Postgres gp-version validation failed:%v", pgVersionErr)
-		return &idl.ValidateHostEnvReply{}, pgVersionErr
+	//Check for GP Version
+	gpVersionErr := VerifyPgVersion(request.GpVersion, s.GpHome)
+	if gpVersionErr != nil {
+		gplog.Error("Postgres gp-version validation failed:%v", gpVersionErr)
+		return &idl.ValidateHostEnvReply{}, gpVersionErr
 	}
 
-	// Check for each directory, if directory is empty
-	nonEmptyDirList := GetAllNonEmptyDir(dirList)
-	gplog.Verbose("Got the list of all non-empty directories")
+	// Check for each directory if is empty
+	nonEmptyDirList, err := GetAllNonEmptyDir(dirList)
+	if err != nil {
+		return &idl.ValidateHostEnvReply{}, fmt.Errorf("error checking directory empty:%v", err)
+	}
 
 	if len(nonEmptyDirList) > 0 && !forced {
 		return &idl.ValidateHostEnvReply{}, fmt.Errorf("directory not empty:%v", nonEmptyDirList)
@@ -82,10 +84,10 @@ func (s *Server) ValidateHostEnv(ctx context.Context, request *idl.ValidateHostE
 		}
 	}
 
-	// Validate permission to initdb ? Error will be returned upon running
+	// Validate permission to initdb? Error will be returned upon running
 	gplog.Verbose("Checking initdb for permissions")
 	initdbPath := filepath.Join(s.GpHome, "bin", "initdb")
-	err := CheckFilePermissions(initdbPath)
+	err = CheckFilePermissions(initdbPath)
 	if err != nil {
 		return &idl.ValidateHostEnvReply{}, err
 	}
@@ -260,19 +262,20 @@ func ValidatePortsFn(portList []string) error {
 /*
 GetAllNonEmptyDirFn returns list of all non-empty directories
 */
-func GetAllNonEmptyDirFn(dirList []string) []string {
+func GetAllNonEmptyDirFn(dirList []string) ([]string, error) {
 	var nonEmptyDir []string
 	for _, dir := range dirList {
 		isEmpty, err := CheckDirEmpty(dir)
 		if err != nil {
-			gplog.Error("Directory:%s Error checking if empty:%s", dir, err.Error())
-			nonEmptyDir = append(nonEmptyDir, dir)
+			strErr := fmt.Sprintf("Directory:%s Error checking if empty:%v", dir, err)
+			gplog.Error(strErr)
+			return nonEmptyDir, err
 		} else if !isEmpty {
-			// Directory not empty
+			// Directory is not empty
 			nonEmptyDir = append(nonEmptyDir, dir)
 		}
 	}
-	return nonEmptyDir
+	return nonEmptyDir, nil
 }
 
 /*
@@ -281,12 +284,12 @@ returns true if directory is empty
 */
 func CheckDirEmptyFn(dirPath string) (bool, error) {
 	// check if dir exists
-	file, err := os.Open(dirPath)
+	file, err := utils.System.Open(dirPath)
 	if OsIsNotExist(err) {
 		return true, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("error opening file:%v", err)
+		return false, fmt.Errorf("opening directory: %s, error:%v", dirPath, err)
 	}
 	defer file.Close()
 	_, err = file.Readdirnames(1)
@@ -297,9 +300,9 @@ func CheckDirEmptyFn(dirPath string) (bool, error) {
 }
 
 /*
-CheckFilePermissionsFn checks if the file has right permissions.
+CheckFilePermissionsFn checks if the file has the right permissions.
 Verified if execute permission is available.
-Also checks if file is owned by group or user.
+Also check if the file is owned by group or user.
 */
 func CheckFilePermissionsFn(filePath string) error {
 	fileInfo, err := utils.System.Stat(filePath)
