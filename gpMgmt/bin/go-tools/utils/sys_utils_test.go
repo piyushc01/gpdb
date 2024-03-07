@@ -2,6 +2,7 @@ package utils_test
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -14,6 +15,31 @@ import (
 	"github.com/greenplum-db/gpdb/gp/testutils"
 	"github.com/greenplum-db/gpdb/gp/utils"
 )
+
+func TestCheckIfPortFree(t *testing.T) {
+	testhelper.SetupTestLogger()
+	t.Run("returns no error when port not in use", func(t *testing.T) {
+		err := utils.CheckIfPortFree("localhost", "9946")
+		if err != nil {
+			t.Fatalf("Got error %v, expected no error", err)
+		}
+	})
+	t.Run("returns error when port not in use", func(t *testing.T) {
+		portNum := "9946"
+		hostName := "localhost"
+		strErr := "bind: address already in use"
+		listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", hostName, portNum))
+		if err != nil {
+			t.Fatalf("Failed to create test listener on port %s:%s", hostName, portNum)
+		}
+		defer listener.Close()
+
+		err = utils.CheckIfPortFree(hostName, portNum)
+		if err == nil || !strings.Contains(err.Error(), strErr) {
+			t.Fatalf("Got error %v, expected:%sr", err, strErr)
+		}
+	})
+}
 
 func TestGetListDifference(t *testing.T) {
 	testhelper.SetupTestLogger()

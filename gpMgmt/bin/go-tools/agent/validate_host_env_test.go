@@ -113,7 +113,7 @@ func TestCheckHostAddressInHostsFile(t *testing.T) {
 	})
 	t.Run("returns warning when host-address is in /etc/hosts file", func(t *testing.T) {
 		expectedReply := idl.LogMessage{
-			Message: "HostAddress sdw1 is assigned localhost in",
+			Message: "HostAddress sdw1 is assigned localhost entry in",
 			Level:   idl.LogLevel_WARNING,
 		}
 		defer utils.ResetSystemFunctions()

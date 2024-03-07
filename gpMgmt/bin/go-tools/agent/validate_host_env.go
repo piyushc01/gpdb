@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -75,7 +74,7 @@ func (s *Server) ValidateHostEnv(ctx context.Context, request *idl.ValidateHostE
 	}
 	if forced && len(nonEmptyDirList) > 0 {
 
-		gplog.Verbose("Forced init. Deleting non-empty directories:%s", dirList)
+		gplog.Verbose("Forced init. Deleting non-empty directories:%s", nonEmptyDirList)
 		for _, dir := range nonEmptyDirList {
 			err := utils.System.RemoveAll(dir)
 			if err != nil {
@@ -134,7 +133,7 @@ func ValidatePgVersionFn(expectedVersion string, gpHome string) error {
 }
 
 /*
-CheckOpenFilesLimit sends an warning to CLI if open files limit is not unlimited
+CheckOpenFilesLimit sends a warning to CLI if the open files limit is not unlimited
 */
 
 func CheckOpenFilesLimit() []*idl.LogMessage {
@@ -148,7 +147,6 @@ func CheckOpenFilesLimit() []*idl.LogMessage {
 	}
 
 	if ulimitVal < constants.OsOpenFiles {
-		// In case of macOS, no limits file are present, return error
 		warnMsg := fmt.Sprintf("Host open file limit is %d should be >= %d. Set open files limit for user and systemd and start gp services again.", ulimitVal, constants.OsOpenFiles)
 		warnings = append(warnings, &idl.LogMessage{Message: warnMsg, Level: idl.LogLevel_WARNING})
 		gplog.Warn(warnMsg)
@@ -177,10 +175,10 @@ func CheckHostAddressInHostsFile(hostAddressList []string) []*idl.LogMessage {
 		for _, line := range lines {
 			hosts := strings.Split(line, " ")
 			if slices.Contains(hosts, hostAddress) && slices.Contains(hosts, "localhost") {
-				warnMsg := fmt.Sprintf("HostAddress %s is assigned localhost in %s."+
+				warnMsg := fmt.Sprintf("HostAddress %s is assigned localhost entry in %s."+
 					"This will cause segment->coordinator communication failures."+
-					"Remote %s from local host line in /etc/hosts",
-					hostAddress, constants.EtcHostsFilepath, constants.EtcHostsFilepath)
+					"Remove %s from localhost line in %s",
+					hostAddress, constants.EtcHostsFilepath, hostAddress, constants.EtcHostsFilepath)
 
 				warnings = append(warnings, &idl.LogMessage{Message: warnMsg, Level: idl.LogLevel_WARNING})
 				gplog.Warn(warnMsg)
@@ -199,54 +197,22 @@ func ValidatePortsFn(portList []string) error {
 	gplog.Verbose("Started with ValidatePorts")
 	usedPortList := make(map[string]bool)
 
-	// Let's check on all interfaces if port is in use
-	var ipList []string
-
-	// Check if listening on loopback addresses
-	ipList = append(ipList, "0.0.0.0")
-	ipList = append(ipList, "::")
-
-	// Get a list of network interfaces and their addresses
-	ifaces, err := net.Interfaces()
+	// Get a list of all interfaces addresses
+	ipList, err := utils.GetAllAddresses()
 	if err != nil {
-		strErr := fmt.Sprintf("error getting list of interfaces to check port in use:%v", err)
-		gplog.Error(strErr)
-		return fmt.Errorf(strErr)
+		return err
 	}
-	for _, iface := range ifaces {
-		addrs, err := iface.Addrs()
-		if err != nil {
-			strErr := fmt.Sprintf("error getting list of addreses for interface %s. Error:%v", iface.Name, err)
-			gplog.Error(strErr)
-			return fmt.Errorf(strErr)
-		}
-		for _, addr := range addrs {
-			switch v := addr.(type) {
-			case *net.IPNet:
-				ip := v.IP
-				if ip != nil {
-					if ip.To4() != nil {
-						// if it's an IPv4 address
-						ipList = append(ipList, ip.String())
-					} else {
-						// it's an IPv6 address, append interface name to make it routable
-						ipList = append(ipList, fmt.Sprintf("%s%%%s", ip.String(), iface.Name))
-					}
-				}
-			}
-		}
-	}
+
 	// now check each port on portlist
 	for _, port := range portList {
 		for _, ip := range ipList {
-			listener, err := net.Listen("tcp", net.JoinHostPort(ip, port))
+			err := utils.CheckIfPortFree(ip, port)
 			if err != nil {
 				usedPortList[port] = true
 				strErr := fmt.Sprintf("ports already in use: %s, address:%s check if cluster already running. Error:%v", port, ip, err)
 				gplog.Error(strErr)
 				return fmt.Errorf(strErr)
 			}
-			listener.Close()
 		}
 	}
 
@@ -307,7 +273,7 @@ Also check if the file is owned by group or user.
 func CheckFilePermissionsFn(filePath string) error {
 	fileInfo, err := utils.System.Stat(filePath)
 	if err != nil {
-		return fmt.Errorf("error getting file info:%v", err)
+		return fmt.Errorf("failed for file:%s getting file info:%v", filePath, err)
 	}
 	// Get current user-id, group-id and checks against initdb file
 	err = CheckFileOwnerGroup(filePath, fileInfo)
@@ -397,17 +363,18 @@ func NormalizeCodesetInLocale(locale string) string {
 }
 
 func dotIfNotEmpty(s string) string {
-	if s != "" {
-		return "." + s
-	}
-	return ""
+	return AddIfNotEmpty(s, ".")
 }
 
 func atIfNotEmpty(s string) string {
+	return AddIfNotEmpty(s, "@")
+}
+
+func AddIfNotEmpty(s string, prepend string) string {
 	if s != "" {
-		return "@" + s
+		return prepend + s
 	}
-	return ""
+	return s
 }
 
 func IsLocaleAvailable(locale_type string, allAvailableLocales string) bool {

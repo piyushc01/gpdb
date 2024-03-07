@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"io/fs"
 	"net"
 	"os"
@@ -135,4 +136,58 @@ func ExecuteAndGetUlimitFn() (int, error) {
 		return -1, fmt.Errorf("could not convert the ulimit value: %v", err)
 	}
 	return ulimitVal, nil
+}
+
+/*
+GetAllAddresses returns list of all IP addresses for all interfaces for the host
+Adds 0.0.0 and "::" to the list
+IPV6 addresses are appended with %interface-name to make them routable
+*/
+func GetAllAddresses() (ipList []string, err error) {
+	ipList = []string{"0.0.0.0", "::"}
+	// Get a list of network interfaces and their addresses
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		strErr := fmt.Sprintf("error getting list of interfaces to check port in use:%v", err)
+		gplog.Error(strErr)
+		return nil, fmt.Errorf(strErr)
+	}
+	// Get addresses for each interface
+	for _, iface := range ifaces {
+		addrs, err := iface.Addrs()
+		if err != nil {
+			strErr := fmt.Sprintf("error getting list of addreses for interface %s. Error:%v", iface.Name, err)
+			gplog.Error(strErr)
+			return nil, fmt.Errorf(strErr)
+		}
+		for _, addr := range addrs {
+			switch v := addr.(type) {
+			case *net.IPNet:
+				ip := v.IP
+				if ip != nil {
+					if ip.To4() != nil {
+						// if it's an IPv4 address
+						ipList = append(ipList, ip.String())
+					} else {
+						// it's an IPv6 address, append interface name to make it routable
+						ipList = append(ipList, fmt.Sprintf("%s%%%s", ip.String(), iface.Name))
+					}
+				}
+			}
+
+		}
+	}
+	return ipList, nil
+}
+
+/*
+CheckIfPortFree returns error if port is not available otherwise returns nil
+*/
+func CheckIfPortFree(ip string, port string) error {
+	listener, err := net.Listen("tcp", net.JoinHostPort(ip, port))
+	if err != nil {
+		return err
+	}
+	listener.Close()
+	return nil
 }
