@@ -267,7 +267,7 @@ func CheckDirEmptyFn(dirPath string) (bool, error) {
 
 /*
 CheckFilePermissionsFn checks if the file has the right permissions.
-Verified if execute permission is available.
+Verifies if execute permission is available.
 Also check if the file is owned by group or user.
 */
 func CheckFilePermissionsFn(filePath string) error {

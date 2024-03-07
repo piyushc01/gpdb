@@ -906,7 +906,7 @@ func TestSetGpUserPasswd(t *testing.T) {
 		defer utils.ResetSystemFunctions()
 
 		hub.SetExecOnDatabase(func(conn *dbconn.DBConn, dbname, query string) error {
-			expectedQuery := "ALTER USER gpadmin WITH PASSWORD 'abc'"
+			expectedQuery := `ALTER USER "gpadmin" WITH PASSWORD 'abc'`
 			if query != expectedQuery {
 				t.Fatalf("got %v, want %v", query, expectedQuery)
 			}
