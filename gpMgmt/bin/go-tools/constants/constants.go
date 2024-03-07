@@ -14,10 +14,8 @@ const (
 	QeConnectFactor     = 3
 	DefaultBuffer       = "128000kB"
 	OsOpenFiles         = 65535
-	DefaultDbName       = "template1"
+	DefaultDatabase     = "template1"
 	DefaultEncoding     = "UTF-8"
 	RolePrimary         = "p"
 	EtcHostsFilepath    = "/etc/hosts"
-	SecurityLimitsConf  = "/etc/security/limits.conf"
-	SecurityLimitsdDir  = "/etc/security/limits.d/"
 )

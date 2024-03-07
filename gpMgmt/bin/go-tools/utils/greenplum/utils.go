@@ -10,9 +10,9 @@ import (
 	"github.com/greenplum-db/gpdb/gp/utils/postgres"
 )
 
-func GetPostgresGpVersion(gphome string) (string, error) {
+func GetPostgresGpVersion(gpHome string) (string, error) {
 	pgGpVersionCmd := &postgres.Postgres{GpVersion: true}
-	out, err := utils.RunExecCommand(pgGpVersionCmd, gphome)
+	out, err := utils.RunExecCommand(pgGpVersionCmd, gpHome)
 	if err != nil {
 		return "", fmt.Errorf("fetching postgres gp-version: %w", err)
 	}

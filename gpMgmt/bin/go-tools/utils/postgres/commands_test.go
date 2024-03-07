@@ -37,7 +37,7 @@ func TestPgCommand(t *testing.T) {
 				Encoding: "encoding",
 				Locale:   "locale",
 			},
-			expected: `gphome/bin/initdb --pgdata pgdata --encoding encoding --locale locale`,
+			expected: `gpHome/bin/initdb --pgdata pgdata --encoding encoding --locale locale`,
 		},
 		{
 			pgCmdOptions: &postgres.PgCtlStart{
@@ -47,7 +47,7 @@ func TestPgCommand(t *testing.T) {
 				NoWait:  false,
 				Logfile: "logfile",
 			},
-			expected: `gphome/bin/pg_ctl start --pgdata pgdata --timeout 10 --wait --log logfile`,
+			expected: `gpHome/bin/pg_ctl start --pgdata pgdata --timeout 10 --wait --log logfile`,
 		},
 		{
 			pgCmdOptions: &postgres.PgCtlStop{
@@ -57,19 +57,19 @@ func TestPgCommand(t *testing.T) {
 				NoWait:  false,
 				Mode:    "smart",
 			},
-			expected: `gphome/bin/pg_ctl stop --pgdata pgdata --timeout 10 --wait --mode smart`,
+			expected: `gpHome/bin/pg_ctl stop --pgdata pgdata --timeout 10 --wait --mode smart`,
 		},
 		{
 			pgCmdOptions: &postgres.Postgres{
 				GpVersion: true,
 			},
-			expected: `gphome/bin/postgres --gp-version`,
+			expected: `gpHome/bin/postgres --gp-version`,
 		},
 	}
 
 	for _, tc := range cases {
 		t.Run("builds the correct command", func(t *testing.T) {
-			pgCmd := utils.NewExecCommand(tc.pgCmdOptions, "gphome")
+			pgCmd := utils.NewExecCommand(tc.pgCmdOptions, "gpHome")
 			if pgCmd.String() != tc.expected {
 				t.Fatalf("got %s, want %s", pgCmd.String(), tc.expected)
 			}
@@ -84,7 +84,7 @@ func TestPgCommand(t *testing.T) {
 			PgData:   "pgdata",
 			Encoding: "encoding",
 		}
-		out, err := utils.RunExecCommand(pgCmdOptions, "gphome")
+		out, err := utils.RunExecCommand(pgCmdOptions, "gpHome")
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
 		}
@@ -105,7 +105,7 @@ func TestPgCommand(t *testing.T) {
 			PgData:   "pgdata",
 			Encoding: "encoding",
 		}
-		out, err := utils.RunExecCommand(pgCmdOptions, "gphome")
+		out, err := utils.RunExecCommand(pgCmdOptions, "gpHome")
 		if status, ok := err.(*exec.ExitError); !ok || status.ExitCode() != 1 {
 			t.Fatalf("unexpected error: %+v", err)
 		}

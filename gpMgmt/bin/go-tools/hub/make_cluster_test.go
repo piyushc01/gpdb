@@ -43,7 +43,7 @@ func TestMakeCluster(t *testing.T) {
 		[]string{"sdw1", "sdw2"},
 		"/tmp/logDir",
 		"gp",
-		"gphome",
+		"gpHome",
 		credentials,
 	}
 
@@ -90,7 +90,7 @@ func TestCreateSegments(t *testing.T) {
 		[]string{"sdw1", "sdw2"},
 		"/tmp/logDir",
 		"gp",
-		"gphome",
+		"gpHome",
 		credentials,
 	}
 	hubServer := hub.New(hubConfig, nil)
@@ -365,7 +365,7 @@ func TestStopCoordinator(t *testing.T) {
 		[]string{"sdw1", "sdw2"},
 		"/tmp/logDir",
 		"gp",
-		"gphome",
+		"gpHome",
 		credentials,
 	}
 	hubServer := hub.New(hubConfig, nil)
@@ -376,7 +376,7 @@ func TestStopCoordinator(t *testing.T) {
 		utils.System.ExecCommand = exectest.NewCommandWithVerifier(exectest.Success, func(utility string, args ...string) {
 			pgCtlCalled = true
 
-			expectedUtility := "gphome/bin/pg_ctl"
+			expectedUtility := "gpHome/bin/pg_ctl"
 			if utility != expectedUtility {
 				t.Fatalf("got %s, want %s", utility, expectedUtility)
 			}
@@ -466,7 +466,7 @@ func TestValidateEnvironment(t *testing.T) {
 		[]string{"sdw1", "sdw2"},
 		"/tmp/logDir",
 		"gp",
-		"gphome",
+		"gpHome",
 		credentials,
 	}
 	hubServer := hub.New(hubConfig, nil)
@@ -576,7 +576,7 @@ func TestValidateEnvironment(t *testing.T) {
 		utils.System.ExecCommand = exectest.NewCommandWithVerifier(exectest.Success, func(utility string, args ...string) {
 			postgresCalled = true
 
-			expectedUtility := "gphome/bin/postgres"
+			expectedUtility := "gpHome/bin/postgres"
 			if utility != expectedUtility {
 				t.Fatalf("got %v, want %v", utility, expectedUtility)
 			}
@@ -865,7 +865,7 @@ func TestCreateDatabase(t *testing.T) {
 
 	t.Run("succesfully creates the database", func(t *testing.T) {
 		hub.SetExecOnDatabase(func(conn *dbconn.DBConn, dbname, query string) error {
-			expectedQuery := "CREATE DATABASE testdb"
+			expectedQuery := `CREATE DATABASE "testdb"`
 			if query != expectedQuery {
 				t.Fatalf("got %v, want %v", query, expectedQuery)
 			}

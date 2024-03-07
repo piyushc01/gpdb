@@ -117,7 +117,7 @@ func TestHubStream(t *testing.T) {
 		stream, res := testutils.NewMockStream()
 
 		dummyCmd := exectest.NewCommand(DummyCommand)
-		err := stream.StreamExecCommand(dummyCmd(""), "gphome")
+		err := stream.StreamExecCommand(dummyCmd(""), "gpHome")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -144,7 +144,7 @@ func TestHubStream(t *testing.T) {
 		stream, res := testutils.NewMockStream()
 
 		dummyCmd := exectest.NewCommand(exectest.Failure)
-		err := stream.StreamExecCommand(dummyCmd(""), "gphome")
+		err := stream.StreamExecCommand(dummyCmd(""), "gpHome")
 
 		var expectedErr *exec.ExitError
 		if !errors.As(err, &expectedErr) {

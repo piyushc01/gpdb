@@ -21,7 +21,7 @@ func TestStartSegment(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	agentServer := agent.New(agent.Config{
-		GpHome: "gphome",
+		GpHome: "gpHome",
 	})
 
 	request := &idl.StartSegmentRequest{
@@ -35,7 +35,7 @@ func TestStartSegment(t *testing.T) {
 		var pgCtlCalled bool
 		utils.System.ExecCommand = exectest.NewCommandWithVerifier(exectest.Success, func(utility string, args ...string) {
 			pgCtlCalled = true
-			expectedUtility := "gphome/bin/pg_ctl"
+			expectedUtility := "gpHome/bin/pg_ctl"
 			if utility != expectedUtility {
 				t.Fatalf("got %s, want %s", utility, expectedUtility)
 			}

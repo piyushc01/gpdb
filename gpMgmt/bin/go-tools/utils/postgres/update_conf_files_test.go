@@ -31,11 +31,13 @@ func TestUpdatePostgresqlConf(t *testing.T) {
 			confContent: `
 guc_1 = value_1
 guc_2 = value_2
-# comment`,
+# comment
+guc_1 = value_1`,
 			expected: `
 guc_1 = 'new_value_1'
 guc_2 = value_2
-# comment`,
+# comment
+guc_1 = 'new_value_1'`,
 		},
 		{
 			overwrite: false,
@@ -45,12 +47,13 @@ guc_2 = value_2
 			confContent: `
 guc_1 = value_1
 guc_2 = value_2
-# comment`,
+# comment
+guc_1 = value_1`,
 			expected: `
-# guc_1 = value_1
-guc_1 = 'new_value_1'
+guc_1 = 'new_value_1' # guc_1 = value_1
 guc_2 = value_2
-# comment`,
+# comment
+guc_1 = 'new_value_1' # guc_1 = value_1`,
 		},
 		{
 			overwrite: true,
@@ -358,17 +361,21 @@ host	all	gpadmin	sdw	trust`,
 		t.Run("errors out when fails to update the conf file", func(t *testing.T) {
 			dname, _ := createTempConfFile(t, "pg_hba.conf", "", 0644)
 			defer os.RemoveAll(dname)
-
-			expectedErr := errors.New("error")
-			utils.System.Create = func(name string) (*os.File, error) {
-				return nil, expectedErr
-			}
 			defer utils.ResetSystemFunctions()
 
 			var err error
+			expectedErr := errors.New("error")
 			if tc.coordinator {
+				utils.System.Create = func(name string) (*os.File, error) {
+					return nil, expectedErr
+				}
+
 				err = postgres.BuildCoordinatorPgHbaConf(dname, []string{"cdw"})
 			} else {
+				utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) {
+					return nil, expectedErr
+				}
+
 				err = postgres.UpdateSegmentPgHbaConf(dname, []string{}, []string{"sdw"})
 			}
 

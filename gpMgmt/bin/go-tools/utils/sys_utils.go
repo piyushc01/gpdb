@@ -51,9 +51,9 @@ func ResetSystemFunctions() {
 }
 
 /*
-		WriteLinesToFile creates a new file with the given contents.
-		If a file with the name already exists, overwrites the file with new contents.
-	    Takes lines to be written as input and updates to the file by adding \n's.
+WriteLinesToFile creates a new file with the given contents.
+If a file with the name already exists, overwrites the file with new contents.
+Takes lines to be written as input and updates to the file by adding \n's.
 */
 func WriteLinesToFile(filename string, lines []string) error {
 	file, err := System.Create(filename)
@@ -63,6 +63,24 @@ func WriteLinesToFile(filename string, lines []string) error {
 	defer file.Close()
 
 	_, err = file.WriteString(strings.Join(lines, "\n"))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+/*
+AppendLinesToFile appends the lines to an existing file.
+*/
+func AppendLinesToFile(filename string, lines []string) error {
+	file, err := System.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = file.WriteString("\n" + strings.Join(lines, "\n"))
 	if err != nil {
 		return err
 	}

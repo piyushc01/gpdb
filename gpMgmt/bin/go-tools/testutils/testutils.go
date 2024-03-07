@@ -49,13 +49,13 @@ func InitializeTestEnv() *hub.Config {
 	}
 	return conf
 }
-func (p *MockPlatform) CreateServiceDir(hostnames []string, serviceDir string, gphome string) error {
+func (p *MockPlatform) CreateServiceDir(hostnames []string, serviceDir string, gpHome string) error {
 	return nil
 }
 func (p *MockPlatform) GetServiceStatusMessage(serviceName string) (string, error) {
 	return p.ServiceStatusMessage, p.Err
 }
-func (p *MockPlatform) GenerateServiceFileContents(process string, gphome string, serviceName string) string {
+func (p *MockPlatform) GenerateServiceFileContents(process string, gpHome string, serviceName string) string {
 	return p.ServiceFileContent
 }
 func (p *MockPlatform) GetDefaultServiceDir() string {
@@ -64,13 +64,13 @@ func (p *MockPlatform) GetDefaultServiceDir() string {
 func (p *MockPlatform) ReloadHubService(servicePath string) error {
 	return p.Err
 }
-func (p *MockPlatform) ReloadAgentService(gphome string, hostList []string, servicePath string) error {
+func (p *MockPlatform) ReloadAgentService(gpHome string, hostList []string, servicePath string) error {
 	return p.Err
 }
-func (p *MockPlatform) CreateAndInstallHubServiceFile(gphome string, serviceDir string, serviceName string) error {
+func (p *MockPlatform) CreateAndInstallHubServiceFile(gpHome string, serviceDir string, serviceName string) error {
 	return p.Err
 }
-func (p *MockPlatform) CreateAndInstallAgentServiceFile(hostnames []string, gphome string, serviceDir string, serviceName string) error {
+func (p *MockPlatform) CreateAndInstallAgentServiceFile(hostnames []string, gpHome string, serviceDir string, serviceName string) error {
 	return p.Err
 }
 func (p *MockPlatform) GetStartHubCommand(serviceName string) *exec.Cmd {
@@ -84,7 +84,7 @@ func (p *MockPlatform) ParseServiceStatusMessage(message string) idl.ServiceStat
 }
 func (p *MockPlatform) DisplayServiceStatus(outfile io.Writer, serviceName string, statuses []*idl.ServiceStatus, skipHeader bool) {
 }
-func (p *MockPlatform) EnableUserLingering(hostnames []string, gphome string, serviceUser string) error {
+func (p *MockPlatform) EnableUserLingering(hostnames []string, gpHome string, serviceUser string) error {
 	return nil
 }
 func (p *MockPlatform) ReadFile(configFilePath string) (config *hub.Config, err error) {

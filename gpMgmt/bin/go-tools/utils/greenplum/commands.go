@@ -17,8 +17,8 @@ type GpStop struct {
 	Verbose         bool   `flag:"-v"`
 }
 
-func (cmd *GpStop) BuildExecCommand(gphome string) *exec.Cmd {
-	utility := utils.GetGpUtilityPath(gphome, gpstop)
+func (cmd *GpStop) BuildExecCommand(gpHome string) *exec.Cmd {
+	utility := utils.GetGpUtilityPath(gpHome, gpstop)
 	args := append([]string{"-a"}, utils.GenerateArgs(cmd)...)
 
 	return utils.System.ExecCommand(utility, args...)
@@ -29,8 +29,8 @@ type GpStart struct {
 	Verbose       bool   `flag:"-v"`
 }
 
-func (cmd *GpStart) BuildExecCommand(gphome string) *exec.Cmd {
-	utility := utils.GetGpUtilityPath(gphome, gpstart)
+func (cmd *GpStart) BuildExecCommand(gpHome string) *exec.Cmd {
+	utility := utils.GetGpUtilityPath(gpHome, gpstart)
 	args := append([]string{"-a"}, utils.GenerateArgs(cmd)...)
 
 	return utils.System.ExecCommand(utility, args...)

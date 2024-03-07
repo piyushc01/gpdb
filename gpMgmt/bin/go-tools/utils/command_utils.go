@@ -12,16 +12,16 @@ import (
 )
 
 type CommandBuilder interface {
-	BuildExecCommand(gphome string) *exec.Cmd
+	BuildExecCommand(gpHome string) *exec.Cmd
 }
 
-func NewExecCommand(cmdBuilder CommandBuilder, gphome string) *exec.Cmd {
-	return cmdBuilder.BuildExecCommand(gphome)
+func NewExecCommand(cmdBuilder CommandBuilder, gpHome string) *exec.Cmd {
+	return cmdBuilder.BuildExecCommand(gpHome)
 }
 
-func NewGpSourcedCommand(cmdBuilder CommandBuilder, gphome string) *exec.Cmd {
-	cmd := cmdBuilder.BuildExecCommand(gphome)
-	gpSourceFilePath := filepath.Join(gphome, "greenplum_path.sh")
+func NewGpSourcedCommand(cmdBuilder CommandBuilder, gpHome string) *exec.Cmd {
+	cmd := cmdBuilder.BuildExecCommand(gpHome)
+	gpSourceFilePath := filepath.Join(gpHome, "greenplum_path.sh")
 
 	return System.ExecCommand("bash", "-c", fmt.Sprintf("source %s && %s", gpSourceFilePath, cmd.String()))
 }
@@ -38,21 +38,21 @@ func runCommand(cmd *exec.Cmd) (*bytes.Buffer, error) {
 
 	if err != nil {
 		return stderr, err
-	} else {
-		return stdout, err
 	}
+
+	return stdout, err
 }
 
-func RunExecCommand(cmdBuilder CommandBuilder, gphome string) (*bytes.Buffer, error) {
-	return runCommand(NewExecCommand(cmdBuilder, gphome))
+func RunExecCommand(cmdBuilder CommandBuilder, gpHome string) (*bytes.Buffer, error) {
+	return runCommand(NewExecCommand(cmdBuilder, gpHome))
 }
 
-func RunGpSourcedCommand(cmdBuilder CommandBuilder, gphome string) (*bytes.Buffer, error) {
-	return runCommand(NewGpSourcedCommand(cmdBuilder, gphome))
+func RunGpSourcedCommand(cmdBuilder CommandBuilder, gpHome string) (*bytes.Buffer, error) {
+	return runCommand(NewGpSourcedCommand(cmdBuilder, gpHome))
 }
 
-func GetGpUtilityPath(gphome, utility string) string {
-	return path.Join(gphome, "bin", utility)
+func GetGpUtilityPath(gpHome, utility string) string {
+	return path.Join(gpHome, "bin", utility)
 }
 
 // GenerateArgs generates command arguments based on the provided CommandBuilder object.
@@ -67,12 +67,12 @@ func GetGpUtilityPath(gphome, utility string) string {
 // Example usage:
 // The CommandBuilder struct needs to be defined in the following way,
 //
-// type sampleCmd struct {
-// 	FlagA string  `flag:"--flagA"`
-// 	FlagB int     `flag:"--flagB"`
-// 	FlagC float64 `flag:"--flagC"`
-// 	FlagD bool    `flag:"--flagD"`
-// }
+//	type sampleCmd struct {
+//		FlagA string  `flag:"--flagA"`
+//		FlagB int     `flag:"--flagB"`
+//		FlagC float64 `flag:"--flagC"`
+//		FlagD bool    `flag:"--flagD"`
+//	}
 //
 // The flag tag is necessary if you want to relate the field value with the
 // actual command's flag
@@ -80,11 +80,11 @@ func GetGpUtilityPath(gphome, utility string) string {
 // To generate the required args, create an object of the CommandBuilder struct and
 // pass it to this function:
 //
-// cmd := sampleCmd{
-// 	FlagA: "value",
-// 	FlagB: 123,
-// 	FlagD: true,
-// }
+//	cmd := sampleCmd{
+//		FlagA: "value",
+//		FlagB: 123,
+//		FlagD: true,
+//	}
 //
 // This will create the following args based on the struct fields:
 // [--flagA value --flagB 123 --flagD]

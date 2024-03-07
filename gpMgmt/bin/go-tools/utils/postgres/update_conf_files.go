@@ -98,38 +98,22 @@ func BuildCoordinatorPgHbaConf(pgdata string, addrs []string) error {
 }
 
 /*
-	UpdateSegmentPgHbaConf updates pg_hba.conf file with the given addresses.
-
+UpdateSegmentPgHbaConf updates pg_hba.conf file with the given addresses.
 For coordinator entry adds all users access and for other addresses, adds user level access.
 */
 func UpdateSegmentPgHbaConf(pgdata string, coordinatorAddrs []string, addrs []string) error {
 	pgHbaFilePath := filepath.Join(pgdata, pgHbaConfFile)
-
-	file, err := utils.System.Open(pgHbaFilePath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	updatedLines := []string{}
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		updatedLines = append(updatedLines, line)
-	}
 
 	user, err := utils.System.CurrentUser()
 	if err != nil {
 		return err
 	}
 
-	// Add coordinator entries
-	addPgHbaEntries(&updatedLines, coordinatorAddrs, "all", "all")
+	updatedLines := []string{}
+	addPgHbaEntries(&updatedLines, coordinatorAddrs, "all", "all") // add coordinator entries
+	addPgHbaEntries(&updatedLines, addrs, "all", user.Username)    // add access entries
 
-	// Add access entries
-	addPgHbaEntries(&updatedLines, addrs, "all", user.Username)
-
-	err = utils.WriteLinesToFile(pgHbaFilePath, updatedLines)
+	err = utils.AppendLinesToFile(pgHbaFilePath, updatedLines)
 	if err != nil {
 		return err
 	}
@@ -153,14 +137,17 @@ func updateConfFile(filename, pgdata string, configParams map[string]string, ove
 	defer file.Close()
 
 	updatedLines := []string{}
+	updatedKeys := []string{}
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line = scanner.Text()
+
 		if strings.HasPrefix(line, "#") {
 			// Skip the commented line
 			updatedLines = append(updatedLines, line)
 			continue
 		}
+
 		for key, value := range configParams {
 			pattern, err := regexp.Compile(fmt.Sprintf("^%s[\\s=]+", key))
 			if err != nil {
@@ -169,15 +156,23 @@ func updateConfFile(filename, pgdata string, configParams map[string]string, ove
 
 			if pattern.MatchString(line) {
 				if !overwrite {
-					updatedLines = append(updatedLines, fmt.Sprintf("# %s", line))
+					line = fmt.Sprintf("%s = %s # %s", key, quoteIfString(value), line) // comment the previous entry
+				} else {
+					line = fmt.Sprintf("%s = %s", key, quoteIfString(value))
 				}
-				line = fmt.Sprintf("%s = %s", key, quoteIfString(value))
-				delete(configParams, key)
+
+				// Mark the key as updated to delete later from configParams
+				updatedKeys = append(updatedKeys, key)
 				break
 			}
 		}
 
 		updatedLines = append(updatedLines, line)
+	}
+
+	// Delete the updated keys to avoid duplicated entries
+	for _, key := range updatedKeys {
+		delete(configParams, key)
 	}
 
 	// Add the remaining entries
@@ -216,7 +211,7 @@ Checks if string is a number, then skips adding quotes to the string.
 func quoteIfString(value string) string {
 	if _, err := strconv.ParseFloat(value, 64); err == nil {
 		return value
-	} else {
-		return fmt.Sprintf("'%s'", value)
 	}
+
+	return fmt.Sprintf("'%s'", value)
 }

@@ -43,7 +43,7 @@ func ConnectDatabase(host string, port int) (*dbconn.DBConn, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn := dbconn.NewDBConn("template1", user.Username, host, port)
+	conn := dbconn.NewDBConn(constants.DefaultDatabase, user.Username, host, port)
 
 	return conn, nil
 }
@@ -129,7 +129,7 @@ func RegisterPrimaries(segs []*idl.Segment, conn *dbconn.DBConn) error {
 func RegisterCoordinator(seg *idl.Segment, conn *dbconn.DBConn) error {
 
 	addCoordinatorQuery := "SELECT pg_catalog.gp_add_segment(1::int2, -1::int2, 'p', 'p', 's', 'u', '%d', '%s', '%s', '%s')"
-	_, err := conn.Exec(fmt.Sprintf(addCoordinatorQuery, int(seg.Port), seg.HostName, seg.HostAddress, seg.DataDirectory))
+	_, err := conn.Exec(fmt.Sprintf(addCoordinatorQuery, seg.Port, seg.HostName, seg.HostAddress, seg.DataDirectory))
 	if err != nil {
 		return err
 	}

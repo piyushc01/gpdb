@@ -5,9 +5,9 @@ go 1.21
 require (
 	github.com/golang/mock v1.6.0
 	github.com/golang/protobuf v1.5.3
-	github.com/greenplum-db/gp-common-go-libs v1.0.11
+	github.com/greenplum-db/gp-common-go-libs v1.0.15
 	github.com/lib/pq v1.10.2
-	github.com/onsi/gomega v1.27.2
+	github.com/onsi/gomega v1.27.10
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.16.0
 	github.com/vbauerster/mpb/v8 v8.6.2
@@ -47,10 +47,10 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
-	golang.org/x/crypto v0.14.0 // indirect
+	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
-	golang.org/x/sys v0.13.0 // indirect
-	golang.org/x/text v0.13.0 // indirect
+	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect

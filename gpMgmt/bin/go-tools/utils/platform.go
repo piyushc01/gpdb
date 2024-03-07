@@ -62,19 +62,19 @@ func NewPlatform(os string) (Platform, error) {
 }
 
 type Platform interface {
-	CreateServiceDir(hostnames []string, serviceDir string, gphome string) error
-	GenerateServiceFileContents(process string, gphome string, serviceName string) string
+	CreateServiceDir(hostnames []string, serviceDir string, gpHome string) error
+	GenerateServiceFileContents(process string, gpHome string, serviceName string) string
 	GetDefaultServiceDir() string
 	ReloadHubService(servicePath string) error
-	ReloadAgentService(gphome string, hostList []string, servicePath string) error
-	CreateAndInstallHubServiceFile(gphome string, serviceDir string, serviceName string) error
-	CreateAndInstallAgentServiceFile(hostnames []string, gphome string, serviceDir string, serviceName string) error
+	ReloadAgentService(gpHome string, hostList []string, servicePath string) error
+	CreateAndInstallHubServiceFile(gpHome string, serviceDir string, serviceName string) error
+	CreateAndInstallAgentServiceFile(hostnames []string, gpHome string, serviceDir string, serviceName string) error
 	GetStartHubCommand(serviceName string) *exec.Cmd
 	GetStartAgentCommandString(serviceName string) []string
 	GetServiceStatusMessage(serviceName string) (string, error)
 	ParseServiceStatusMessage(message string) idl.ServiceStatus
 	DisplayServiceStatus(outfile io.Writer, serviceName string, statuses []*idl.ServiceStatus, skipHeader bool)
-	EnableUserLingering(hostnames []string, gphome string, serviceUser string) error
+	EnableUserLingering(hostnames []string, gpHome string, serviceUser string) error
 	GetPlatformOS() string
 }
 
@@ -92,7 +92,7 @@ func GetPlatform() Platform {
 	return platform
 }
 
-func (p GpPlatform) CreateServiceDir(hostnames []string, serviceDir string, gphome string) error {
+func (p GpPlatform) CreateServiceDir(hostnames []string, serviceDir string, gpHome string) error {
 	hostList := make([]string, 0)
 	for _, host := range hostnames {
 		hostList = append(hostList, "-h", host)
@@ -100,7 +100,7 @@ func (p GpPlatform) CreateServiceDir(hostnames []string, serviceDir string, gpho
 
 	// Create service directory if it does not exist
 	args := append(hostList, "mkdir", "-p", serviceDir)
-	utility := filepath.Join(gphome, "bin", constants.GpSSH)
+	utility := filepath.Join(gpHome, "bin", constants.GpSSH)
 	err := execCommand(utility, args...).Run()
 	if err != nil {
 		return fmt.Errorf("could not create service directory %s on hosts: %w", serviceDir, err)
@@ -128,15 +128,15 @@ func WriteServiceFile(filename string, contents string) error {
 	return nil
 }
 
-func (p GpPlatform) GenerateServiceFileContents(process string, gphome string, serviceName string) string {
+func (p GpPlatform) GenerateServiceFileContents(process string, gpHome string, serviceName string) string {
 	if p.OS == constants.PlatformDarwin {
-		return GenerateDarwinServiceFileContents(process, gphome, serviceName)
+		return GenerateDarwinServiceFileContents(process, gpHome, serviceName)
 	}
 
-	return GenerateLinuxServiceFileContents(process, gphome, serviceName)
+	return GenerateLinuxServiceFileContents(process, gpHome, serviceName)
 }
 
-func GenerateDarwinServiceFileContents(process string, gphome string, serviceName string) string {
+func GenerateDarwinServiceFileContents(process string, gpHome string, serviceName string) string {
 	template := `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -162,10 +162,10 @@ func GenerateDarwinServiceFileContents(process string, gphome string, serviceNam
 </dict>
 </plist>
 `
-	return fmt.Sprintf(template, process, gphome, serviceName, os.Getenv("PATH"))
+	return fmt.Sprintf(template, process, gpHome, serviceName, os.Getenv("PATH"))
 }
 
-func GenerateLinuxServiceFileContents(process string, gphome string, serviceName string) string {
+func GenerateLinuxServiceFileContents(process string, gpHome string, serviceName string) string {
 	template := `[Unit]
 Description=Greenplum Database management utility %[1]s
 
@@ -181,7 +181,7 @@ StandardError=file:/tmp/grpc_%[1]s.log
 Alias=%[3]s_%[1]s.service
 WantedBy=default.target
 `
-	return fmt.Sprintf(template, process, gphome, serviceName)
+	return fmt.Sprintf(template, process, gpHome, serviceName)
 }
 
 func (p GpPlatform) GetDefaultServiceDir() string {
@@ -192,8 +192,8 @@ func (p GpPlatform) GetDefaultServiceDir() string {
 	return "/home/%s/.config/systemd/user"
 }
 
-func (p GpPlatform) CreateAndInstallHubServiceFile(gphome string, serviceDir string, serviceName string) error {
-	hubServiceContents := p.GenerateServiceFileContents("hub", gphome, serviceName)
+func (p GpPlatform) CreateAndInstallHubServiceFile(gpHome string, serviceDir string, serviceName string) error {
+	hubServiceContents := p.GenerateServiceFileContents("hub", gpHome, serviceName)
 	hubServiceFilePath := filepath.Join(serviceDir, fmt.Sprintf("%s_hub.%s", serviceName, p.ServiceExt))
 	err := writeServiceFileFunc(hubServiceFilePath, hubServiceContents)
 	if err != nil {
@@ -233,17 +233,17 @@ func (p GpPlatform) ReloadHubService(servicePath string) error {
 	return nil
 }
 
-func (p GpPlatform) ReloadAgentService(gphome string, hostList []string, servicePath string) error {
+func (p GpPlatform) ReloadAgentService(gpHome string, hostList []string, servicePath string) error {
 	args := append(hostList, p.ServiceCmd)
 
 	if p.OS == constants.PlatformDarwin { // launchctl reloads a specific service, not all of them
 		// launchctl does not have a single reload command. Hence unload and load the file to update the configuration.
-		err := UnloadServiceCommand(fmt.Sprintf("%s/bin/gpssh", gphome), append(args, "unload", servicePath)...).Run()
+		err := UnloadServiceCommand(fmt.Sprintf("%s/bin/gpssh", gpHome), append(args, "unload", servicePath)...).Run()
 		if err != nil {
 			return fmt.Errorf("could not unload agent service file %s on segment hosts: %w", servicePath, err)
 		}
 
-		err = LoadServiceCommand(fmt.Sprintf("%s/bin/gpssh", gphome), append(args, "load", servicePath)...).Run()
+		err = LoadServiceCommand(fmt.Sprintf("%s/bin/gpssh", gpHome), append(args, "load", servicePath)...).Run()
 		if err != nil {
 			return fmt.Errorf("could not load agent service file %s on segment hosts: %w", servicePath, err)
 		}
@@ -251,7 +251,7 @@ func (p GpPlatform) ReloadAgentService(gphome string, hostList []string, service
 		return nil
 	}
 
-	err := execCommand(fmt.Sprintf("%s/bin/gpssh", gphome), append(args, p.UserArg, "daemon-reload")...).Run()
+	err := execCommand(fmt.Sprintf("%s/bin/gpssh", gpHome), append(args, p.UserArg, "daemon-reload")...).Run()
 	if err != nil {
 		return fmt.Errorf("could not reload agent service file %s on segment hosts: %w", servicePath, err)
 	}
@@ -259,8 +259,8 @@ func (p GpPlatform) ReloadAgentService(gphome string, hostList []string, service
 	return nil
 }
 
-func (p GpPlatform) CreateAndInstallAgentServiceFile(hostnames []string, gphome string, serviceDir string, serviceName string) error {
-	agentServiceContents := p.GenerateServiceFileContents("agent", gphome, serviceName)
+func (p GpPlatform) CreateAndInstallAgentServiceFile(hostnames []string, gpHome string, serviceDir string, serviceName string) error {
+	agentServiceContents := p.GenerateServiceFileContents("agent", gpHome, serviceName)
 	localAgentServiceFilePath := fmt.Sprintf("./%s_agent.%s", serviceName, p.ServiceExt)
 	err := writeServiceFileFunc(localAgentServiceFilePath, agentServiceContents)
 	if err != nil {
@@ -276,12 +276,12 @@ func (p GpPlatform) CreateAndInstallAgentServiceFile(hostnames []string, gphome 
 
 	// Copy the file to segment host service directories
 	args := append(hostList, localAgentServiceFilePath, fmt.Sprintf("=:%s", remoteAgentServiceFilePath))
-	err = GpsyncCommand(fmt.Sprintf("%s/bin/gpsync", gphome), args...).Run()
+	err = GpsyncCommand(fmt.Sprintf("%s/bin/gpsync", gpHome), args...).Run()
 	if err != nil {
 		return fmt.Errorf("could not copy agent service files to segment hosts: %w", err)
 	}
 
-	err = p.ReloadAgentService(gphome, hostList, remoteAgentServiceFilePath)
+	err = p.ReloadAgentService(gpHome, hostList, remoteAgentServiceFilePath)
 	if err != nil {
 		return err
 	}
@@ -387,7 +387,7 @@ func (p GpPlatform) DisplayServiceStatus(outfile io.Writer, serviceName string, 
 
 // Allow systemd services to run on startup and be started/stopped without root access
 // This is a no-op on Mac, as launchctl lacks the concept of user lingering
-func (p GpPlatform) EnableUserLingering(hostnames []string, gphome string, serviceUser string) error {
+func (p GpPlatform) EnableUserLingering(hostnames []string, gpHome string, serviceUser string) error {
 	if p.OS != "linux" {
 		return nil
 	}
@@ -398,7 +398,7 @@ func (p GpPlatform) EnableUserLingering(hostnames []string, gphome string, servi
 	}
 
 	remoteCmd := append(hostList, "loginctl enable-linger ", serviceUser)
-	err := execCommand(fmt.Sprintf("%s/bin/gpssh", gphome), remoteCmd...).Run()
+	err := execCommand(fmt.Sprintf("%s/bin/gpssh", gpHome), remoteCmd...).Run()
 	if err != nil {
 		return fmt.Errorf("could not enable user lingering: %w", err)
 	}

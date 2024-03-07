@@ -35,7 +35,7 @@ func TestRunExecCommand(t *testing.T) {
 		utils.System.ExecCommand = exectest.NewCommand(CommandSuccess)
 		defer utils.ResetSystemFunctions()
 
-		out, err := utils.RunExecCommand(cmd, "gphome")
+		out, err := utils.RunExecCommand(cmd, "gpHome")
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
 		}
@@ -54,7 +54,7 @@ func TestRunExecCommand(t *testing.T) {
 		})
 		defer utils.ResetSystemFunctions()
 
-		out, err := utils.RunGpSourcedCommand(cmd, "gphome")
+		out, err := utils.RunGpSourcedCommand(cmd, "gpHome")
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
 		}
@@ -69,7 +69,7 @@ func TestRunExecCommand(t *testing.T) {
 			t.Fatalf("got %q, want %q", calledUtility, expectedUtility)
 		}
 
-		expectedArgs := "-c source gphome/greenplum_path.sh &&"
+		expectedArgs := "-c source gpHome/greenplum_path.sh &&"
 		if !strings.HasPrefix(calledArgs, expectedArgs) {
 			t.Fatalf("got %q, want prefix %q", calledArgs, expectedArgs)
 		}
@@ -79,7 +79,7 @@ func TestRunExecCommand(t *testing.T) {
 		utils.System.ExecCommand = exectest.NewCommand(CommandFailure)
 		defer utils.ResetSystemFunctions()
 
-		out, err := utils.RunExecCommand(cmd, "gphome")
+		out, err := utils.RunExecCommand(cmd, "gpHome")
 		if err == nil {
 			t.Fatalf("expected error")
 		}
@@ -105,7 +105,7 @@ type testCmd struct {
 	FlagE string
 }
 
-func (c *testCmd) BuildExecCommand(gphome string) *exec.Cmd {
+func (c *testCmd) BuildExecCommand(gpHome string) *exec.Cmd {
 	return nil
 }
 
@@ -117,7 +117,7 @@ type invalidTestCmd struct {
 	FlagD int8    `flag:"--flagD"`
 }
 
-func (c *invalidTestCmd) BuildExecCommand(gphome string) *exec.Cmd {
+func (c *invalidTestCmd) BuildExecCommand(gpHome string) *exec.Cmd {
 	return nil
 }
 

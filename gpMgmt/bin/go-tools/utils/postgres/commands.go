@@ -25,8 +25,8 @@ type Initdb struct {
 	DataChecksums bool   `flag:"--data-checksums"`
 }
 
-func (cmd *Initdb) BuildExecCommand(gphome string) *exec.Cmd {
-	utility := utils.GetGpUtilityPath(gphome, initdbUtility)
+func (cmd *Initdb) BuildExecCommand(gpHome string) *exec.Cmd {
+	utility := utils.GetGpUtilityPath(gpHome, initdbUtility)
 	args := utils.GenerateArgs(cmd)
 
 	return utils.System.ExecCommand(utility, args...)
@@ -41,8 +41,8 @@ type PgCtlStart struct {
 	Options string `flag:"--options"`
 }
 
-func (cmd *PgCtlStart) BuildExecCommand(gphome string) *exec.Cmd {
-	utility := utils.GetGpUtilityPath(gphome, pgCtlUtility)
+func (cmd *PgCtlStart) BuildExecCommand(gpHome string) *exec.Cmd {
+	utility := utils.GetGpUtilityPath(gpHome, pgCtlUtility)
 	args := append([]string{"start"}, utils.GenerateArgs(cmd)...)
 
 	return utils.System.ExecCommand(utility, args...)
@@ -56,8 +56,8 @@ type PgCtlStop struct {
 	Mode    string `flag:"--mode"`
 }
 
-func (cmd *PgCtlStop) BuildExecCommand(gphome string) *exec.Cmd {
-	utility := utils.GetGpUtilityPath(gphome, pgCtlUtility)
+func (cmd *PgCtlStop) BuildExecCommand(gpHome string) *exec.Cmd {
+	utility := utils.GetGpUtilityPath(gpHome, pgCtlUtility)
 	args := append([]string{"stop"}, utils.GenerateArgs(cmd)...)
 
 	return utils.System.ExecCommand(utility, args...)
@@ -67,8 +67,8 @@ type Postgres struct {
 	GpVersion bool `flag:"--gp-version"`
 }
 
-func (cmd *Postgres) BuildExecCommand(gphome string) *exec.Cmd {
-	utililty := utils.GetGpUtilityPath(gphome, postgresUtility)
+func (cmd *Postgres) BuildExecCommand(gpHome string) *exec.Cmd {
+	utililty := utils.GetGpUtilityPath(gpHome, postgresUtility)
 	args := utils.GenerateArgs(cmd)
 	return utils.System.ExecCommand(utililty, args...)
 }

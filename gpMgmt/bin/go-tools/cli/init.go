@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -288,7 +289,7 @@ func ValidateInputConfigAndSetDefaultsFn(request *idl.MakeClusterRequest, cliHan
 
 	if request.ClusterParams.Encoding == "" {
 		gplog.Info(fmt.Sprintf("Could not find encoding in cluster config, defaulting to %v", constants.DefaultEncoding))
-		request.ClusterParams.Encoding = "UTF-8"
+		request.ClusterParams.Encoding = constants.DefaultEncoding
 	}
 
 	if request.ClusterParams.Encoding == "SQL_ASCII" {
@@ -407,11 +408,14 @@ func SetDefaultLocaleFn(locale *idl.Locale) error {
 IsGpServicesEnabledFn returns error if any of the hosts from config does not have gp services enabled
 */
 func IsGpServicesEnabledFn(req *idl.MakeClusterRequest) error {
-	hostnames = []string{}
-	hostnames = append(hostnames, req.GpArray.Coordinator.HostName)
+	hostnames = []string{req.GpArray.Coordinator.HostName}
 	for _, seg := range req.GetPrimarySegments() {
 		hostnames = append(hostnames, seg.HostName)
 	}
+	
+	// remove any duplicate entries
+	slices.Sort(hostnames)
+	hostnames = slices.Compact(hostnames)
 
 	diff := utils.GetListDifference(hostnames, Conf.Hostnames)
 	if len(diff) != 0 {

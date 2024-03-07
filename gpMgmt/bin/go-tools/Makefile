@@ -18,6 +18,9 @@ unit:
 	$$3!="" { cov+=($$3==1?$$2:0); stat+=$$2; } \
     END {printf("\n\ntotal coverage: %.2f%% of statements\n", (cov/stat)*100);}'
 
+# You can override this from the command line to run tests for specific utility.
+# For example, to run start related tests: make integration UTILITY=start
+# NOTE: If hostfile is not provided, by default it will run tests on localhost.
 UTILITY = ''
 integration: TEST_PACKAGES := $(shell go list ./test/integration/... | grep -E $(UTILITY))
 integration:

@@ -10,6 +10,7 @@ import (
 
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
+	"github.com/greenplum-db/gpdb/gp/constants"
 	"github.com/greenplum-db/gpdb/gp/idl"
 	"github.com/greenplum-db/gpdb/gp/utils"
 	"github.com/greenplum-db/gpdb/gp/utils/greenplum"
@@ -385,7 +386,7 @@ func ExecOnDatabase(conn *dbconn.DBConn, dbname string, query string) error {
 func CreateGpToolkitExt(conn *dbconn.DBConn) error {
 	createExtensionQuery := "CREATE EXTENSION gp_toolkit"
 
-	for _, dbname := range []string{"template1", "postgres"} {
+	for _, dbname := range []string{constants.DefaultDatabase, "postgres"} {
 		if err := execOnDatabaseFunc(conn, dbname, createExtensionQuery); err != nil {
 			return err
 		}
@@ -412,7 +413,7 @@ func ImportCollation(conn *dbconn.DBConn) error {
 		return err
 	}
 
-	for _, dbname := range []string{"template1", "postgres"} {
+	for _, dbname := range []string{constants.DefaultDatabase, "postgres"} {
 		if err := execOnDatabaseFunc(conn, dbname, importCollationQuery); err != nil {
 			return err
 		}
@@ -426,8 +427,8 @@ func ImportCollation(conn *dbconn.DBConn) error {
 }
 
 func CreateDatabase(conn *dbconn.DBConn, dbname string) error {
-	createDbQuery := fmt.Sprintf("CREATE DATABASE %s", dbname)
-	if err := execOnDatabaseFunc(conn, "template1", createDbQuery); err != nil {
+	createDbQuery := fmt.Sprintf("CREATE DATABASE %q", dbname)
+	if err := execOnDatabaseFunc(conn, constants.DefaultDatabase, createDbQuery); err != nil {
 		return err
 	}
 
@@ -440,8 +441,8 @@ func SetGpUserPasswd(conn *dbconn.DBConn, passwd string) error {
 		return err
 	}
 
-	alterPasswdQuery := fmt.Sprintf("ALTER USER %s WITH PASSWORD '%s'", user.Username, passwd)
-	if err := execOnDatabaseFunc(conn, "template1", alterPasswdQuery); err != nil {
+	alterPasswdQuery := fmt.Sprintf("ALTER USER %q WITH PASSWORD '%s'", user.Username, passwd)
+	if err := execOnDatabaseFunc(conn, constants.DefaultDatabase, alterPasswdQuery); err != nil {
 		return err
 	}
 

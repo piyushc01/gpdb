@@ -4,7 +4,9 @@ import (
 	"errors"
 	"net"
 	"os"
+	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
@@ -64,18 +66,19 @@ func TestGetListDifference(t *testing.T) {
 
 func TestWriteLinesToFile(t *testing.T) {
 	testhelper.SetupTestLogger()
+
 	t.Run("succesfully writes to the file", func(t *testing.T) {
-		file := "/tmp/testfile001"
-		defer os.Remove(file)
+		filename := filepath.Join(os.TempDir(), "test")
+		defer os.Remove(filename)
 
 		lines := []string{"line1", "line2", "line3"}
-		err := utils.WriteLinesToFile(file, lines)
+		err := utils.WriteLinesToFile(filename, lines)
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
 		}
 
-		expected := "line1\nline2\nline3"
-		testutils.AssertFileContents(t, file, expected)
+		expected := strings.Join(lines, "\n")
+		testutils.AssertFileContents(t, filename, expected)
 	})
 
 	t.Run("errors out when not able to create the file", func(t *testing.T) {
@@ -108,6 +111,59 @@ func TestWriteLinesToFile(t *testing.T) {
 		defer utils.ResetSystemFunctions()
 
 		err := utils.WriteLinesToFile("", []string{})
+
+		expectedErr := os.ErrClosed
+		if !errors.Is(err, expectedErr) {
+			t.Fatalf("got %#v, want %#v", err, expectedErr)
+		}
+	})
+}
+
+func TestAppendLinesToFile(t *testing.T) {
+	testhelper.SetupTestLogger()
+
+	t.Run("succesfully appends to the file", func(t *testing.T) {
+		file, err := os.CreateTemp("", "")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		defer os.Remove(file.Name())
+
+		existingLines := []string{"line1", "line2", "line3"}
+		_, err = file.WriteString(strings.Join(existingLines, "\n"))
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		newLines := []string{"line4", "line5", "line6"}
+		err = utils.AppendLinesToFile(file.Name(), newLines)
+		if err != nil {
+			t.Fatalf("unexpected error: %#v", err)
+		}
+
+		expected := strings.Join(append(existingLines, newLines...), "\n")
+		testutils.AssertFileContents(t, file.Name(), expected)
+	})
+
+	t.Run("errors out when the file does not exist", func(t *testing.T) {
+		err := utils.AppendLinesToFile("non_exisitng_file", []string{})
+
+		expectedErr := os.ErrNotExist
+		if !errors.Is(err, expectedErr) {
+			t.Fatalf("got %#v, want %#v", err, expectedErr)
+		}
+	})
+
+	t.Run("errors out when not able to write to the file", func(t *testing.T) {
+		utils.System.OpenFile = func(name string, flag int, perm os.FileMode) (*os.File, error) {
+			_, writer, _ := os.Pipe()
+			writer.Close()
+
+			return writer, nil
+		}
+		defer utils.ResetSystemFunctions()
+
+		err := utils.AppendLinesToFile("", []string{})
 
 		expectedErr := os.ErrClosed
 		if !errors.Is(err, expectedErr) {

@@ -23,7 +23,7 @@ func TestGetPostgresGpVersion(t *testing.T) {
 		expectedStr := "fetching postgres gp-version:"
 		utils.System.ExecCommand = exectest.NewCommand(exectest.Failure)
 		defer utils.ResetSystemFunctions()
-		_, err := greenplum.GetPostgresGpVersion("/gphome")
+		_, err := greenplum.GetPostgresGpVersion("/gpHome")
 		if err == nil || !strings.Contains(err.Error(), expectedStr) {
 			t.Fatalf("expected errror: `%s`, got error:`%v`", expectedStr, err)
 		}
@@ -32,7 +32,7 @@ func TestGetPostgresGpVersion(t *testing.T) {
 	t.Run("returns no error when command is successful", func(t *testing.T) {
 		utils.System.ExecCommand = exectest.NewCommand(exectest.Success)
 		defer utils.ResetSystemFunctions()
-		_, err := greenplum.GetPostgresGpVersion("/gphome")
+		_, err := greenplum.GetPostgresGpVersion("/gpHome")
 		if err != nil {
 			t.Fatalf("expected no errror, got error:`%v`", err)
 		}
@@ -42,7 +42,7 @@ func TestGetPostgresGpVersion(t *testing.T) {
 		expectedStr := "test-version-1234"
 		utils.System.ExecCommand = exectest.NewCommand(PgVersionCmd)
 		defer utils.ResetSystemFunctions()
-		version, err := greenplum.GetPostgresGpVersion("/gphome")
+		version, err := greenplum.GetPostgresGpVersion("/gpHome")
 		if err != nil || !strings.Contains(version, expectedStr) {
 			t.Fatalf("expected version: `%s`, got version:`%v`", expectedStr, version)
 		}

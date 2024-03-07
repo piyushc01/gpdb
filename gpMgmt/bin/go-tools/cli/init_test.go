@@ -727,7 +727,7 @@ func TestIsGpServicesEnabledFn(t *testing.T) {
 		defer resetCLIVars()
 		defer resetConfHostnames()
 		cli.Conf.Hostnames = []string{"cdw", "sdw1"}
-		expectedError := "following hostnames [sdw2 sdw2] do not have gp services configured. Please configure the services"
+		expectedError := "following hostnames [sdw2] do not have gp services configured. Please configure the services"
 		err := cli.IsGpServicesEnabled(&idl.MakeClusterRequest{GpArray: &gparray})
 		if err == nil || !strings.Contains(err.Error(), expectedError) {
 			t.Fatalf("got %v, want %v", err, expectedError)

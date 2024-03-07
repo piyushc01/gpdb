@@ -166,7 +166,7 @@ func TestValidatePgVersionFn(t *testing.T) {
 		utils.System.ExecCommand = exectest.NewCommand(exectest.Failure)
 		defer utils.ResetSystemFunctions()
 
-		err := agent.ValidatePgVersionFn("expected-version", "gphome")
+		err := agent.ValidatePgVersionFn("expected-version", "gpHome")
 		expectedStr := "fetching postgres gp-version: exit status 1"
 		if err == nil || !strings.Contains(err.Error(), expectedStr) {
 			t.Fatalf("expected error:`%s`, got error:`%s`", expectedStr, err)
@@ -176,7 +176,7 @@ func TestValidatePgVersionFn(t *testing.T) {
 		utils.System.ExecCommand = exectest.NewCommand(exectest.Success)
 		defer utils.ResetSystemFunctions()
 
-		err := agent.ValidatePgVersionFn("", "gphome")
+		err := agent.ValidatePgVersionFn("", "gpHome")
 		if err != nil {
 			t.Fatalf("expected no error, got error:`%s`", err)
 		}
@@ -186,7 +186,7 @@ func TestValidatePgVersionFn(t *testing.T) {
 		utils.System.ExecCommand = exectest.NewCommand(PgVersionCmd)
 		defer utils.ResetSystemFunctions()
 
-		err := agent.ValidatePgVersionFn(expectedVersion, "gphome")
+		err := agent.ValidatePgVersionFn(expectedVersion, "gpHome")
 		if err != nil {
 			t.Fatalf("expected no error, got error:`%s`", err)
 		}
@@ -196,7 +196,7 @@ func TestValidatePgVersionFn(t *testing.T) {
 		utils.System.ExecCommand = exectest.NewCommand(PgVersionCmd)
 		defer utils.ResetSystemFunctions()
 
-		err := agent.ValidatePgVersionFn(expectedVersion, "gphome")
+		err := agent.ValidatePgVersionFn(expectedVersion, "gpHome")
 		expectedStr := "postgres gp-version does not matches with coordinator postgres gp-version."
 		if err == nil || !strings.Contains(err.Error(), expectedStr) {
 			t.Fatalf("expected error: `%s`, got error:`%s`", expectedStr, err)

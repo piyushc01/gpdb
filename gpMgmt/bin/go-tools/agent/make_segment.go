@@ -13,12 +13,9 @@ import (
 	"github.com/greenplum-db/gpdb/gp/utils/postgres"
 )
 
-/*
-MakeSegment implements RP to crate single instance of segment
-Input: segment details like data-direcory, port, locale, coordinator address, Hda-Hostname flag etc
-Makes a call to initdb to create the postgres instance.
-Followed by updating the configuration (pg_hba.conf, postgresql.con)
-*/
+// MakeSegment is an RPC which creates a new segment instance with the specified
+// configuration from the MakeSegmentRequest. It calls initdb and updates the
+// necessary configuration files.
 func (s *Server) MakeSegment(ctx context.Context, request *idl.MakeSegmentRequest) (*idl.MakeSegmentReply, error) {
 	dataDirectory := request.Segment.DataDirectory
 	locale := request.Locale

@@ -34,7 +34,7 @@ func TestMakeSegment(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	agentServer := agent.New(agent.Config{
-		GpHome: "gphome",
+		GpHome: "gpHome",
 	})
 
 	request := &idl.MakeSegmentRequest{
@@ -115,7 +115,7 @@ host	all	gpadmin	2001:db8::/32	trust
 
 			utils.System.ExecCommand = exectest.NewCommandWithVerifier(exectest.Success, func(utility string, args ...string) {
 				initdbCalled = true
-				expectedUtility := "gphome/bin/initdb"
+				expectedUtility := "gpHome/bin/initdb"
 				if utility != expectedUtility {
 					t.Fatalf("got %s, want %s", utility, expectedUtility)
 				}

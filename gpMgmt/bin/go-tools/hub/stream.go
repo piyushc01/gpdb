@@ -15,7 +15,7 @@ type streamSender interface {
 type hubStreamer interface {
 	StreamLogMsg(msg string, level ...idl.LogLevel)
 	StreamStdoutMsg(msg string)
-	StreamExecCommand(cmd *exec.Cmd, gphome string) error
+	StreamExecCommand(cmd *exec.Cmd, gpHome string) error
 	StreamProgressMsg(label string, total int)
 }
 
@@ -81,7 +81,7 @@ func (h *HubStream) StreamStdoutMsg(msg string) {
 StreamExecCommand runs the given exec.Cmd and streams its
 stdout and stderr from hub to the CLI
 */
-func (h *HubStream) StreamExecCommand(cmd *exec.Cmd, gphome string) error {
+func (h *HubStream) StreamExecCommand(cmd *exec.Cmd, gpHome string) error {
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
