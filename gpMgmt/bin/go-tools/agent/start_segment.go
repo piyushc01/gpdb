@@ -21,7 +21,7 @@ func (s *Server) StartSegment(ctx context.Context, in *idl.StartSegmentRequest) 
 		Wait:    in.Wait,
 		Timeout: int(in.Timeout),
 		Options: in.Options,
-		Logfile: filepath.Join(in.DataDir, "log", "startup.log"),
+		Logfile: filepath.Join(in.DataDir, "log", "startup.log"), // TODO: Consider changing this to the log_directory GUC or gpAdminLogs
 	}
 	out, err := utils.RunExecCommand(&pgCtlStartOptions, s.GpHome)
 	if err != nil {

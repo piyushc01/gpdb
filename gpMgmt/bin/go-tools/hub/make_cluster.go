@@ -38,20 +38,19 @@ func (s *Server) MakeCluster(request *idl.MakeClusterRequest, stream idl.Hub_Mak
 
 	err = s.DialAllAgents()
 	if err != nil {
-		return err
+		return utils.LogAndReturnError(err)
 	}
 
-	hubStream.StreamLogMsg("Starting MakeCluster")
+	hubStream.StreamLogMsg("Starting to create the cluster")
 	err = s.ValidateEnvironment(&hubStream, request)
 	if err != nil {
-		gplog.Error("Error during validation:%v", err)
-		return err
+		return utils.LogAndReturnError(fmt.Errorf("validating hosts: %w", err))
 	}
 
 	hubStream.StreamLogMsg("Creating coordinator segment")
 	err = s.CreateAndStartCoordinator(request.GpArray.Coordinator, request.ClusterParams)
 	if err != nil {
-		return err
+		return utils.LogAndReturnError(err)
 	}
 	hubStream.StreamLogMsg("Successfully created coordinator segment")
 
@@ -61,35 +60,35 @@ func (s *Server) MakeCluster(request *idl.MakeClusterRequest, stream idl.Hub_Mak
 
 	conn, err := greenplum.ConnectDatabase(request.GpArray.Coordinator.HostName, int(request.GpArray.Coordinator.Port))
 	if err != nil {
-		return fmt.Errorf("connecting to database: %w", err)
+		return utils.LogAndReturnError(fmt.Errorf("connecting to database: %w", err))
 	}
 
 	err = conn.Connect(1, true)
 	if err != nil {
-		return err
+		return utils.LogAndReturnError(err)
 	}
 
 	err = greenplum.RegisterCoordinator(request.GpArray.Coordinator, conn)
 	if err != nil {
-		return err
+		return utils.LogAndReturnError(err)
 	}
 
 	err = greenplum.RegisterPrimaries(request.GetPrimarySegments(), conn)
 	if err != nil {
-		return err
+		return utils.LogAndReturnError(err)
 	}
 	hubStream.StreamLogMsg("Successfully registered primary segments with the coordinator")
 
 	gpArray := greenplum.NewGpArray()
 	err = gpArray.ReadGpSegmentConfig(conn)
 	if err != nil {
-		return err
+		return utils.LogAndReturnError(err)
 	}
 	conn.Close()
 
 	primarySegs, err := gpArray.GetPrimarySegments()
 	if err != nil {
-		return err
+		return utils.LogAndReturnError(err)
 	}
 
 	var coordinatorAddrs []string
@@ -98,7 +97,7 @@ func (s *Server) MakeCluster(request *idl.MakeClusterRequest, stream idl.Hub_Mak
 	} else {
 		addrs, err := utils.GetHostAddrsNoLoopback()
 		if err != nil {
-			return err
+			return utils.LogAndReturnError(err)
 		}
 
 		coordinatorAddrs = append(coordinatorAddrs, addrs...)
@@ -107,7 +106,7 @@ func (s *Server) MakeCluster(request *idl.MakeClusterRequest, stream idl.Hub_Mak
 	hubStream.StreamLogMsg("Creating primary segments")
 	err = s.CreateSegments(&hubStream, primarySegs, request.ClusterParams, coordinatorAddrs)
 	if err != nil {
-		return err
+		return utils.LogAndReturnError(err)
 	}
 	hubStream.StreamLogMsg("Successfully created primary segments")
 
@@ -116,9 +115,10 @@ func (s *Server) MakeCluster(request *idl.MakeClusterRequest, stream idl.Hub_Mak
 	hubStream.StreamLogMsg("Restarting the Greenplum cluster in production mode")
 	err = s.StopCoordinator(&hubStream, request.GpArray.Coordinator.DataDirectory)
 	if err != nil {
-		return err
+		return utils.LogAndReturnError(err)
 	}
 
+	// TODO: Replace this with the new gp start once it is complete
 	gpstartOptions := &greenplum.GpStart{
 		DataDirectory: request.GpArray.Coordinator.DataDirectory,
 		Verbose:       request.Verbose,
@@ -126,35 +126,35 @@ func (s *Server) MakeCluster(request *idl.MakeClusterRequest, stream idl.Hub_Mak
 	cmd := utils.NewGpSourcedCommand(gpstartOptions, s.GpHome)
 	err = hubStream.StreamExecCommand(cmd, s.GpHome)
 	if err != nil {
-		return fmt.Errorf("executing gpstart: %w", err)
+		return utils.LogAndReturnError(fmt.Errorf("executing gpstart: %w", err))
 	}
 	hubStream.StreamLogMsg("Completed restart of Greenplum cluster in production mode")
 
 	hubStream.StreamLogMsg("Creating core GPDB extensions")
 	err = CreateGpToolkitExt(conn)
 	if err != nil {
-		return err
+		return utils.LogAndReturnError(err)
 	}
 	hubStream.StreamLogMsg("Successfully created core GPDB extensions")
 
 	hubStream.StreamLogMsg("Importing system collations")
 	err = ImportCollation(conn)
 	if err != nil {
-		return err
+		return utils.LogAndReturnError(err)
 	}
 
 	if request.ClusterParams.DbName != "" {
 		hubStream.StreamLogMsg(fmt.Sprintf("Creating database %q", request.ClusterParams.DbName))
 		err = CreateDatabase(conn, request.ClusterParams.DbName)
 		if err != nil {
-			return err
+			return utils.LogAndReturnError(err)
 		}
 	}
 
 	hubStream.StreamLogMsg("Setting Greenplum superuser password")
 	err = SetGpUserPasswd(conn, request.ClusterParams.SuPassword)
 	if err != nil {
-		return err
+		return utils.LogAndReturnError(err)
 	}
 
 	return nil

@@ -2,9 +2,10 @@ package utils
 
 import (
 	"fmt"
-	"github.com/greenplum-db/gp-common-go-libs/gplog"
 
 	"google.golang.org/grpc/status"
+
+	"github.com/greenplum-db/gp-common-go-libs/gplog"
 )
 
 func FormatGrpcError(err error) error {

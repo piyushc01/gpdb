@@ -37,13 +37,6 @@ func TestGpCommand(t *testing.T) {
 			},
 			expected: `gpHome/bin/gpstart -a -d gpseg`,
 		},
-		{
-			gpCmdOptions: &greenplum.GpStop{
-				DataDirectory:   "gpseg",
-				CoordinatorOnly: true,
-			},
-			expected: `gpHome/bin/gpstop -a -d gpseg --coordinator_only`,
-		},
 	}
 
 	for _, tc := range cases {

@@ -412,7 +412,7 @@ func IsGpServicesEnabledFn(req *idl.MakeClusterRequest) error {
 	for _, seg := range req.GetPrimarySegments() {
 		hostnames = append(hostnames, seg.HostName)
 	}
-	
+
 	// remove any duplicate entries
 	slices.Sort(hostnames)
 	hostnames = slices.Compact(hostnames)
