@@ -184,7 +184,7 @@ func (s *Server) ValidateEnvironment(stream hubStreamer, request *idl.MakeCluste
 		}
 		hostAddressMap[seg.HostName][seg.HostAddress] = true
 	}
-	gplog.Verbose("Host-Address-Map:[%v]", hostAddressMap)
+	gplog.Debug("Host-Address-Map:[%v]", hostAddressMap)
 
 	// Get local gpVersion
 
@@ -206,7 +206,7 @@ func (s *Server) ValidateEnvironment(stream hubStreamer, request *idl.MakeCluste
 		for address := range hostAddressMap[conn.Hostname] {
 			addressList = append(addressList, address)
 		}
-		gplog.Verbose("AddressList:[%v]", addressList)
+		gplog.Debug("AddressList:[%v]", addressList)
 
 		validateReq := idl.ValidateHostEnvRequest{
 			DirectoryList:   dirList,

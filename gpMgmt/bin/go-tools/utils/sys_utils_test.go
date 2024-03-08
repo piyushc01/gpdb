@@ -19,7 +19,7 @@ import (
 func TestCheckIfPortFree(t *testing.T) {
 	testhelper.SetupTestLogger()
 	t.Run("returns no error when port not in use", func(t *testing.T) {
-		err := utils.CheckIfPortFree("localhost", "9946")
+		_, err := utils.CheckIfPortFree("localhost", "9946")
 		if err != nil {
 			t.Fatalf("Got error %v, expected no error", err)
 		}
@@ -34,7 +34,7 @@ func TestCheckIfPortFree(t *testing.T) {
 		}
 		defer listener.Close()
 
-		err = utils.CheckIfPortFree(hostName, portNum)
+		_, err = utils.CheckIfPortFree(hostName, portNum)
 		if err == nil || !strings.Contains(err.Error(), strErr) {
 			t.Fatalf("Got error %v, expected:%sr", err, strErr)
 		}

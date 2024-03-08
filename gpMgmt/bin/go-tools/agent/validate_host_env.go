@@ -38,7 +38,7 @@ Performs various checks on host like gpdb version, permissions to initdb, data d
 */
 
 func (s *Server) ValidateHostEnv(ctx context.Context, request *idl.ValidateHostEnvRequest) (*idl.ValidateHostEnvReply, error) {
-	gplog.Verbose("Starting ValidateHostEnvFn for request:%v", request)
+	gplog.Debug("Starting ValidateHostEnvFn for request:%v", request)
 	dirList := request.DirectoryList
 	locale := request.Locale
 	portList := request.PortList
@@ -48,60 +48,56 @@ func (s *Server) ValidateHostEnv(ctx context.Context, request *idl.ValidateHostE
 	if utils.System.Getuid() == 0 {
 		userInfo, err := utils.System.CurrentUser()
 		if err != nil {
-			errString := fmt.Sprintf("failed to get user name Error:%v. Current user is a root user. Can't create cluster under root", err)
-			gplog.Error(errString)
-			return &idl.ValidateHostEnvReply{}, fmt.Errorf(errString)
+			return &idl.ValidateHostEnvReply{}, utils.LogAndReturnError(fmt.Errorf(
+				"failed to get user name Error:%v. Current user is a root user. Can't create cluster under root", err))
 		}
-		return &idl.ValidateHostEnvReply{}, fmt.Errorf("user:%s is a root user, Can't create cluster under root user", userInfo.Name)
+		return &idl.ValidateHostEnvReply{}, utils.LogAndReturnError(fmt.Errorf(
+			"user:%s is a root user, Can't create cluster under root user", userInfo.Name))
 	}
-	gplog.Verbose("Done with checking user is non root")
 
 	//Check for GP Version
 	gpVersionErr := VerifyPgVersion(request.GpVersion, s.GpHome)
 	if gpVersionErr != nil {
-		gplog.Error("Postgres gp-version validation failed:%v", gpVersionErr)
-		return &idl.ValidateHostEnvReply{}, gpVersionErr
+		return &idl.ValidateHostEnvReply{}, utils.LogAndReturnError(fmt.Errorf("Postgres gp-version validation failed:%v", gpVersionErr))
 	}
 
 	// Check for each directory if is empty
 	nonEmptyDirList, err := GetAllNonEmptyDir(dirList)
 	if err != nil {
-		return &idl.ValidateHostEnvReply{}, fmt.Errorf("error checking directory empty:%v", err)
+		return &idl.ValidateHostEnvReply{}, utils.LogAndReturnError(fmt.Errorf("error checking directory empty:%v", err))
 	}
 
 	if len(nonEmptyDirList) > 0 && !forced {
-		return &idl.ValidateHostEnvReply{}, fmt.Errorf("directory not empty:%v", nonEmptyDirList)
+		return &idl.ValidateHostEnvReply{}, utils.LogAndReturnError(fmt.Errorf("directory not empty:%v", nonEmptyDirList))
 	}
 	if forced && len(nonEmptyDirList) > 0 {
 
-		gplog.Verbose("Forced init. Deleting non-empty directories:%s", nonEmptyDirList)
+		gplog.Debug("Forced init. Deleting non-empty directories:%s", nonEmptyDirList)
 		for _, dir := range nonEmptyDirList {
 			err := utils.System.RemoveAll(dir)
 			if err != nil {
-				return &idl.ValidateHostEnvReply{}, fmt.Errorf("delete not empty dir:%s, error:%v", dir, err)
+				return &idl.ValidateHostEnvReply{}, utils.LogAndReturnError(fmt.Errorf("delete not empty dir:%s, error:%v", dir, err))
 			}
 		}
 	}
 
 	// Validate permission to initdb? Error will be returned upon running
-	gplog.Verbose("Checking initdb for permissions")
 	initdbPath := filepath.Join(s.GpHome, "bin", "initdb")
 	err = CheckFilePermissions(initdbPath)
 	if err != nil {
-		return &idl.ValidateHostEnvReply{}, err
+		return &idl.ValidateHostEnvReply{}, utils.LogAndReturnError(err)
 	}
 
 	// Validate that the different locale settings are available on the system
 	err = ValidateLocaleSettings(locale)
 	if err != nil {
-		gplog.Info("Got error while validating locale %v", err)
-		return &idl.ValidateHostEnvReply{}, err
+		return &idl.ValidateHostEnvReply{}, utils.LogAndReturnError(err)
 	}
 
 	// Check if port in use
 	err = ValidatePorts(portList)
 	if err != nil {
-		return &idl.ValidateHostEnvReply{}, err
+		return &idl.ValidateHostEnvReply{}, utils.LogAndReturnError(err)
 	}
 
 	// Any checks to raise warnings
@@ -161,7 +157,7 @@ Returns a warning message to CLI if entry is detected
 */
 func CheckHostAddressInHostsFile(hostAddressList []string) []*idl.LogMessage {
 	var warnings []*idl.LogMessage
-	gplog.Verbose("CheckHostAddressInHostsFile checking for address:%v", hostAddressList)
+	gplog.Debug("CheckHostAddressInHostsFile checking for address:%v", hostAddressList)
 	content, err := utils.System.ReadFile(constants.EtcHostsFilepath)
 	if err != nil {
 		warnMsg := fmt.Sprintf("error reading file %s error:%v", constants.EtcHostsFilepath, err)
@@ -191,10 +187,10 @@ func CheckHostAddressInHostsFile(hostAddressList []string) []*idl.LogMessage {
 }
 
 /*
-ValidatePortsFn checks if port is already in use.
+ValidatePortsFn checks if port is already in use
 */
 func ValidatePortsFn(portList []string) error {
-	gplog.Verbose("Started with ValidatePorts")
+	gplog.Debug("Started with ValidatePorts")
 	usedPortList := make(map[string]bool)
 
 	// Get a list of all interfaces addresses
@@ -206,22 +202,19 @@ func ValidatePortsFn(portList []string) error {
 	// now check each port on portlist
 	for _, port := range portList {
 		for _, ip := range ipList {
-			err := utils.CheckIfPortFree(ip, port)
+			_, err := utils.CheckIfPortFree(ip, port)
 			if err != nil {
 				usedPortList[port] = true
-				strErr := fmt.Sprintf("ports already in use: %s, address:%s check if cluster already running. Error:%v", port, ip, err)
-				gplog.Error(strErr)
-				return fmt.Errorf(strErr)
+				gplog.Error("ports already in use: %s, address:%s check if cluster already running. Error:%v", port, ip, err)
+
 			}
 		}
 	}
 
 	if len(usedPortList) > 0 {
-		strErr := fmt.Sprintf("ports already in use: %v, check if cluster already running", usedPortList)
-		gplog.Error(strErr)
-		return fmt.Errorf(strErr)
+		err := fmt.Errorf("ports already in use: %v, check if cluster already running", usedPortList)
+		return err
 	}
-
 	return nil
 }
 
@@ -233,9 +226,7 @@ func GetAllNonEmptyDirFn(dirList []string) ([]string, error) {
 	for _, dir := range dirList {
 		isEmpty, err := CheckDirEmpty(dir)
 		if err != nil {
-			strErr := fmt.Sprintf("Directory:%s Error checking if empty:%v", dir, err)
-			gplog.Error(strErr)
-			return nonEmptyDir, err
+			return nonEmptyDir, fmt.Errorf("directory:%s Error checking if empty:%v", dir, err)
 		} else if !isEmpty {
 			// Directory is not empty
 			nonEmptyDir = append(nonEmptyDir, dir)

@@ -20,7 +20,7 @@ func (s *Server) MakeSegment(ctx context.Context, request *idl.MakeSegmentReques
 	dataDirectory := request.Segment.DataDirectory
 	locale := request.Locale
 
-	gplog.Info("Creating segment with data directory %q", dataDirectory)
+	gplog.Debug("Creating segment with data directory %q", dataDirectory)
 
 	initdbOptions := postgres.Initdb{
 		PgData:        dataDirectory,
@@ -36,7 +36,7 @@ func (s *Server) MakeSegment(ctx context.Context, request *idl.MakeSegmentReques
 	}
 	out, err := utils.RunExecCommand(&initdbOptions, s.GpHome)
 	if err != nil {
-		return &idl.MakeSegmentReply{}, fmt.Errorf("executing initdb: %s, %w", out, err)
+		return &idl.MakeSegmentReply{}, utils.LogAndReturnError(fmt.Errorf("executing initdb: %s, %w", out, err))
 	}
 
 	configParams := make(map[string]string)
@@ -50,12 +50,12 @@ func (s *Server) MakeSegment(ctx context.Context, request *idl.MakeSegmentReques
 
 	err = postgres.UpdatePostgresqlConf(dataDirectory, configParams, false)
 	if err != nil {
-		return &idl.MakeSegmentReply{}, fmt.Errorf("updating postgresql.conf: %w", err)
+		return &idl.MakeSegmentReply{}, utils.LogAndReturnError(fmt.Errorf("updating postgresql.conf: %w", err))
 	}
 
 	err = postgres.CreatePostgresInternalConf(dataDirectory, int(request.Segment.Dbid))
 	if err != nil {
-		return &idl.MakeSegmentReply{}, fmt.Errorf("creating internal.auto.conf: %w", err)
+		return &idl.MakeSegmentReply{}, utils.LogAndReturnError(fmt.Errorf("creating internal.auto.conf: %w", err))
 	}
 
 	var addrs []string
@@ -64,7 +64,7 @@ func (s *Server) MakeSegment(ctx context.Context, request *idl.MakeSegmentReques
 	} else {
 		hostAddrs, err := utils.GetHostAddrsNoLoopback()
 		if err != nil {
-			return &idl.MakeSegmentReply{}, err
+			return &idl.MakeSegmentReply{}, utils.LogAndReturnError(err)
 		}
 
 		addrs = append(addrs, hostAddrs...)
@@ -76,10 +76,10 @@ func (s *Server) MakeSegment(ctx context.Context, request *idl.MakeSegmentReques
 		err = postgres.UpdateSegmentPgHbaConf(dataDirectory, request.CoordinatorAddrs, addrs)
 	}
 	if err != nil {
-		return &idl.MakeSegmentReply{}, fmt.Errorf("updating pg_hba.conf: %w", err)
+		return &idl.MakeSegmentReply{}, utils.LogAndReturnError(fmt.Errorf("updating pg_hba.conf: %w", err))
 	}
 
-	gplog.Info("Successfully created segment with data directory %q", dataDirectory)
+	gplog.Debug("Successfully created segment with data directory %q", dataDirectory)
 
 	return &idl.MakeSegmentReply{}, nil
 }

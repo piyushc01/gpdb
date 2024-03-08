@@ -25,7 +25,7 @@ func (s *Server) StartSegment(ctx context.Context, in *idl.StartSegmentRequest) 
 	}
 	out, err := utils.RunExecCommand(&pgCtlStartOptions, s.GpHome)
 	if err != nil {
-		return &idl.StartSegmentReply{}, fmt.Errorf("executing pg_ctl start: %s, logfile: %s, %w", out, pgCtlStartOptions.Logfile, err)
+		return &idl.StartSegmentReply{}, utils.LogAndReturnError(fmt.Errorf("executing pg_ctl start: %s, logfile: %s, %w", out, pgCtlStartOptions.Logfile, err))
 	}
 
 	return &idl.StartSegmentReply{}, nil

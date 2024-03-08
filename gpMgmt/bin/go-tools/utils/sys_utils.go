@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"io/fs"
 	"net"
 	"os"
@@ -148,17 +147,14 @@ func GetAllAddresses() (ipList []string, err error) {
 	// Get a list of network interfaces and their addresses
 	ifaces, err := net.Interfaces()
 	if err != nil {
-		strErr := fmt.Sprintf("error getting list of interfaces to check port in use:%v", err)
-		gplog.Error(strErr)
-		return nil, fmt.Errorf(strErr)
+		return nil, fmt.Errorf("error getting list of interfaces to check port in use:%v", err)
 	}
 	// Get addresses for each interface
 	for _, iface := range ifaces {
 		addrs, err := iface.Addrs()
 		if err != nil {
-			strErr := fmt.Sprintf("error getting list of addreses for interface %s. Error:%v", iface.Name, err)
-			gplog.Error(strErr)
-			return nil, fmt.Errorf(strErr)
+
+			return nil, fmt.Errorf("error getting list of addreses for interface %s. Error:%v", iface.Name, err)
 		}
 		for _, addr := range addrs {
 			switch v := addr.(type) {
@@ -183,11 +179,11 @@ func GetAllAddresses() (ipList []string, err error) {
 /*
 CheckIfPortFree returns error if port is not available otherwise returns nil
 */
-func CheckIfPortFree(ip string, port string) error {
+func CheckIfPortFree(ip string, port string) (bool, error) {
 	listener, err := net.Listen("tcp", net.JoinHostPort(ip, port))
 	if err != nil {
-		return err
+		return false, err
 	}
 	listener.Close()
-	return nil
+	return true, nil
 }
