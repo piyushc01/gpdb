@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"github.com/greenplum-db/gp-common-go-libs/gplog"
 
 	"google.golang.org/grpc/status"
 )
@@ -17,5 +18,14 @@ func FormatGrpcError(err error) error {
 		return fmt.Errorf(errorDescription)
 	}
 
+	return err
+}
+
+/*
+LogAndReturnError logs the error using gplog and returns error.
+Make sure to use in hub and agent only
+*/
+func LogAndReturnError(err error) error {
+	gplog.Error(err.Error())
 	return err
 }
