@@ -537,7 +537,7 @@ func TestValidateSegmentFn(t *testing.T) {
 
 	t.Run("Returns error if hostname and address both are empty string", func(t *testing.T) {
 		defer resetCLIVars()
-		expectedError := "neither hostName nor hostAddress is provided for the segment with port 5000 and data_directory /tmp/demo/gpseg1"
+		expectedError := "hostName has not been provided for the segment with port 5000 and data_directory /tmp/demo/gpseg1"
 		err := cli.ValidateSegment(&idl.Segment{
 			HostName:      "",
 			HostAddress:   "",

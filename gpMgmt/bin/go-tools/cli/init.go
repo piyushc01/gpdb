@@ -310,16 +310,16 @@ func ValidateInputConfigAndSetDefaultsFn(request *idl.MakeClusterRequest, cliHan
 
 /*
 ValidateSegment checks if valid values have been provided for the segment hostname, address, port and data-directory.
-If both hostname and address are not provided then the function returns an error.
-If one of hostname or address is not provided it is populated with other non-empty value.
+If hostname is not provided then the function returns an error.
+If address is not provided then it is populated with the hostname value
 */
 func ValidateSegment(segment *idl.Segment) error {
-	if segment.HostName == "" && segment.HostAddress == "" {
-		return fmt.Errorf("neither hostName nor hostAddress is provided for the segment with port %v and data_directory %v", segment.Port, segment.DataDirectory)
-	} else if segment.HostName == "" {
+	if segment.HostName == "" {
 		//TODO Call RPC to get the hostname from hostAddress and populate here as segment.HostName
 		return fmt.Errorf("hostName has not been provided for the segment with port %v and data_directory %v", segment.Port, segment.DataDirectory)
-	} else if segment.HostAddress == "" {
+	}
+
+	if segment.HostAddress == "" {
 		segment.HostAddress = segment.HostName
 		gplog.Warn("hostAddress has not been provided, populating it with same as hostName %v for the segment with port %v and data_directory %v", segment.HostName, segment.Port, segment.DataDirectory)
 	}
@@ -432,13 +432,13 @@ if max_connections not defined in SegmentConfig set it to strconv.Atoi(clusterPa
 */
 func ValidateMaxConnections(clusterParams *idl.ClusterParams) error {
 	if _, ok := clusterParams.CommonConfig["max_connections"]; !ok {
-		gplog.Info(" max_connections not set, will set to default value %v", constants.DefaultQdMaxConnect)
+		gplog.Info("max_connections not set, will set to default value %v", constants.DefaultQdMaxConnect)
 		clusterParams.CommonConfig["max_connections"] = strconv.Itoa(constants.DefaultQdMaxConnect)
 	}
 
 	if _, ok := clusterParams.CoordinatorConfig["max_connections"]; !ok {
 		// Check if common-config has max-connections defined
-		gplog.Info(" Coordinator max_connections not set, will set to value %v from CommonConfig", clusterParams.CommonConfig["max_connections"])
+		gplog.Info("Coordinator max_connections not set, will set to value %v from CommonConfig", clusterParams.CommonConfig["max_connections"])
 		clusterParams.CoordinatorConfig["max_connections"] = clusterParams.CommonConfig["max_connections"]
 	}
 	coordinatorMaxConnect, err := strconv.Atoi(clusterParams.CoordinatorConfig["max_connections"])
@@ -459,7 +459,7 @@ func ValidateMaxConnections(clusterParams *idl.ClusterParams) error {
 				clusterParams.CommonConfig["max_connections"], err)
 		}
 		segmentConfigMaxConnections := maxConnections * constants.QeConnectFactor
-		gplog.Info(" Segment max_connections not set, will set to value %v", segmentConfigMaxConnections)
+		gplog.Info("Segment max_connections not set, will set to value %v", segmentConfigMaxConnections)
 		clusterParams.SegmentConfig["max_connections"] = strconv.Itoa(segmentConfigMaxConnections)
 	}
 	return nil
@@ -478,12 +478,12 @@ func CheckAndSetDefaultConfigParams(clusterParams *idl.ClusterParams, configPara
 
 	if _, ok := clusterParams.CoordinatorConfig[configParam]; !ok {
 		// Check if common-config has configParam defined
-		gplog.Info(" Coordinator %v not set, will set to value %v from CommonConfig", configParam, clusterParams.CommonConfig[configParam])
+		gplog.Info("Coordinator %v not set, will set to value %v from CommonConfig", configParam, clusterParams.CommonConfig[configParam])
 		clusterParams.CoordinatorConfig[configParam] = clusterParams.CommonConfig[configParam]
 	}
 	if _, ok := clusterParams.SegmentConfig[configParam]; !ok {
 		// Check if common-config has configParam defined
-		gplog.Info(" Segment %v not set, will set to value %v from CommonConfig", configParam, clusterParams.CommonConfig[configParam])
+		gplog.Info("Segment %v not set, will set to value %v from CommonConfig", configParam, clusterParams.CommonConfig[configParam])
 		clusterParams.SegmentConfig[configParam] = clusterParams.CommonConfig[configParam]
 	}
 }

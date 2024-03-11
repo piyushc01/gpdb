@@ -184,6 +184,6 @@ func CheckIfPortFree(ip string, port string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	listener.Close()
+	defer listener.Close()
 	return true, nil
 }
