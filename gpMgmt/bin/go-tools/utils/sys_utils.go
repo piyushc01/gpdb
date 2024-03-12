@@ -154,7 +154,7 @@ func GetAllAddresses() (ipList []string, err error) {
 		addrs, err := iface.Addrs()
 		if err != nil {
 
-			return nil, fmt.Errorf("error getting list of addreses for interface %s. Error:%v", iface.Name, err)
+			return nil, fmt.Errorf("error getting list of addresses for interface %s. Error:%v", iface.Name, err)
 		}
 		for _, addr := range addrs {
 			switch v := addr.(type) {
