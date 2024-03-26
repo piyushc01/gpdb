@@ -11,7 +11,14 @@ service Agent {
     rpc MakeSegment(MakeSegmentRequest) returns(MakeSegmentReply) {}
     rpc StartSegment(StartSegmentRequest) returns (StartSegmentReply){}
     rpc ValidateHostEnv(ValidateHostEnvRequest) returns(ValidateHostEnvReply) {}
+    rpc GetHostName(GetHostNameRequest) returns(GetHostNameReply){}
 }
+
+message GetHostNameReply{
+    string hostname = 1;
+}
+
+message GetHostNameRequest {}
 
 message StartSegmentRequest{
     string dataDir=1;

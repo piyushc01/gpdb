@@ -18,4 +18,6 @@ const (
 	DefaultEncoding     = "UTF-8"
 	RolePrimary         = "p"
 	EtcHostsFilepath    = "/etc/hosts"
+	GroupMirroringStr   = "group"
+	SpreadMirroringStr  = "spread"
 )

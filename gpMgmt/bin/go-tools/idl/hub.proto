@@ -10,6 +10,15 @@ service Hub {
     rpc StatusAgents(StatusAgentsRequest) returns (StatusAgentsReply) {}
     rpc StopAgents(StopAgentsRequest) returns (StopAgentsReply) {}
     rpc MakeCluster(MakeClusterRequest) returns (stream HubReply) {}
+    rpc GetAllHostNames(GetAllHostNamesRequest) returns (GetAllHostNamesReply) {}
+}
+
+message GetAllHostNamesRequest{
+    repeated string hostList = 1;
+}
+
+message GetAllHostNamesReply{
+    map<string, string> hostNameMap = 1;
 }
 
 message StopHubRequest {}
