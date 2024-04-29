@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"sync"
 
@@ -68,6 +69,20 @@ func (s *Server) AddMirrors(req *idl.AddMirrorsRequest, stream idl.Hub_AddMirror
 		return utils.LogAndReturnError(err)
 	}
 	hubStream.StreamLogMsg("Successfully modified the pg_hba.conf on the primary segments")
+
+	//Adding the mirror data to the entries file. Clean the mirrors as well after this point
+	filename := filepath.Join(s.LogDir, constants.CleanFileName)
+	lines := []string{}
+	for _, mirror := range gparray.GetMirrorSegments() {
+		entries := fmt.Sprintf("%s %s",
+			mirror.Hostname,
+			mirror.DataDir)
+		lines = append(lines, entries)
+	}
+	err = utils.CreateAppendLinesToFile(filename, lines)
+	if err != nil {
+		return utils.LogAndReturnError(err)
+	}
 
 	// Run pg_basebackup aon the mirror hosts - Agent RPC
 	hubStream.StreamLogMsg("Creating mirror segments")

@@ -16,6 +16,7 @@ import (
 	"github.com/greenplum-db/gpdb/gp/constants"
 	"github.com/greenplum-db/gpdb/gp/idl"
 	"github.com/greenplum-db/gpdb/gp/utils"
+	"github.com/greenplum-db/gpdb/gp/utils/greenplum"
 )
 
 type Locale struct {
@@ -71,8 +72,14 @@ var (
 	GetSystemLocale                      = GetSystemLocaleFn
 	SetDefaultLocale                     = SetDefaultLocaleFn
 	IsGpServicesEnabled                  = IsGpServicesEnabledFn
+	InitCleanFunction                    = InitCleanFn
+	GetUserInput                         = greenplum.GetUserInput
 )
-var cliForceFlag bool
+var (
+	cliForceFlag  bool
+	cliCleanFlag  bool
+	CleanFilePath string
+)
 var ContainsMirror bool
 var HubClient idl.HubClient
 
@@ -89,7 +96,7 @@ func initCmd() *cobra.Command {
 	return initCmd
 }
 
-// initClusterCmd adds support for command "gp init cluster <config-file> [--force]
+// initClusterCmd adds support for command "gp init cluster [--clean]
 func initClusterCmd() *cobra.Command {
 	initClusterCmd := &cobra.Command{
 		Use:     "cluster",
@@ -98,11 +105,21 @@ func initClusterCmd() *cobra.Command {
 		RunE:    RunInitClusterCmd,
 	}
 
+	initClusterCmd.PersistentFlags().BoolVar(&cliCleanFlag, "clean", false, `Clean the cluster in case of failure`)
 	return initClusterCmd
 }
 
 // RunInitClusterCmd driving function gets called from cobra on gp init cluster command
 func RunInitClusterCmd(cmd *cobra.Command, args []string) error {
+	if cliCleanFlag {
+		if len(args) == 1 {
+			return fmt.Errorf("cannot provide config file with --clean flag")
+		}
+		return InitCleanFn(Verbose)
+	}
+	if cliCleanFlag && cliForceFlag {
+		return fmt.Errorf("cannot use clean and force flag")
+	}
 	// initial basic cli validations
 	if len(args) == 0 {
 		return fmt.Errorf("please provide config file for cluster initialization")
@@ -116,9 +133,30 @@ func RunInitClusterCmd(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	gplog.Info("Cluster initialized successfully")
 
 	return nil
+}
+
+/*
+InitCleanFn calls the rpcs to do a cleanup/rollback in case of failure
+*/
+func InitCleanFn(verbose bool) error {
+
+	// Make call to Clean cluster RPC and wait for results
+	client, err := ConnectToHub(Conf)
+	if err != nil {
+		return err
+	}
+
+	// Call RPC on Hub to create the cluster
+	_, err = client.CleanCluster(context.Background(), &idl.CleanClusterRequest{})
+	if err != nil {
+		return utils.LogAndReturnError(fmt.Errorf("clean cluster command failed: %v", err))
+	} else {
+		gplog.Info("clean cluster command successful")
+		return err
+	}
+
 }
 
 /*
@@ -156,10 +194,42 @@ func InitClusterServiceFn(inputConfigFile string, force, verbose bool) error {
 	}
 
 	err = ParseStreamResponse(stream)
+
+	//Call the cleanup routine only if the file exists
+	fileName := filepath.Join(Conf.LogDir, constants.CleanFileName)
+	_, errS := utils.System.Stat(fileName)
+
 	if err != nil {
-		return err
+
+		if errS == nil {
+			//Log the error received from makeCluster
+			gplog.Error("Cluster creation failed, error %v", err)
+			gplog.Error("There has been an error during cluster creation.\n")
+			gplog.Error("Would you like to rollback? Enter 'yes' or 'no': \n")
+
+			input := GetUserInput()
+			if input {
+				//The user has asked to delete the datadirectories
+				//Call Hub rpc for cleanup
+				_, errS := HubClient.CleanCluster(context.Background(), &idl.CleanClusterRequest{})
+				if errS != nil {
+					return utils.LogAndReturnError(fmt.Errorf("clean cluster command failed: %v", errS))
+				} else {
+					gplog.Info("clean cluster command successful")
+					return nil
+				}
+
+			} else {
+				gplog.Info("Exiting without rollback. \n")
+				gplog.Info("Please run gp init cluster --clean to rollback\n")
+				return nil
+			}
+		} else {
+			return err
+		}
 	}
 
+	gplog.Info("Cluster initialized successfully")
 	return nil
 }
 

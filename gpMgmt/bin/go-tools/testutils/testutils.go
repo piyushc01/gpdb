@@ -22,6 +22,7 @@ import (
 	"github.com/greenplum-db/gpdb/gp/constants"
 	"github.com/greenplum-db/gpdb/gp/hub"
 	"github.com/greenplum-db/gpdb/gp/idl"
+	"github.com/greenplum-db/gpdb/gp/utils"
 )
 
 type MockPlatform struct {
@@ -218,4 +219,35 @@ func getMockDBConn(t *testing.T, utility bool, errs ...error) (*dbconn.DBConn, s
 	connection.Port = 5432
 
 	return connection, mock
+}
+
+func CreateDummyDir(dirPath string) error {
+
+	_, err := utils.System.Stat(dirPath)
+
+	//Create directory if it doesnt exist
+	if err != nil {
+		if err := os.MkdirAll(dirPath, 0777); err != nil {
+			err = os.Chmod(dirPath, 0777)
+			return err
+		}
+	}
+	return nil
+}
+
+// createDirectoryWithRemoveFail creates a directory where the removal operation will fail
+func CreateDirectoryWithRemoveFail(dirPath string) error {
+	// Create the directory
+	if err := os.MkdirAll(dirPath, 0777); err != nil {
+		err = os.Chmod(dirPath, 0777)
+		return err
+
+	}
+
+	// Change permissions of the directory to read-only
+	if err := os.Chmod(dirPath, 0400); err != nil {
+		return err
+	}
+
+	return nil
 }
