@@ -3,6 +3,7 @@ package hub
 import (
 	"context"
 	"fmt"
+	"google.golang.org/grpc/credentials/insecure"
 	"sync"
 
 	"github.com/greenplum-db/gpdb/gp/utils"
@@ -37,8 +38,12 @@ func (s *Server) ConnectHostList(hostList []string) (map[string]idl.AgentClient,
 			remoteAddress := fmt.Sprintf("%s:%d", address, s.AgentPort)
 			opts := []grpc.DialOption{
 				grpc.WithBlock(),
-				grpc.WithTransportCredentials(credentials),
 				grpc.WithReturnConnectionError(),
+			}
+			if s.IsSecure {
+				opts = append(opts, grpc.WithTransportCredentials(credentials))
+			} else {
+				opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 			}
 			if s.grpcDialer != nil {
 				opts = append(opts, grpc.WithContextDialer(s.grpcDialer))

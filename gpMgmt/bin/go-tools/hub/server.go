@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"net"
 	"os"
 	"os/exec"
@@ -42,6 +44,7 @@ type Config struct {
 	LogDir      string   `json:"hubLogDir"` // log directory for the hub itself; utilities might go somewhere else
 	ServiceName string   `json:"serviceName"`
 	GpHome      string   `json:"gphome"`
+	IsSecure    bool     `json:"isSecure"`
 
 	Credentials utils.Credentials
 }
@@ -91,10 +94,18 @@ func (s *Server) Start() error {
 	if err != nil {
 		return err
 	}
-	grpcServer := grpc.NewServer(
-		grpc.Creds(credentials),
-		grpc.UnaryInterceptor(interceptor),
-	)
+	var grpcServer *grpc.Server
+
+	if s.IsSecure {
+		grpcServer = grpc.NewServer(
+			grpc.Creds(credentials),
+			grpc.UnaryInterceptor(interceptor),
+		)
+	} else {
+		grpcServer = grpc.NewServer(
+			grpc.UnaryInterceptor(interceptor),
+		)
+	}
 
 	s.mutex.Lock()
 	s.grpcServer = grpcServer
@@ -189,17 +200,25 @@ func (s *Server) DialAllAgents() error {
 	for _, host := range s.Hostnames {
 		ctx, cancelFunc := context.WithTimeout(context.Background(), DialTimeout)
 
-		credentials, err := s.Credentials.LoadClientCredentials()
-		if err != nil {
-			cancelFunc()
-			return err
+		var creds credentials.TransportCredentials
+		if s.Config.IsSecure {
+			var err error
+			creds, err = s.Credentials.LoadClientCredentials()
+			if err != nil {
+				cancelFunc()
+				return err
+			}
 		}
 
 		address := fmt.Sprintf("%s:%d", host, s.AgentPort)
 		opts := []grpc.DialOption{
 			grpc.WithBlock(),
-			grpc.WithTransportCredentials(credentials),
 			grpc.WithReturnConnectionError(),
+		}
+		if s.Config.IsSecure {
+			opts = append(opts, grpc.WithTransportCredentials(creds))
+		} else {
+			opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		}
 		if s.grpcDialer != nil {
 			opts = append(opts, grpc.WithContextDialer(s.grpcDialer))

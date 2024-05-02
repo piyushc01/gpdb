@@ -21,6 +21,7 @@ type Config struct {
 	ServiceName string
 	GpHome      string
 	LogDir      string
+	IsSecure    bool
 
 	Credentials utils.Credentials
 }
@@ -55,16 +56,23 @@ func (s *Server) Start() error {
 		return handler(ctx, req)
 	}
 
-	credentials, err := s.Credentials.LoadServerCredentials()
-	if err != nil {
-		listener.Close()
-		return err
+	//var credentials credentials.TransportCredentials
+	var grpcServer *grpc.Server
+	if s.IsSecure {
+		creds, err := s.Credentials.LoadServerCredentials()
+		if err != nil {
+			listener.Close()
+			return err
+		}
+		grpcServer = grpc.NewServer(
+			grpc.Creds(creds),
+			grpc.UnaryInterceptor(interceptor),
+		)
+	} else {
+		grpcServer = grpc.NewServer(
+			grpc.UnaryInterceptor(interceptor),
+		)
 	}
-
-	grpcServer := grpc.NewServer(
-		grpc.Creds(credentials),
-		grpc.UnaryInterceptor(interceptor),
-	)
 
 	s.mutex.Lock()
 	s.grpcServer = grpcServer

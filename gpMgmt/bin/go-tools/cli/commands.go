@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 	"os"
 	"path/filepath"
 	"strings"
@@ -87,19 +89,23 @@ func ConnectToHubFunc(conf *hub.Config) (idl.HubClient, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-
-	credentials, err := conf.Credentials.LoadClientCredentials()
-	if err != nil {
-		return nil, err
+	var credentials credentials.TransportCredentials
+	opts := []grpc.DialOption{grpc.WithBlock(),
+		grpc.FailOnNonTempDialError(true),
+		grpc.WithReturnConnectionError()}
+	if conf.IsSecure {
+		var err error
+		credentials, err = conf.Credentials.LoadClientCredentials()
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, grpc.WithTransportCredentials(credentials))
+	} else {
+		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
 
 	address := fmt.Sprintf("localhost:%d", conf.Port)
-	conn, err = DialContextFunc(ctx, address,
-		grpc.WithTransportCredentials(credentials),
-		grpc.WithBlock(),
-		grpc.FailOnNonTempDialError(true),
-		grpc.WithReturnConnectionError(),
-	)
+	conn, err := DialContextFunc(ctx, address, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to hub on port %d: %w", conf.Port, err)
 	}
