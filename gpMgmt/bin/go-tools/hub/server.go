@@ -38,15 +38,15 @@ var (
 type Dialer func(context.Context, string) (net.Conn, error)
 
 type Config struct {
-	Port        int      `json:"hubPort"`
-	AgentPort   int      `json:"agentPort"`
-	Hostnames   []string `json:"hostnames"`
-	LogDir      string   `json:"hubLogDir"` // log directory for the hub itself; utilities might go somewhere else
-	ServiceName string   `json:"serviceName"`
-	GpHome      string   `json:"gphome"`
-	IsSecure    bool     `json:"isSecure"`
-
-	Credentials utils.Credentials
+	Port         int      `json:"hubPort"`
+	AgentPort    int      `json:"agentPort"`
+	Hostnames    []string `json:"hostnames"`
+	LogDir       string   `json:"hubLogDir"` // log directory for the hub itself; utilities might go somewhere else
+	ServiceName  string   `json:"serviceName"`
+	GpHome       string   `json:"gphome"`
+	IsSecure     bool     `json:"isSecure"`
+	IsConfigured bool     `jaon:"-"`
+	Credentials  utils.Credentials
 }
 
 type Server struct {

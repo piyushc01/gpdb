@@ -183,6 +183,10 @@ func LoadInputConfigToIdlFn(inputConfigFile string, cliHandler *viper.Viper, for
 		return &idl.MakeClusterRequest{}, fmt.Errorf("while unmarshaling config file: %w", err)
 	}
 
+	//  copy conf file to hostlist
+	// start services to hostlist using ssh
+	// Dial to check if service already running
+
 	if AnyExpansionConfigPresent(cliHandler) {
 		// Validate expansion config
 		err := ValidateExpansionConfigAndSetDefault(&config, cliHandler)

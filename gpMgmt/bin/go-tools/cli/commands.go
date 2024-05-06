@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
@@ -52,18 +53,41 @@ func RootCommand() *cobra.Command {
 	return root
 }
 
-// Performs general setup needed for most commands
+// InitializeCommand Performs general setup needed for most commands
 // Public, so it can be mocked out in testing
 func InitializeCommand(cmd *cobra.Command, args []string) error {
 	// TODO: Add a new constructor to gplog to allow initializing with a custom logfile path directly
 	Conf = &hub.Config{}
-	err := Conf.Load(ConfigFilePath)
-	if err != nil {
-		return err
+	if _, err := os.Stat(ConfigFilePath); errors.Is(err, os.ErrNotExist) {
+		// Config file does not exist
+
+		gplog.Debug("gp config file does not exists. Starting with self-sufficient mode")
+		// create default config file with no-TLS
+		Conf.Port = constants.DefaultHubPort
+		Conf.AgentPort = constants.DefaultAgentPort
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return err
+		}
+		Conf.LogDir = filepath.Join(homeDir, "gpAdminLogs")
+		// TODO Populate hostlist later by reading the given config file before copy starts
+		Conf.IsSecure = false
+		Conf.GpHome = os.Getenv("GPHOME")
+		Conf.ServiceName = "gp"
+		Conf.IsConfigured = false
+		// copy config file to all the hosts - gpsync
+		// Start gp services using SSH
+		// Go ahead with cluster creation
+
+	} else {
+		err = Conf.Load(ConfigFilePath)
+		if err != nil {
+			return err
+		}
 	}
 	hubLogDir = Conf.LogDir
 
-	err = InitializeLogger(cmd, args)
+	err := InitializeLogger(cmd, args)
 	if err != nil {
 		return err
 	}
