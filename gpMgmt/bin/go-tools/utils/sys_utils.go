@@ -183,11 +183,13 @@ CheckIfPortFree returns error if port is not available otherwise returns nil
 */
 func CheckIfPortFree(ip string, port string) (bool, error) {
 	if ip == "" {
+		// to detect if socket created without specifying hostname
+		// listen fails to detect when the netcat ran without hostname
 		_, err := net.Dial("tcp", net.JoinHostPort(ip, port))
 		if err != nil {
 			return true, nil
 		} else {
-			return false, fmt.Errorf("able to dial on port:%s, port is already open", port)
+			return false, fmt.Errorf("able to dial on port: %s, port is already open", port)
 		}
 	}
 	listener, err := net.Listen("tcp", net.JoinHostPort(ip, port))
