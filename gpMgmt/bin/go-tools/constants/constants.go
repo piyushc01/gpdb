@@ -17,13 +17,14 @@ const (
 	DefaultDatabase       = "template1"
 	DefaultEncoding       = "UTF-8"
 	EtcHostsFilepath      = "/etc/hosts"
-	CleanFileName         = "cleanup_entries.txt"
+	CleanFileName         = "ClusterInitCLeanup.txt"
 	ReplicationSlotName   = "internal_wal_replication_slot"
 	DefaultStartTimeout   = 600
 	DefaultPostgresLogDir = "log"
 	GroupMirroring        = "group"
 	SpreadMirroring       = "spread"
 	DefaultSegName        = "gpseg"
+	UserInputWaitDurtion  = 10
 )
 
 // gp_segment_configuration specific constants

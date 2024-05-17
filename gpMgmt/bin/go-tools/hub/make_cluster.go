@@ -57,13 +57,14 @@ func (s *Server) MakeCluster(request *idl.MakeClusterRequest, stream idl.Hub_Mak
 		return utils.LogAndReturnError(fmt.Errorf("validating hosts: %w", err))
 	}
 
-	entries := fmt.Sprintf("%s %s",
-		request.GpArray.Coordinator.HostName,
-		request.GpArray.Coordinator.DataDirectory)
+	seg := greenplum.Segment{}
+	seg.Hostname = request.GpArray.Coordinator.HostName
+	seg.DataDir = request.GpArray.Coordinator.DataDirectory
 
-	lines := []string{}
-	lines = append(lines, entries)
-	err = utils.CreateAppendLinesToFile(filename, lines)
+	var segArray []greenplum.Segment
+	segArray = append(segArray, seg)
+
+	err = WriteSegmentCleanupFile(segArray, filename)
 	if err != nil {
 		return utils.LogAndReturnError(err)
 	}
@@ -115,20 +116,10 @@ func (s *Server) MakeCluster(request *idl.MakeClusterRequest, stream idl.Hub_Mak
 		coordinatorAddrs = append(coordinatorAddrs, addrs...)
 	}
 
-	//Add the primary segment information to the entries file. If gp init cluster fails after this point
-	// then primary data direcrtories and postgres processes should be cleaned up as well.
-	lines = nil
-	for _, primary := range primarySegs {
-		entries := fmt.Sprintf("%s %s",
-			primary.Hostname,
-			primary.DataDir)
-		lines = append(lines, entries)
-	}
-	err = utils.CreateAppendLinesToFile(filename, lines)
+	err = WriteSegmentCleanupFile(primarySegs, filename)
 	if err != nil {
 		return utils.LogAndReturnError(err)
 	}
-
 	hubStream.StreamLogMsg("Creating primary segments")
 	err = s.CreateSegments(&hubStream, primarySegs, request.ClusterParams, coordinatorAddrs)
 	if err != nil {
@@ -528,4 +519,24 @@ func getSegmentContentId(gparray *greenplum.GpArray, seg *idl.Segment) (int32, e
 	}
 
 	return 0, fmt.Errorf("did not find any primary segment with configuration %+v", *seg)
+}
+
+/*Add segment details to cleanup file*/
+
+func WriteSegmentCleanupFile(segs []greenplum.Segment, filename string) error {
+
+	lines := []string{}
+	var entries string
+	for _, seg := range segs {
+		entries = fmt.Sprintf("%s %s",
+			seg.Hostname,
+			seg.DataDir)
+		lines = append(lines, entries)
+	}
+
+	err := utils.CreateAppendLinesToFile(filename, lines)
+	if err != nil {
+		return err
+	}
+	return nil
 }

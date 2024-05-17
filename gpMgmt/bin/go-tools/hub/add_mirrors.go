@@ -72,14 +72,7 @@ func (s *Server) AddMirrors(req *idl.AddMirrorsRequest, stream idl.Hub_AddMirror
 
 	//Adding the mirror data to the entries file. Clean the mirrors as well after this point
 	filename := filepath.Join(s.LogDir, constants.CleanFileName)
-	lines := []string{}
-	for _, mirror := range gparray.GetMirrorSegments() {
-		entries := fmt.Sprintf("%s %s",
-			mirror.Hostname,
-			mirror.DataDir)
-		lines = append(lines, entries)
-	}
-	err = utils.CreateAppendLinesToFile(filename, lines)
+	err = WriteSegmentCleanupFile(gparray.GetMirrorSegments(), filename)
 	if err != nil {
 		return utils.LogAndReturnError(err)
 	}

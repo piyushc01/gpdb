@@ -311,9 +311,10 @@ func TestReadEntriesFromFile(t *testing.T) {
 			t.Fatalf("expected no error, got %v", err)
 		}
 		expectedEntries := []string{"line 1", "line 2", "line 3"}
-		if !equalSlices(entries, expectedEntries) {
+		if !reflect.DeepEqual(entries, expectedEntries) {
 			t.Fatalf("expected entries %v, got %v", expectedEntries, entries)
 		}
+
 	})
 
 	// Test case 2: file exists but is empty
@@ -349,13 +350,13 @@ func TestReadEntriesFromFile(t *testing.T) {
 	})
 }
 
-func TestRemoveContents(t *testing.T) {
+func TestRemoveDirContents(t *testing.T) {
 
 	// Test case 1: Directory does not exist
 	t.Run("Directory does not exist", func(t *testing.T) {
 
 		expectedErr := "open /path/to/nonexistent/directory: no such file or directory"
-		err := utils.RemoveContents(nonExistent)
+		err := utils.RemoveDirContents(nonExistent)
 		if err != nil {
 			if !strings.HasPrefix(err.Error(), expectedErr) {
 				t.Fatalf("got %s, want %s", err.Error(), expectedErr)
@@ -367,14 +368,11 @@ func TestRemoveContents(t *testing.T) {
 	//Test case 2: Directory is empty
 	t.Run("Empty directory", func(t *testing.T) {
 
-		err := testutils.CreateDummyDir(dummyDir)
+		tempDir := t.TempDir()
+
+		err := utils.RemoveDirContents(tempDir)
 		if err != nil {
-			t.Fatalf("failed to create dummy directory err: %v", err)
-		}
-		defer os.RemoveAll(dummyDir)
-		err = utils.RemoveContents(dummyDir)
-		if err != nil {
-			t.Fatalf("function should succeed if directory is empty")
+			t.Fatalf("function should succeed if directory is empty: %v", err)
 		}
 	})
 
@@ -400,7 +398,7 @@ func TestRemoveContents(t *testing.T) {
 			t.Fatalf("unable to create files in dummy directory: %v", err)
 		}
 
-		err = utils.RemoveContents(dummyDir)
+		err = utils.RemoveDirContents(dummyDir)
 		if err != nil {
 			t.Fatalf("unable to remove contents of dummpDir err: %v", err)
 		}
@@ -429,7 +427,7 @@ func TestRemoveContents(t *testing.T) {
 			t.Fatalf("unable to create files in dummy directory: %v", err)
 		}
 
-		err = utils.RemoveContents(dummyDir)
+		err = utils.RemoveDirContents(dummyDir)
 		if err != nil {
 			t.Fatalf("unable to remove contents of dummpDir err: %v", err)
 		}
@@ -441,17 +439,4 @@ func TestRemoveContents(t *testing.T) {
 
 	})
 
-}
-
-// helper function to check if two slices are equal
-func equalSlices(slice1, slice2 []string) bool {
-	if len(slice1) != len(slice2) {
-		return false
-	}
-	for i := range slice1 {
-		if slice1[i] != slice2[i] {
-			return false
-		}
-	}
-	return true
 }

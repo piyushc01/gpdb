@@ -2,11 +2,11 @@ package agent_test
 
 import (
 	"context"
-	"fmt"
 	"os"
-	"strings"
+	"os/exec"
 	"testing"
 
+	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpdb/gp/agent"
 	"github.com/greenplum-db/gpdb/gp/idl"
 	"github.com/greenplum-db/gpdb/gp/testutils"
@@ -15,41 +15,29 @@ import (
 )
 
 var (
-	dummyDir    = "/tmp/xyz"
-	nonExistent = "/path/to/nonexistent/directory"
-	errDir      = "/tmp/errDir"
+	errDir = "/tmp/errDir"
 )
 
-// Mocked Stat function
-func mockStat(name string) (os.FileInfo, error) {
-	if name == dummyDir {
-		return nil, nil // Directory exists
-	} else if name == nonExistent {
-		return nil, os.ErrNotExist // Directory doesn't exist
-	} else {
-		return nil, fmt.Errorf("mocked error") // Simulate any other error
-	}
-}
-
 func TestRemoveDirectory(t *testing.T) {
+	_, _, logfile := testhelper.SetupTestLogger()
 
 	agentServer := agent.New(agent.Config{
 		GpHome: "gpHome",
 	})
 
-	err := testutils.CreateDirectoryWithRemoveFail(errDir)
-	if err != nil {
-		t.Fatalf("failed to create dummy error directory err: %v", err)
-	}
+	t.Run("does not error out if the directory does not exist", func(t *testing.T) {
+		expectedDatadir := "gpseg"
+		utils.System.Stat = func(name string) (os.FileInfo, error) {
+			if name != expectedDatadir {
+				t.Fatalf("got %s, want %s", name, expectedDatadir)
+			}
 
-	utils.System.Stat = mockStat
-
-	utils.ResetSystemFunctions()
-
-	t.Run("Stat succeeds if directory does not exist", func(t *testing.T) {
+			return nil, os.ErrNotExist
+		}
+		defer utils.ResetSystemFunctions()
 
 		req := &idl.RemoveDirectoryRequest{
-			DataDirectory: nonExistent,
+			DataDirectory: expectedDatadir,
 		}
 		_, err := agentServer.RemoveDirectory(context.Background(), req)
 
@@ -62,48 +50,66 @@ func TestRemoveDirectory(t *testing.T) {
 
 	t.Run("Stat succeeds and pgctl status fails but remove directory succeeds", func(t *testing.T) {
 
-		err := testutils.CreateDummyDir(dummyDir)
-		if err != nil {
-			t.Fatalf("failed to create dummy directory err: %v", err)
-		}
+		tempdir := t.TempDir()
 
 		req := &idl.RemoveDirectoryRequest{
-			DataDirectory: dummyDir,
+			DataDirectory: tempdir,
 		}
 
 		utils.System.ExecCommand = exectest.NewCommand(exectest.Failure)
+		defer utils.ResetSystemFunctions()
 
-		_, err = agentServer.RemoveDirectory(context.Background(), req)
-
+		_, err := agentServer.RemoveDirectory(context.Background(), req)
 		// Check error
 		if err != nil {
-			t.Fatalf("unable to remove directory")
+			t.Fatalf("unable to remove directory contents err %v", err)
+		}
+		_, err = os.Stat(tempdir)
+		if os.IsNotExist(err) {
+			t.Fatalf("unexepected behavior, directory should be retained: %v", err)
 		}
 
 	})
 
 	t.Run("Stat succeeds and pgctl status succeeds but pgctl stop fails", func(t *testing.T) {
 
-		err := testutils.CreateDummyDir(dummyDir)
+		tempdir := t.TempDir()
+		file, err := os.CreateTemp(tempdir, "*")
 		if err != nil {
-			t.Fatalf("failed to create dummy directory err: %v", err)
+			t.Fatalf("error creating tempDir err: %v", err)
 		}
 
 		req := &idl.RemoveDirectoryRequest{
-			DataDirectory: dummyDir,
+			DataDirectory: tempdir,
 		}
 
-		utils.System.ExecCommand = exectest.NewCommand(exectest.Success)
-		utils.System.ExecCommand = exectest.NewCommand(exectest.Failure)
+		called := false
+		utils.System.ExecCommand = func(name string, arg ...string) *exec.Cmd {
+			if !called {
+				called = true
+				return exectest.NewCommand(exectest.Success)(name, arg...)
+			}
 
+			return exectest.NewCommand(exectest.Failure)(name, arg...)
+		}
+		defer utils.ResetSystemFunctions()
 		_, err = agentServer.RemoveDirectory(context.Background(), req)
 
-		// Check error
-		expectedErrPrefix := "executing pg_ctl stop"
+		testutils.AssertLogMessage(t, logfile, "executing pg_ctl stop")
+
 		if err != nil {
-			if !strings.HasPrefix(err.Error(), expectedErrPrefix) {
-				t.Fatalf("got %s, want %s", err.Error(), expectedErrPrefix)
-			}
+			t.Fatalf("unexepected error err: %v", err)
+		}
+		// Directory should be present
+		_, err = os.Stat(tempdir)
+		if os.IsNotExist(err) {
+			t.Fatalf("unexepected behavior, directory should be retained : %v", err)
+		}
+
+		//File must be removed
+		_, err = file.Stat()
+		if err != nil {
+			t.Fatalf("unexepected behavior, file should be removed : %v", err)
 		}
 
 	})
@@ -120,42 +126,53 @@ func TestRemoveDirectory(t *testing.T) {
 		}
 
 		utils.System.ExecCommand = exectest.NewCommand(exectest.Success)
-		utils.System.ExecCommand = exectest.NewCommand(exectest.Success)
-
+		defer utils.ResetSystemFunctions()
 		_, err = agentServer.RemoveDirectory(context.Background(), req)
 
 		// Check error
-		expectedErrPrefix := "could not remove directory"
+		expectedErrPrefix := "failed to cleanup data directory"
 		if err != nil {
-			if !strings.HasPrefix(err.Error(), expectedErrPrefix) {
-				t.Fatalf("got %s, want %s", err.Error(), expectedErrPrefix)
-			}
+			t.Fatalf("got %v, want %v", err, expectedErrPrefix)
 		}
 
 	})
 
 	t.Run("Stat succeeds and pgctl status succeeds but pgctl stop succeeds, remove directory succeeds", func(t *testing.T) {
 
-		err := testutils.CreateDummyDir(dummyDir)
+		tempDir := t.TempDir()
+		file, err := os.CreateTemp(tempDir, "*")
 		if err != nil {
-			t.Fatalf("failed to create dummy directory err: %v", err)
+			t.Fatalf("error creating tempDir err: %v", err)
 		}
-
 		req := &idl.RemoveDirectoryRequest{
-			DataDirectory: dummyDir,
+			DataDirectory: tempDir,
 		}
 
 		utils.System.ExecCommand = exectest.NewCommand(exectest.Success)
-		utils.System.ExecCommand = exectest.NewCommand(exectest.Success)
-
-		_, err = agentServer.RemoveDirectory(context.Background(), req)
-
-		// Check error
-		expectedErrPrefix := "could not remove directory"
-		if err != nil {
-			if !strings.HasPrefix(err.Error(), expectedErrPrefix) {
-				t.Fatalf("got %s, want %s", err.Error(), expectedErrPrefix)
+		called := false
+		utils.System.ExecCommand = func(name string, arg ...string) *exec.Cmd {
+			if !called {
+				called = true
+				return exectest.NewCommand(exectest.Success)(name, arg...)
 			}
+
+			return exectest.NewCommand(exectest.Success)(name, arg...)
+		}
+		defer utils.ResetSystemFunctions()
+		_, err = agentServer.RemoveDirectory(context.Background(), req)
+		if err != nil {
+			t.Fatalf("unexepected error err: %v", err)
+		}
+		// Directory should be present
+		_, err = os.Stat(tempDir)
+		if os.IsNotExist(err) {
+			t.Fatalf("unexepected behavior, directory should be retained : %v", err)
+		}
+
+		//File must be removed
+		_, err = file.Stat()
+		if err != nil {
+			t.Fatalf("unexepected behavior, file should be removed: %v", err)
 		}
 
 	})

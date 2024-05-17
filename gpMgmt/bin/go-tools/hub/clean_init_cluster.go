@@ -18,7 +18,7 @@ import (
 /*
 function to convert entries in entries.txt file into hashmap
 */
-func CreateHostDataDirMap(entries []string, file string) (error, map[string][]string) {
+func CreateHostDataDirMap(entries []string, file string) (map[string][]string, error) {
 
 	hostDataDirMap := make(map[string][]string)
 
@@ -29,38 +29,36 @@ func CreateHostDataDirMap(entries []string, file string) (error, map[string][]st
 			dataDir := fields[1]
 			hostDataDirMap[host] = append(hostDataDirMap[host], dataDir)
 		} else {
-			gplog.Debug(fmt.Sprintf("Invalid entries in %s", file))
-			return errors.New("invalid entries in map"), nil
+			return nil, errors.New("invalid entries in map")
 		}
 	}
-	return nil, hostDataDirMap
+	return hostDataDirMap, nil
 }
 
 /*
 rpc to cleanup the data directories in case gp init cluster fails.
 */
-func (s *Server) CleanCluster(context.Context, *idl.CleanClusterRequest) (*idl.CleanClusterReply, error) {
-	var err error
+func (s *Server) CleanInitCluster(context.Context, *idl.CleanInitClusterRequest) (*idl.CleanInitClusterReply, error) {
 
+	var err error
 	fileName := filepath.Join(s.LogDir, constants.CleanFileName)
 
 	_, err = utils.System.Stat(fileName)
 	if err != nil {
-		fmt.Printf("Cluster is clean")
-		return &idl.CleanClusterReply{}, nil
+		gplog.Info("Cluster is clean")
+		return &idl.CleanInitClusterReply{}, nil
 	}
 
 	//Read entries from fileName
 	entries, err := utils.ReadEntriesFromFile(fileName)
 
 	if err != nil {
-		gplog.Debug(fmt.Sprintf("Error reading file %s", fileName))
-		return &idl.CleanClusterReply{}, err
+		return &idl.CleanInitClusterReply{}, utils.LogAndReturnError(fmt.Errorf("init clean cluster failed err: %v", err))
 	}
 	// Create hostDataDirMap from entries
-	err, hostDataDirMap := CreateHostDataDirMap(entries, fileName)
+	hostDataDirMap, err := CreateHostDataDirMap(entries, fileName)
 	if err != nil {
-		return &idl.CleanClusterReply{}, err
+		return &idl.CleanInitClusterReply{}, utils.LogAndReturnError(fmt.Errorf("invalid entries in cleanup file"))
 	}
 
 	request := func(conn *Connection) error {
@@ -76,7 +74,7 @@ func (s *Server) CleanCluster(context.Context, *idl.CleanClusterRequest) (*idl.C
 			go func(dirname string) {
 				defer wg.Done()
 
-				gplog.Debug(fmt.Sprintf("Removing Data Directories: %s", dir))
+				gplog.Debug("Removing Data Directories: %s", dir)
 				_, err := conn.AgentClient.RemoveDirectory(context.Background(), &idl.RemoveDirectoryRequest{
 					DataDirectory: dir,
 				})
@@ -98,5 +96,5 @@ func (s *Server) CleanCluster(context.Context, *idl.CleanClusterRequest) (*idl.C
 
 	defer os.Remove(fileName)
 
-	return &idl.CleanClusterReply{}, ExecuteRPC(s.Conns, request)
+	return &idl.CleanInitClusterReply{}, ExecuteRPC(s.Conns, request)
 }

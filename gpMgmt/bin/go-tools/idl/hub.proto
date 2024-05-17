@@ -10,7 +10,7 @@ service Hub {
     rpc StatusAgents(StatusAgentsRequest) returns (StatusAgentsReply) {}
     rpc StopAgents(StopAgentsRequest) returns (StopAgentsReply) {}
     rpc MakeCluster(MakeClusterRequest) returns (stream HubReply) {}
-    rpc CleanCluster(CleanClusterRequest) returns (CleanClusterReply) {}
+    rpc CleanInitCluster(CleanInitClusterRequest) returns (CleanInitClusterReply) {}
     rpc AddMirrors(AddMirrorsRequest) returns (stream HubReply) {}
     rpc GetAllHostNames(GetAllHostNamesRequest) returns (GetAllHostNamesReply) {}
 }
@@ -39,10 +39,10 @@ message StartAgentsReply {}
 
 message StatusAgentsRequest {}
 
-message CleanClusterRequest {
+message CleanInitClusterRequest {
 }
 
-message CleanClusterReply {}
+message CleanInitClusterReply {}
 
 message ServiceStatus {
     string host = 1;

@@ -1312,9 +1312,6 @@ func TestInitClusterService(t *testing.T) {
 	setupTest(t)
 	defer teardownTest()
 
-	cli.GetUserInput = func() bool {
-		return false
-	}
 	t.Run("fails if input config file does not exist", func(t *testing.T) {
 		defer resetCLIVars()
 		err := cli.InitClusterService("/tmp/invalid_file", false, false)
@@ -1984,47 +1981,59 @@ func TestInitCleanFn(t *testing.T) {
 
 	t.Run("ConnectToHub Fails ", func(t *testing.T) {
 
-		expectederr := errors.New("test error")
+		defer resetCLIVars()
+
+		expectedErr := errors.New("test error")
 		cli.ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
-			return nil, expectederr
+			return nil, expectedErr
 		}
 
 		err := cli.InitCleanFn(false)
-		if err == nil {
-			t.Fatalf("expected err %v", expectederr)
+		if !errors.Is(err, expectedErr) {
+			t.Fatalf("got %#v, want %#v", err, expectedErr)
 		}
 	})
 
-	t.Run("CleanCluster RPC succeeds", func(t *testing.T) {
+	t.Run("CleanInitCluster RPC succeeds", func(t *testing.T) {
 		setupTest(t)
 		defer teardownTest()
+		defer resetCLIVars()
+
+		_, _, logfile := testhelper.SetupTestLogger()
 
 		cli.ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
 			hubClient := mock_idl.NewMockHubClient(ctrl)
-			hubClient.EXPECT().CleanCluster(gomock.Any(), gomock.Any())
+			hubClient.EXPECT().CleanInitCluster(gomock.Any(), gomock.Any())
 			return hubClient, nil
 		}
 
 		err := cli.InitCleanFn(false)
+
 		if err != nil {
-			t.Fatalf("unexpected err %v", err)
+			t.Fatalf("unexpected error: err %v", err)
 		}
+		testutils.AssertLogMessage(t, logfile, "clean cluster command successful")
 	})
 
-	t.Run("CleanCluster RPC fails", func(t *testing.T) {
+	t.Run("CleanInitCluster RPC fails", func(t *testing.T) {
 		setupTest(t)
 		defer teardownTest()
 
-		expectedStr := "clean cluster command failed"
+		expectedErr := errors.New("clean cluster command failed: test_err")
 		cli.ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
 			hubClient := mock_idl.NewMockHubClient(ctrl)
-			hubClient.EXPECT().CleanCluster(gomock.Any(), gomock.Any()).Return(nil, errors.New(expectedStr))
+			hubClient.EXPECT().CleanInitCluster(gomock.Any(), gomock.Any()).Return(nil, expectedErr)
 			return hubClient, nil
 		}
 
 		err := cli.InitCleanFn(false)
-		if !strings.Contains(err.Error(), expectedStr) {
-			t.Fatalf("got %v, want %v", err, expectedStr)
+		if !errors.Is(err, expectedErr) {
+			t.Fatalf("got %#v, want %#v", err, expectedErr)
+		}
+
+		expectedErrPrefix := "clean cluster command failed"
+		if !strings.HasPrefix(err.Error(), expectedErrPrefix) {
+			t.Fatalf("got %#v, want %#v", err, expectedErr)
 		}
 	})
 }

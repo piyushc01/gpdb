@@ -266,7 +266,7 @@ func ReadEntriesFromFile(filename string) ([]string, error) {
 /*
  * Remove the contents of the directory
  */
-func RemoveContents(dir string) error {
+func RemoveDirContents(dir string) error {
 	d, err := os.Open(dir)
 	if err != nil {
 		return err

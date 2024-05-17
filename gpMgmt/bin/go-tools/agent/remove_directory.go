@@ -16,11 +16,11 @@ func (s *Server) RemoveDirectory(ctx context.Context, req *idl.RemoveDirectoryRe
 	_, err := utils.System.Stat(req.DataDirectory)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return &idl.RemoveDirectoryReply{}, utils.LogAndReturnError(fmt.Errorf("unexpected error :%w", err))
+			return &idl.RemoveDirectoryReply{}, utils.LogAndReturnError(fmt.Errorf("failed to cleanup data directory %s: %w", req.DataDirectory, err))
 		}
 	}
 
-	//Check to see if there are postgres processes running, if true call gpstop.
+	//Check to see if there are postgres processes running, if true call pg_ctl stop	.
 	pgCtlStatusOptions := postgres.PgCtlStatus{
 		PgData: req.DataDirectory,
 	}
@@ -37,10 +37,10 @@ func (s *Server) RemoveDirectory(ctx context.Context, req *idl.RemoveDirectoryRe
 		}
 	}
 
-	err = utils.RemoveContents(req.DataDirectory)
+	err = utils.RemoveDirContents(req.DataDirectory)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return &idl.RemoveDirectoryReply{}, fmt.Errorf("could not remove directory %s : %w", req.DataDirectory, err)
+			return &idl.RemoveDirectoryReply{}, utils.LogAndReturnError(fmt.Errorf("failed to cleanup data directory %s : %w", req.DataDirectory, err))
 		}
 	}
 
