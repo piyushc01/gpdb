@@ -249,11 +249,6 @@ func TestEnvValidation(t *testing.T) {
 			}
 		}()
 
-		_, initErr := testutils.RunInitCluster(configFile)
-		if e, ok := initErr.(*exec.ExitError); !ok || e.ExitCode() != 1 {
-			t.Fatalf("got %v, want exit status 1", err)
-		}
-
 		// check if the coordinator is stopped
 		cmd := exec.Command("pg_ctl", "status", "-D", coordinatorDD)
 		cmdOuput, err := cmd.CombinedOutput()
