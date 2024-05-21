@@ -2,20 +2,21 @@ package main
 
 import (
 	"fmt"
-	"github.com/greenplum-db/gpdb/gp/gpservice/gpservice-cli"
+	"github.com/greenplum-db/gpdb/gp/gpctl/gpctl_cli"
 	"os"
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 )
 
+// GP-CTL utility
 func main() {
-	root := gpservice_cli.RootCommand()
+	root := gpctl_cli.RootCommand()
 	root.SilenceUsage = true
 	root.SilenceErrors = true
 
 	err := root.Execute()
 	if err != nil {
-		// gplog is initialised in the PreRun function in cobra and sometimes when the
+		// gplog is initialised in the PreRun function in cobra, and sometimes when the
 		// error is due to the input flags, the cobra pkg would not run the PreRun function.
 		// In those cases directly print to the stdout instead of using gplog
 		if gplog.GetLogger() != nil {

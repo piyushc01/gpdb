@@ -3,6 +3,7 @@ package init_cluster
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/greenplum-db/gpdb/gp/gpctl/gpctl_cli"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -10,7 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/greenplum-db/gpdb/gp/cli"
 	"github.com/greenplum-db/gpdb/gp/test/integration/testutils"
 	"github.com/spf13/viper"
 )
@@ -116,7 +116,7 @@ func TestInputFileValidation(t *testing.T) {
 	})
 
 	t.Run("cluster creation fails when the host does not have gp services configured", func(t *testing.T) {
-		var value cli.Segment
+		var value gpctl_cli.Segment
 		var ok bool
 
 		configFile := testutils.GetTempFile(t, "config.json")
@@ -128,11 +128,11 @@ func TestInputFileValidation(t *testing.T) {
 		}
 
 		coordinator := config.Get("coordinator")
-		if value, ok = coordinator.(cli.Segment); !ok {
+		if value, ok = coordinator.(gpctl_cli.Segment); !ok {
 			t.Fatalf("unexpected data type for coordinator %T", value)
 		}
 
-		SetConfigKey(t, configFile, "coordinator", cli.Segment{
+		SetConfigKey(t, configFile, "coordinator", gpctl_cli.Segment{
 			Hostname:      "invalid",
 			Address:       value.Address,
 			Port:          value.Port,
@@ -186,7 +186,7 @@ func TestInputFileValidation(t *testing.T) {
 		config := GetDefaultConfig(t)
 
 		primarySegs := config.Get("segment-array")
-		valueSegPair, ok := primarySegs.([]cli.SegmentPair)
+		valueSegPair, ok := primarySegs.([]gpctl_cli.SegmentPair)
 
 		if !ok {
 			t.Fatalf("unexpected data type for segment-array %T", primarySegs)
@@ -215,7 +215,7 @@ func TestInputFileValidation(t *testing.T) {
 		config := GetDefaultConfig(t)
 
 		primarySegs := config.Get("segment-array")
-		valueSegPair, ok := primarySegs.([]cli.SegmentPair)
+		valueSegPair, ok := primarySegs.([]gpctl_cli.SegmentPair)
 
 		if !ok {
 			t.Fatalf("unexpected data type for segment-array %T", primarySegs)
@@ -244,7 +244,7 @@ func TestInputFileValidation(t *testing.T) {
 		config := GetDefaultConfig(t)
 
 		primarySegs := config.Get("segment-array")
-		valueSegPair, ok := primarySegs.([]cli.SegmentPair)
+		valueSegPair, ok := primarySegs.([]gpctl_cli.SegmentPair)
 
 		if !ok {
 			t.Fatalf("unexpected data type for segment-array %T", primarySegs)
@@ -266,12 +266,12 @@ func TestInputFileValidation(t *testing.T) {
 
 	t.Run("when host address is not provided", func(t *testing.T) {
 		var ok bool
-		var value cli.Segment
+		var value gpctl_cli.Segment
 		configFile := testutils.GetTempFile(t, "config.json")
 		config := GetDefaultConfig(t)
 
 		coordinator := config.Get("coordinator")
-		if value, ok = coordinator.(cli.Segment); !ok {
+		if value, ok = coordinator.(gpctl_cli.Segment); !ok {
 			t.Fatalf("unexpected data type for coordinator %T", coordinator)
 		}
 
@@ -301,7 +301,7 @@ func TestInputFileValidation(t *testing.T) {
 		config := GetDefaultConfig(t)
 
 		primarySegs := config.Get("segment-array")
-		valueSegPair, ok := primarySegs.([]cli.SegmentPair)
+		valueSegPair, ok := primarySegs.([]gpctl_cli.SegmentPair)
 
 		if !ok {
 			t.Fatalf("unexpected data type for segment-array %T", primarySegs)
@@ -328,7 +328,7 @@ func TestInputFileValidation(t *testing.T) {
 		config := GetDefaultConfig(t)
 
 		primarySegs := config.Get("segment-array")
-		valueSegPair, ok := primarySegs.([]cli.SegmentPair)
+		valueSegPair, ok := primarySegs.([]gpctl_cli.SegmentPair)
 
 		if !ok {
 			t.Fatalf("unexpected data type for segment-array %T", primarySegs)
@@ -350,12 +350,12 @@ func TestInputFileValidation(t *testing.T) {
 
 	t.Run("when port number is not provided", func(t *testing.T) {
 		var ok bool
-		var value cli.Segment
+		var value gpctl_cli.Segment
 		configFile := testutils.GetTempFile(t, "config.json")
 		config := GetDefaultConfig(t)
 
 		coordinator := config.Get("coordinator")
-		if value, ok = coordinator.(cli.Segment); !ok {
+		if value, ok = coordinator.(gpctl_cli.Segment); !ok {
 			t.Fatalf("unexpected data type for coordinator %T", coordinator)
 		}
 
@@ -379,7 +379,7 @@ func TestInputFileValidation(t *testing.T) {
 		config := GetDefaultConfig(t)
 
 		primarySegs := config.Get("segment-array")
-		valueSegPair, ok := primarySegs.([]cli.SegmentPair)
+		valueSegPair, ok := primarySegs.([]gpctl_cli.SegmentPair)
 
 		if !ok {
 			t.Fatalf("unexpected data type for segment-array %T", primarySegs)
@@ -414,27 +414,27 @@ func GetDefaultConfig(t *testing.T) *viper.Viper {
 		t.Fatalf("unexpected error: %#v", err)
 	}
 
-	instance.Set("coordinator", cli.Segment{
+	instance.Set("coordinator", gpctl_cli.Segment{
 		Port:          testutils.DEFAULT_COORDINATOR_PORT,
 		Hostname:      hostList[0],
 		Address:       hostList[0],
 		DataDirectory: coordinatorDatadir,
 	})
 
-	var segments []cli.SegmentPair
+	var segments []gpctl_cli.SegmentPair
 	if len(hostList) == 1 {
 		hostList = append(hostList, hostList[0], hostList[0], hostList[0])
 	}
 
 	for i := 1; i < len(hostList); i++ {
 		hostPrimary := hostList[i]
-		primary := &cli.Segment{
+		primary := &gpctl_cli.Segment{
 			Port:          testutils.DEFAULT_COORDINATOR_PORT + i + 1,
 			Hostname:      hostPrimary,
 			Address:       hostPrimary,
 			DataDirectory: filepath.Join("/tmp", "demo", fmt.Sprintf("%d", i-1)),
 		}
-		segments = append(segments, cli.SegmentPair{
+		segments = append(segments, gpctl_cli.SegmentPair{
 			Primary: primary,
 		})
 	}

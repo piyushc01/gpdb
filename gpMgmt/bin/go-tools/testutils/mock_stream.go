@@ -1,7 +1,7 @@
 package testutils
 
 import (
-	"github.com/greenplum-db/gpdb/gp/hub"
+	"github.com/greenplum-db/gpdb/gp/gpservice/hub"
 	"github.com/greenplum-db/gpdb/gp/idl"
 	"google.golang.org/grpc"
 )

@@ -2,6 +2,7 @@ package init_cluster
 
 import (
 	"fmt"
+	"github.com/greenplum-db/gpdb/gp/gpctl/gpctl_cli"
 	"os/exec"
 	"path/filepath"
 	"reflect"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/greenplum-db/gp-common-go-libs/cluster"
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
-	"github.com/greenplum-db/gpdb/gp/cli"
 	"github.com/greenplum-db/gpdb/gp/constants"
 	"github.com/greenplum-db/gpdb/gp/test/integration/testutils"
 )
@@ -24,7 +24,7 @@ func TestLocaleValidation(t *testing.T) {
 		expected := testutils.GetRandomLocale(t)
 
 		configFile := testutils.GetTempFile(t, "config.json")
-		SetConfigKey(t, configFile, "locale", cli.Locale{
+		SetConfigKey(t, configFile, "locale", gpctl_cli.Locale{
 			LcAll: expected,
 		}, true)
 
@@ -48,7 +48,7 @@ func TestLocaleValidation(t *testing.T) {
 		expectedLcCtype := testutils.GetRandomLocale(t)
 
 		configFile := testutils.GetTempFile(t, "config.json")
-		SetConfigKey(t, configFile, "locale", cli.Locale{
+		SetConfigKey(t, configFile, "locale", gpctl_cli.Locale{
 			LcAll:   expected,
 			LcCtype: expectedLcCtype,
 		}, true)
@@ -99,7 +99,7 @@ func TestLocaleValidation(t *testing.T) {
 
 	t.Run("when invalid locale is given", func(t *testing.T) {
 		configFile := testutils.GetTempFile(t, "config.json")
-		SetConfigKey(t, configFile, "locale", cli.Locale{
+		SetConfigKey(t, configFile, "locale", gpctl_cli.Locale{
 			LcAll: "invalid.locale",
 		}, true)
 
@@ -176,7 +176,7 @@ func TestPgConfig(t *testing.T) {
 	})
 
 	t.Run("check if the gp_segment_configuration table has the correct value", func(t *testing.T) {
-		var value cli.Segment
+		var value gpctl_cli.Segment
 		var ok bool
 		configFile := testutils.GetTempFile(t, "config.json")
 		config := GetDefaultConfig(t)
@@ -187,17 +187,17 @@ func TestPgConfig(t *testing.T) {
 		}
 
 		coordinator := config.Get("coordinator")
-		if value, ok = coordinator.(cli.Segment); !ok {
+		if value, ok = coordinator.(gpctl_cli.Segment); !ok {
 			t.Fatalf("unexpected data type for coordinator %T", value)
 		}
 
 		primarySegs := config.Get("segment-array")
-		valueSegPair, ok := primarySegs.([]cli.SegmentPair)
+		valueSegPair, ok := primarySegs.([]gpctl_cli.SegmentPair)
 		if !ok {
 			t.Fatalf("unexpected data type for segment-array %T", primarySegs)
 		}
 
-		var primarySegments []cli.Segment
+		var primarySegments []gpctl_cli.Segment
 		primarySegments = append(primarySegments, value)
 
 		for _, segPair := range valueSegPair {
@@ -220,9 +220,9 @@ func TestPgConfig(t *testing.T) {
 			t.Fatalf("Error getting segment configuration: %v", err)
 		}
 
-		resultSegs := make([]cli.Segment, len(segConfigs))
+		resultSegs := make([]gpctl_cli.Segment, len(segConfigs))
 		for i, seg := range segConfigs {
-			resultSegs[i] = cli.Segment{
+			resultSegs[i] = gpctl_cli.Segment{
 				Hostname:      seg.Hostname,
 				Port:          seg.Port,
 				DataDirectory: seg.DataDir,
@@ -459,9 +459,9 @@ func TestGpToolKitValidation(t *testing.T) {
 func TestPgHbaConfValidation(t *testing.T) {
 	/* FIXME:concurse is failing to resolve ip to hostname*/
 	/*t.Run("pghba config file validation when hbahostname is true", func(t *testing.T) {
-		var value cli.Segment
+		var value gpservice-cli.Segment
 		var ok bool
-		var valueSeg []cli.Segment
+		var valueSeg []gpservice-cli.Segment
 		var okSeg bool
 		configFile := testutils.GetTempFile(t, "config.json")
 		config := GetDefaultConfig(t)
@@ -479,12 +479,12 @@ func TestPgHbaConfValidation(t *testing.T) {
 		}
 
 		coordinator := config.Get("coordinator")
-		if value, ok = coordinator.(cli.Segment); !ok {
+		if value, ok = coordinator.(gpservice-cli.Segment); !ok {
 			t.Fatalf("unexpected data type for coordinator %T", value)
 		}
 
-		filePathCord := filepath.Join(coordinator.(cli.Segment).DataDirectory, "pg_hba.conf")
-		hostCord := coordinator.(cli.Segment).Hostname
+		filePathCord := filepath.Join(coordinator.(gpservice-cli.Segment).DataDirectory, "pg_hba.conf")
+		hostCord := coordinator.(gpservice-cli.Segment).Hostname
 		cmdStr := "whoami"
 		cmd := exec.Command("ssh", hostCord, cmdStr)
 		output, err := cmd.Output()
@@ -493,7 +493,7 @@ func TestPgHbaConfValidation(t *testing.T) {
 		}
 
 		resultCord := strings.TrimSpace(string(output))
-		pgHbaLine := fmt.Sprintf("host\tall\t%s\t%s\ttrust", resultCord, coordinator.(cli.Segment).Hostname)
+		pgHbaLine := fmt.Sprintf("host\tall\t%s\t%s\ttrust", resultCord, coordinator.(gpservice-cli.Segment).Hostname)
 		cmdStrCord := fmt.Sprintf("/bin/bash -c 'cat %s | grep \"%s\"'", filePathCord, pgHbaLine)
 		cmdCord := exec.Command("ssh", hostCord, cmdStrCord)
 		_, err = cmdCord.CombinedOutput()
@@ -502,16 +502,16 @@ func TestPgHbaConfValidation(t *testing.T) {
 		}
 
 		primarySegs := config.Get("segment-array")
-		valueSegPair, ok := primarySegs.([]cli.SegmentPair)
+		valueSegPair, ok := primarySegs.([]gpservice-cli.SegmentPair)
 
 		if !ok {
 			t.Fatalf("unexpected data type for segment-array %T", primarySegs)
 		}
 
-		pgHbaLineSeg := fmt.Sprintf("host\tall\tall\t%s\ttrust", primarySegs.([]cli.Segment)[0].Hostname)
-		filePathSeg := filepath.Join(primarySegs.([]cli.Segment)[0].DataDirectory, "pg_hba.conf")
+		pgHbaLineSeg := fmt.Sprintf("host\tall\tall\t%s\ttrust", primarySegs.([]gpservice-cli.Segment)[0].Hostname)
+		filePathSeg := filepath.Join(primarySegs.([]gpservice-cli.Segment)[0].DataDirectory, "pg_hba.conf")
 		cmdStr_seg := fmt.Sprintf("/bin/bash -c 'cat %s | grep \"%s\"'", filePathSeg, pgHbaLineSeg)
-		hostSeg := primarySegs.([]cli.Segment)[0].Hostname
+		hostSeg := primarySegs.([]gpservice-cli.Segment)[0].Hostname
 		cmdSeg := exec.Command("ssh", hostSeg, cmdStr_seg)
 		_, err = cmdSeg.CombinedOutput()
 		if err != nil {
@@ -525,7 +525,7 @@ func TestPgHbaConfValidation(t *testing.T) {
 	})*/
 
 	t.Run("pghba config file validation when hbahostname is false", func(t *testing.T) {
-		var value cli.Segment
+		var value gpctl_cli.Segment
 		var ok bool
 
 		configFile := testutils.GetTempFile(t, "config.json")
@@ -544,12 +544,12 @@ func TestPgHbaConfValidation(t *testing.T) {
 		}
 
 		coordinator := config.Get("coordinator")
-		if value, ok = coordinator.(cli.Segment); !ok {
+		if value, ok = coordinator.(gpctl_cli.Segment); !ok {
 			t.Fatalf("unexpected data type for coordinator %T", value)
 		}
 
-		filePathCord := filepath.Join(coordinator.(cli.Segment).DataDirectory, "pg_hba.conf")
-		hostCord := coordinator.(cli.Segment).Hostname
+		filePathCord := filepath.Join(coordinator.(gpctl_cli.Segment).DataDirectory, "pg_hba.conf")
+		hostCord := coordinator.(gpctl_cli.Segment).Hostname
 		cmdStr := "whoami"
 		cmd := exec.Command("ssh", hostCord, cmdStr)
 		output, err := cmd.Output()
@@ -576,7 +576,7 @@ func TestPgHbaConfValidation(t *testing.T) {
 		}
 
 		primarySegs := config.Get("segment-array")
-		valueSegPair, ok := primarySegs.([]cli.SegmentPair)
+		valueSegPair, ok := primarySegs.([]gpctl_cli.SegmentPair)
 
 		if !ok {
 			t.Fatalf("unexpected data type for segment-array %T", primarySegs)

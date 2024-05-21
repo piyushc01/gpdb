@@ -3,6 +3,7 @@ package testutils
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/greenplum-db/gpdb/gp/gpservice/hub"
 	"io"
 	"os"
 	"os/exec"
@@ -14,7 +15,6 @@ import (
 	"time"
 
 	"github.com/greenplum-db/gpdb/gp/constants"
-	"github.com/greenplum-db/gpdb/gp/hub"
 	"github.com/greenplum-db/gpdb/gp/utils"
 )
 
@@ -116,7 +116,7 @@ func RunGpStatus(params ...string) (CmdResult, error) {
 	allParams := append([]string{"gpstate"}, params...)
 
 	genCmd := Command{
-		cmdStr: allParams[0],  
+		cmdStr: allParams[0],
 		args:   allParams[1:],
 	}
 

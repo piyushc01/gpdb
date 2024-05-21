@@ -3,12 +3,12 @@ package configure
 import (
 	"flag"
 	"fmt"
+	"github.com/greenplum-db/gpdb/gp/gpservice/hub"
 	"log"
 	"os"
 	"testing"
 
 	"github.com/greenplum-db/gpdb/gp/constants"
-	"github.com/greenplum-db/gpdb/gp/hub"
 	"github.com/greenplum-db/gpdb/gp/test/integration/testutils"
 	"github.com/greenplum-db/gpdb/gp/utils"
 	"github.com/greenplum-db/gpdb/gp/utils/greenplum"

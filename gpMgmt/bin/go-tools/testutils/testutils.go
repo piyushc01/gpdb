@@ -3,6 +3,7 @@ package testutils
 import (
 	"errors"
 	"fmt"
+	"github.com/greenplum-db/gpdb/gp/gpservice/hub"
 	"io"
 	"os"
 	"os/exec"
@@ -20,7 +21,6 @@ import (
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpdb/gp/constants"
-	"github.com/greenplum-db/gpdb/gp/hub"
 	"github.com/greenplum-db/gpdb/gp/idl"
 )
 

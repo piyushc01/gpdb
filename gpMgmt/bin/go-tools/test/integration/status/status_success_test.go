@@ -1,7 +1,7 @@
 package status
 
 import (
-	"github.com/greenplum-db/gpdb/gp/hub"
+	"github.com/greenplum-db/gpdb/gp/gpservice/hub"
 	"github.com/greenplum-db/gpdb/gp/test/integration/testutils"
 	"strings"
 	"testing"
@@ -58,7 +58,7 @@ func TestStatusSuccess(t *testing.T) {
 			},
 		},
 		{
-			name: "status services with --verbose cli param",
+			name: "status services with --verbose gpservice-cli param",
 			cliParams: []string{
 				"services", "--verbose",
 			},
@@ -73,7 +73,7 @@ func TestStatusSuccess(t *testing.T) {
 			},
 		},
 		{
-			name: "status hub with --verbose cli param",
+			name: "status hub with --verbose gpservice-cli param",
 			cliParams: []string{
 				"hub", "--verbose",
 			},
@@ -86,7 +86,7 @@ func TestStatusSuccess(t *testing.T) {
 			},
 		},
 		{
-			name: "status agents with --verbose cli param",
+			name: "status agents with --verbose gpservice-cli param",
 			cliParams: []string{
 				"agents", "--verbose",
 			},

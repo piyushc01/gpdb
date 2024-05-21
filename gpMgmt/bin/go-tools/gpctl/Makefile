@@ -64,8 +64,6 @@ BUILD_ENV = $($(OS)_ENV)
 .PHONY: build build_linux build_mac
 build:
 	$(BUILD_ENV) go build -o gpctl $(BUILD_FLAGS) github.com/greenplum-db/gpdb/gp/gpctl
-	$(BUILD_ENV) go build -o gpservice $(BUILD_FLAGS) github.com/greenplum-db/gpdb/gp/gpservice
-
 
 build_linux: OS := LINUX
 build_mac: OS := MAC
@@ -80,8 +78,7 @@ cert:
 BUILD_FLAGS = -gcflags="all=-N -l"
 
 install:
-	GOBIN=$(GPHOME)/bin go install $(BUILD_FLAGS) github.com/greenplum-db/gpdb/gp/gpctl
-	GOBIN=$(GPHOME)/bin go install $(BUILD_FLAGS) github.com/greenplum-db/gpdb/gp/gpservice
+	GOBIN=$(GPHOME)/bin go install $(BUILD_FLAGS) github.com/greenplum-db/gpdb/gpctl
 
 # goimports supports a superset of the formatting rules gofmt supports, but
 # gofmt allows custom formatting rules so we include both for now
@@ -92,7 +89,7 @@ format:
 # You can override these from the command line.
 GIT_BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD)
 GIT_REMOTE ?= $(shell git ls-remote --get-url)
-PIPELINE_NAME ?= gpdb-dev-$(shell git rev-parse --abbrev-ref HEAD | tr '/' '-')
+PIPELINE_NAME ?= piyush_gpdb-dev-$(shell git rev-parse --abbrev-ref HEAD | tr '/' '-')
 pipeline:
 	fly -t dev set-pipeline -p $(PIPELINE_NAME) \
 		-c ci/pipelines/pipeline.yml \

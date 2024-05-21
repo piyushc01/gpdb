@@ -2,6 +2,7 @@ package init_cluster
 
 import (
 	"fmt"
+	"github.com/greenplum-db/gpdb/gp/gpctl/gpctl_cli"
 	"net"
 	"os"
 	"os/exec"
@@ -11,13 +12,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/greenplum-db/gpdb/gp/cli"
 	"github.com/greenplum-db/gpdb/gp/test/integration/testutils"
 )
 
 func TestEnvValidation(t *testing.T) {
 	t.Run("when the given data directory is not empty", func(t *testing.T) {
-		var value cli.Segment
+		var value gpctl_cli.Segment
 		var ok bool
 
 		configFile := testutils.GetTempFile(t, "config.json")
@@ -29,7 +29,7 @@ func TestEnvValidation(t *testing.T) {
 		}
 
 		coordinator := config.Get("coordinator")
-		if value, ok = coordinator.(cli.Segment); !ok {
+		if value, ok = coordinator.(gpctl_cli.Segment); !ok {
 			t.Fatalf("unexpected data type for coordinator %T", coordinator)
 		}
 
@@ -57,7 +57,7 @@ func TestEnvValidation(t *testing.T) {
 	})
 
 	t.Run("when the given port is already in use", func(t *testing.T) {
-		var value cli.Segment
+		var value gpctl_cli.Segment
 		var ok bool
 
 		configFile := testutils.GetTempFile(t, "config.json")
@@ -69,7 +69,7 @@ func TestEnvValidation(t *testing.T) {
 		}
 
 		coordinator := config.Get("coordinator")
-		if value, ok = coordinator.(cli.Segment); !ok {
+		if value, ok = coordinator.(gpctl_cli.Segment); !ok {
 			t.Fatalf("unexpected data type for coordinator %T", value)
 		}
 
@@ -91,7 +91,7 @@ func TestEnvValidation(t *testing.T) {
 	})
 
 	t.Run("when the initdb does not have appropriate permission", func(t *testing.T) {
-		var value cli.Segment
+		var value gpctl_cli.Segment
 		var ok bool
 
 		configFile := testutils.GetTempFile(t, "config.json")
@@ -103,7 +103,7 @@ func TestEnvValidation(t *testing.T) {
 		}
 
 		coordinator := config.Get("coordinator")
-		if value, ok = coordinator.(cli.Segment); !ok {
+		if value, ok = coordinator.(gpctl_cli.Segment); !ok {
 			t.Fatalf("unexpected data type for coordinator %T", value)
 		}
 
@@ -136,7 +136,7 @@ func TestEnvValidation(t *testing.T) {
 	})
 
 	t.Run("when data directory is not empty and --force is given for gp init command", func(t *testing.T) {
-		var value cli.Segment
+		var value gpctl_cli.Segment
 		var ok bool
 
 		configFile := testutils.GetTempFile(t, "config.json")
@@ -148,7 +148,7 @@ func TestEnvValidation(t *testing.T) {
 		}
 
 		coordinator := config.Get("coordinator")
-		if value, ok = coordinator.(cli.Segment); !ok {
+		if value, ok = coordinator.(gpctl_cli.Segment); !ok {
 			t.Fatalf("unexpected data type for coordinator %T", value)
 		}
 
@@ -194,9 +194,9 @@ func TestEnvValidation(t *testing.T) {
 
 		//TODO: Check the behavior of the test case now cleanup is added.
 		t.Skip()
-		var valueSegPair []cli.SegmentPair
+		var valueSegPair []gpctl_cli.SegmentPair
 		var okSeg bool
-		var value cli.Segment
+		var value gpctl_cli.Segment
 		var ok bool
 
 		configFile := testutils.GetTempFile(t, "config.json")
@@ -208,7 +208,7 @@ func TestEnvValidation(t *testing.T) {
 		}
 
 		primarySegs := config.Get("segment-array")
-		if valueSegPair, okSeg = primarySegs.([]cli.SegmentPair); !okSeg {
+		if valueSegPair, okSeg = primarySegs.([]gpctl_cli.SegmentPair); !okSeg {
 			t.Fatalf("unexpected data type for segment-array %T", valueSegPair)
 		}
 
@@ -216,7 +216,7 @@ func TestEnvValidation(t *testing.T) {
 		host := valueSegPair[0].Primary.Hostname
 		coordinator := config.Get("coordinator")
 
-		if value, ok = coordinator.(cli.Segment); !ok {
+		if value, ok = coordinator.(gpctl_cli.Segment); !ok {
 			t.Fatalf("unexpected data type for coordinator %T", value)
 		}
 		coordinatorDD := value.DataDirectory
