@@ -16,7 +16,7 @@ type hubStreamer interface {
 	StreamLogMsg(msg string, level ...idl.LogLevel)
 	StreamStdoutMsg(msg string)
 	StreamExecCommand(cmd *exec.Cmd, gpHome string) error
-	StreamProgressMsg(label string, total int)
+	StreamProgressMsg(label string, current, total int)
 }
 
 type HubStream struct {
@@ -33,10 +33,8 @@ func (h *HubStream) GetHandler() streamSender {
 	return h.handler
 }
 
-/*
-StreamLogMsg streams a log message from hub to the CLI.
-Default log level is set to INFO
-*/
+// StreamLogMsg streams a log message from hub to the CLI.
+// Default log level is set to INFO
 func (h *HubStream) StreamLogMsg(msg string, level ...idl.LogLevel) {
 	// if log level is not provided, set it to INFO
 	if len(level) == 0 {
@@ -60,10 +58,8 @@ func (h *HubStream) StreamLogMsg(msg string, level ...idl.LogLevel) {
 	}
 }
 
-/*
-StreamStdoutMsg streams a message from hub to CLI
-which is directly written to the stdout
-*/
+// StreamStdoutMsg streams a message from hub to CLI
+// which is directly written to the stdout
 func (h *HubStream) StreamStdoutMsg(msg string) {
 	message := &idl.HubReply{
 		Message: &idl.HubReply_StdoutMsg{
@@ -77,10 +73,8 @@ func (h *HubStream) StreamStdoutMsg(msg string) {
 	}
 }
 
-/*
-StreamExecCommand runs the given exec.Cmd and streams its
-stdout and stderr from hub to the CLI
-*/
+// StreamExecCommand runs the given exec.Cmd and streams its
+// stdout and stderr from hub to the CLI
 func (h *HubStream) StreamExecCommand(cmd *exec.Cmd, gpHome string) error {
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -132,20 +126,16 @@ func (h *HubStream) StreamExecCommand(cmd *exec.Cmd, gpHome string) error {
 	return nil
 }
 
-/*
-StreamProgressMsg is used to stream progress messages from hub to
-the CLI. On the CLI side a progress bar will be displayed on the stdout
-which will increment with each call to this function. First call to this
-will just create/initialise the progress bar and subsequent calls would be
-used to increment the progress
-*/
-func (h *HubStream) StreamProgressMsg(label string, total int) {
-
+// StreamProgressMsg is used to stream progress messages from hub to
+// the CLI. On the CLI side a progress bar will be displayed on the stdout
+// which will be updated with the current value
+func (h *HubStream) StreamProgressMsg(label string, current, total int) {
 	message := &idl.HubReply{
 		Message: &idl.HubReply_ProgressMsg{
 			ProgressMsg: &idl.ProgressMessage{
-				Label: label,
-				Total: int32(total),
+				Label:   label,
+				Current: int32(current),
+				Total:   int32(total),
 			},
 		},
 	}

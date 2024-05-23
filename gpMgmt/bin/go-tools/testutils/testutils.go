@@ -1,6 +1,7 @@
 package testutils
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -22,6 +23,7 @@ import (
 	"github.com/greenplum-db/gpdb/gp/constants"
 	"github.com/greenplum-db/gpdb/gp/hub"
 	"github.com/greenplum-db/gpdb/gp/idl"
+	"github.com/greenplum-db/gpdb/gp/utils"
 )
 
 type MockPlatform struct {
@@ -131,6 +133,28 @@ func AssertLogMessage(t *testing.T, buffer *gbytes.Buffer, message string) {
 	}
 }
 
+func AssertLogMessageCount(t *testing.T, buffer *gbytes.Buffer, message string, expectedCount int) {
+	t.Helper()
+
+	count := strings.Count(string(buffer.Contents()), message)
+	if count != expectedCount {
+		t.Fatalf("expected pattern %q found %d times in log %q, want %d", message, count, buffer.Contents(), expectedCount)
+	}
+}
+
+func AssertLogMessageNotPresent(t *testing.T, buffer *gbytes.Buffer, message string) {
+	t.Helper()
+
+	pattern, err := regexp.Compile(message)
+	if err != nil {
+		t.Fatalf("unexpected error when compiling regex: %#v", err)
+	}
+
+	if pattern.MatchString(string(buffer.Contents())) {
+		t.Fatalf("expected pattern '%s' found in log '%s'", message, buffer.Contents())
+	}
+}
+
 func AssertFileContents(t *testing.T, filepath string, expected string) {
 	t.Helper()
 
@@ -181,6 +205,19 @@ func CreateMockDBConn(t *testing.T, errs ...error) (*dbconn.DBConn, sqlmock.Sqlm
 	return getMockDBConn(t, false, errs...)
 }
 
+func CreateMockDBConnWithContext(t *testing.T, ctx context.Context, errs ...error) (*utils.DBConnWithContext, sqlmock.Sqlmock) {
+	t.Helper()
+
+	conn, mock := CreateMockDBConn(t, errs...)
+
+	connWithContext := &utils.DBConnWithContext{
+		DB:  conn,
+		Ctx: ctx,
+	}
+
+	return connWithContext, mock
+}
+
 func CreateMockDBConnForUtilityMode(t *testing.T, errs ...error) (*dbconn.DBConn, sqlmock.Sqlmock) {
 	t.Helper()
 
@@ -196,6 +233,19 @@ func CreateAndConnectMockDB(t *testing.T, numConns int) (*dbconn.DBConn, sqlmock
 	connection.MustConnect(numConns)
 
 	return connection, mock
+}
+
+func CreateAndConnectMockDBWithContext(t *testing.T, ctx context.Context, numConns int) (*utils.DBConnWithContext, sqlmock.Sqlmock) {
+	t.Helper()
+
+	conn, mock := CreateAndConnectMockDB(t, numConns)
+
+	connWithContext := &utils.DBConnWithContext{
+		DB:  conn,
+		Ctx: ctx,
+	}
+
+	return connWithContext, mock
 }
 
 func getMockDBConn(t *testing.T, utility bool, errs ...error) (*dbconn.DBConn, sqlmock.Sqlmock) {
@@ -235,4 +285,68 @@ func CreateDirectoryWithRemoveFail(dirPath string) error {
 	}
 
 	return nil
+}
+
+func CaptureStdout(t *testing.T) (chan string, *os.File, func()) {
+	t.Helper()
+
+	stdout := make(chan string)
+
+	oldStdout := os.Stdout
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("unexpected error: %#v", err)
+	}
+
+	os.Stdout = writer
+	resetStdout := func() {
+		os.Stdout = oldStdout
+	}
+
+	go func() {
+		out, _ := io.ReadAll(reader)
+		stdout <- string(out)
+	}()
+
+	return stdout, writer, resetStdout
+}
+
+func MockStdin(t *testing.T, input string) func() {
+	t.Helper()
+
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	_, err = writer.WriteString(input)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	writer.Close()
+
+	oldStdin := os.Stdin
+	os.Stdin = reader
+	resetStdin := func() {
+		os.Stdin = oldStdin
+	}
+
+	return resetStdin
+}
+
+func MockStdinWithWriter(t *testing.T) (*os.File, func()) {
+	t.Helper()
+
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	oldStdin := os.Stdin
+	os.Stdin = reader
+	resetStdin := func() {
+		os.Stdin = oldStdin
+	}
+
+	return writer, resetStdin
 }

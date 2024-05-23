@@ -1,71 +1,99 @@
 package utils_test
 
 import (
-	"os"
+	"fmt"
+	"strings"
 	"testing"
 
-	"github.com/greenplum-db/gp-common-go-libs/testhelper"
-	"github.com/greenplum-db/gpdb/gp/constants"
+	"github.com/greenplum-db/gpdb/gp/testutils"
 	"github.com/greenplum-db/gpdb/gp/utils"
 )
 
-func TestAskUserYesNo(t *testing.T) {
-	testhelper.SetupTestLogger()
+func TestAskUserYesOrNo(t *testing.T) {
+	t.Run("correctly displays the prompt text", func(t *testing.T) {
+		input := "y\n"
+		resetStdin := testutils.MockStdin(t, input)
+		defer resetStdin()
 
-	// Mock user input for testing
-	mockInputYes := "yes\n"
-	mockInputNo := "no\n"
-	mockInputInvalid := "invalid\n"
+		buffer, writer, resetStdout := testutils.CaptureStdout(t)
+		defer resetStdout()
 
-	/// Set up mock stdin
-	oldStdin := os.Stdin
-	defer func() { os.Stdin = oldStdin }()
+		promptText := "some prompt text"
+		utils.AskUserYesOrNo(promptText)
+		writer.Close()
 
-	t.Run("User inputs yes", func(t *testing.T) {
-		r, w, _ := os.Pipe()
-		os.Stdin = r
-		_, err := w.WriteString(mockInputYes)
-		if err != nil {
-			t.Errorf("WriteString error %v", err)
+		stdout := <-buffer
+		expectedStdout := fmt.Sprintf("\n%s  Yy|Nn: ", promptText)
+		if stdout != expectedStdout {
+			t.Fatalf("got %s, want %s", stdout, expectedStdout)
 		}
-		if expected := utils.AskUserYesNo(constants.UserInputWaitDurtion); !expected {
-			t.Errorf("AskUserYesNo() = %v, actual %v", expected, true)
-		}
-		w.Close()
 	})
 
-	t.Run("User Inputs No", func(t *testing.T) {
-		r, w, _ := os.Pipe()
-		os.Stdin = r
-		_, err := w.WriteString(mockInputNo)
-		if err != nil {
-			t.Errorf("WriteString error %v", err)
+	t.Run("returns true when the user wants to proceed", func(t *testing.T) {
+		for _, input := range []string{"y\n", "Y\n"} {
+			resetStdin := testutils.MockStdin(t, input)
+			defer resetStdin()
+
+			result := utils.AskUserYesOrNo("")
+			if !result {
+				t.Fatalf("got %t, want true", result)
+			}
 		}
-		if expected := utils.AskUserYesNo(constants.UserInputWaitDurtion); expected {
-			t.Errorf("AskUserYesNo() = %v, actual %v", expected, false)
-		}
-		w.Close()
 	})
 
-	t.Run("User Inputs Invalid", func(t *testing.T) {
-		r, w, _ := os.Pipe()
-		os.Stdin = r
-		_, err := w.WriteString(mockInputInvalid)
-		if err != nil {
-			t.Errorf("WriteString error %v", err)
+	t.Run("returns false when the user wants to cancel", func(t *testing.T) {
+		for _, input := range []string{"n\n", "N\n"} {
+			resetStdin := testutils.MockStdin(t, input)
+			defer resetStdin()
+
+			result := utils.AskUserYesOrNo("")
+			if result {
+				t.Fatalf("got %t, want false", result)
+			}
 		}
-		// Simulate an invalid input followed by a valid one
-		if expected := utils.AskUserYesNo(constants.UserInputWaitDurtion); expected {
-			t.Errorf("AskUserYesNo() = %v, actual %v", expected, false)
+	})
+
+	t.Run("returns false when fails to read the input", func(t *testing.T) {
+		resetStdin := testutils.MockStdin(t, "")
+		defer resetStdin()
+
+		buffer, writer, resetStdout := testutils.CaptureStdout(t)
+		defer resetStdout()
+
+		result := utils.AskUserYesOrNo("")
+		writer.Close()
+
+		if result {
+			t.Fatalf("got %t, want false", result)
 		}
-		_, err = w.WriteString(mockInputYes)
-		if err != nil {
-			t.Errorf("WriteString error %v", err)
+
+		stdout := <-buffer
+		expectedStdout := `Failed to read input: EOF, defaulting to no`
+		if !strings.Contains(stdout, expectedStdout) {
+			t.Fatalf("got %q, want %q", stdout, expectedStdout)
 		}
-		//User inputs valid one
-		if expected := utils.AskUserYesNo(constants.UserInputWaitDurtion); !expected {
-			t.Errorf("AskUserYesNo() = %v, actual %v", !expected, true)
+	})
+
+	t.Run("retries when input is invalid", func(t *testing.T) {
+		input := "invalid\ninvalid\ny\n"
+		resetStdin := testutils.MockStdin(t, input)
+		defer resetStdin()
+
+		buffer, writer, resetStdout := testutils.CaptureStdout(t)
+		defer resetStdout()
+
+		result := utils.AskUserYesOrNo("")
+		writer.Close()
+
+		if !result {
+			t.Fatalf("got %t, want true", result)
 		}
-		w.Close()
+
+		stdout := <-buffer
+		expectedStdout := `invalid input "invalid"`
+		expectedCount := 2
+		if strings.Count(stdout, expectedStdout) != expectedCount {
+			t.Fatalf("got %q, want %q to be present %d times", stdout, expectedStdout, expectedCount)
+		}
 	})
 }

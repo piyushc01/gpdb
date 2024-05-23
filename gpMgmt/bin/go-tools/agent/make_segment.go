@@ -34,7 +34,7 @@ func (s *Server) MakeSegment(ctx context.Context, request *idl.MakeSegmentReques
 		LcTime:        locale.LcTime,
 		DataChecksums: request.DataChecksums,
 	}
-	out, err := utils.RunGpCommand(&initdbOptions, s.GpHome)
+	out, err := utils.RunGpCommandContext(ctx, &initdbOptions, s.GpHome)
 	if err != nil {
 		return &idl.MakeSegmentReply{}, utils.LogAndReturnError(fmt.Errorf("executing initdb: %s, %w", out, err))
 	}

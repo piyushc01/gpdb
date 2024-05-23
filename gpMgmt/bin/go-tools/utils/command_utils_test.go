@@ -1,6 +1,7 @@
 package utils_test
 
 import (
+	"context"
 	"errors"
 	"os"
 	"os/exec"
@@ -79,13 +80,13 @@ func TestRunExecCommand(t *testing.T) {
 	})
 
 	t.Run("succesfully runs and redirects output of a command to a given file", func(t *testing.T) {
-		utils.System.ExecCommand = exectest.NewCommand(DummyCommand)
+		utils.System.ExecCommandContext = exectest.NewCommandContext(DummyCommand)
 		defer utils.ResetSystemFunctions()
 
 		filename := filepath.Join(os.TempDir(), "testfile")
 		defer os.Remove(filename)
 
-		out, err := utils.RunGpCommandAndRedirectOutput(cmd, "gpHome", filename)
+		out, err := utils.RunGpCommandAndRedirectOutput(context.Background(), cmd, "gpHome", filename)
 		var expectedErr *exec.ExitError
 		if !errors.As(err, &expectedErr) {
 			t.Errorf("got %T, want %T", err, expectedErr)
@@ -110,7 +111,7 @@ func TestRunExecCommand(t *testing.T) {
 		filename := filepath.Join(os.TempDir(), "testfile")
 		defer os.Remove(filename)
 
-		_, err := utils.RunGpCommandAndRedirectOutput(cmd, "gpHome", filename)
+		_, err := utils.RunGpCommandAndRedirectOutput(context.Background(), cmd, "gpHome", filename)
 		if !errors.Is(err, expectedErr) {
 			t.Errorf("got %#v, want %#v", err, expectedErr)
 		}

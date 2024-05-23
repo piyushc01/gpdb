@@ -1,6 +1,7 @@
 package hub_test
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -132,7 +133,7 @@ func TestCreateMirrorSegments(t *testing.T) {
 		hubServer.Conns = agentConns
 
 		mock, stream := testutils.NewMockStream()
-		err := hubServer.CreateMirrorSegments(mock, gparray, mirrorSegs)
+		err := hubServer.CreateMirrorSegments(mock, context.Background(), gparray, mirrorSegs)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -142,8 +143,9 @@ func TestCreateMirrorSegments(t *testing.T) {
 			expectedStreamResponse[i] = &idl.HubReply{
 				Message: &idl.HubReply_ProgressMsg{
 					ProgressMsg: &idl.ProgressMessage{
-						Label: "Initializing mirror segments:",
-						Total: int32(len(mirrorSegs)),
+						Label:   "Initializing mirror segments:",
+						Current: int32(i),
+						Total:   int32(len(mirrorSegs)),
 					},
 				},
 			}
@@ -188,7 +190,7 @@ func TestCreateMirrorSegments(t *testing.T) {
 		hubServer.Conns = agentConns
 
 		mock, stream := testutils.NewMockStream()
-		err := hubServer.CreateMirrorSegments(mock, gparray, mirrorSegs)
+		err := hubServer.CreateMirrorSegments(mock, context.Background(), gparray, mirrorSegs)
 		if !errors.Is(err, expectedErr) {
 			t.Fatalf("got %#v, want %#v", err, expectedErr)
 		}
@@ -203,8 +205,9 @@ func TestCreateMirrorSegments(t *testing.T) {
 			expectedStreamResponse[i] = &idl.HubReply{
 				Message: &idl.HubReply_ProgressMsg{
 					ProgressMsg: &idl.ProgressMessage{
-						Label: "Initializing mirror segments:",
-						Total: int32(len(mirrorSegs)),
+						Label:   "Initializing mirror segments:",
+						Current: int32(i),
+						Total:   int32(len(mirrorSegs)),
 					},
 				},
 			}
@@ -247,7 +250,7 @@ func TestCreateMirrorSegments(t *testing.T) {
 		hubServer.Conns = agentConns
 
 		mock, stream := testutils.NewMockStream()
-		err := hubServer.CreateMirrorSegments(mock, gparray, mirrorSegs)
+		err := hubServer.CreateMirrorSegments(mock, context.Background(), gparray, mirrorSegs)
 		if !errors.Is(err, expectedErr) {
 			t.Fatalf("got %#v, want %#v", err, expectedErr)
 		}
@@ -262,8 +265,9 @@ func TestCreateMirrorSegments(t *testing.T) {
 			expectedStreamResponse[i] = &idl.HubReply{
 				Message: &idl.HubReply_ProgressMsg{
 					ProgressMsg: &idl.ProgressMessage{
-						Label: "Initializing mirror segments:",
-						Total: int32(len(mirrorSegs)),
+						Label:   "Initializing mirror segments:",
+						Current: int32(i),
+						Total:   int32(len(mirrorSegs)),
 					},
 				},
 			}
@@ -278,7 +282,7 @@ func TestCreateMirrorSegments(t *testing.T) {
 		segs := []*idl.Segment{{Contentid: 1234}}
 
 		mock, stream := testutils.NewMockStream()
-		err := hubServer.CreateMirrorSegments(mock, gparray, segs)
+		err := hubServer.CreateMirrorSegments(mock, context.Background(), gparray, segs)
 
 		expectedErrString := "could not find any segments with content 1234"
 		if err.Error() != expectedErrString {
@@ -342,7 +346,7 @@ func TestStartMirrorSegments(t *testing.T) {
 		}
 		hubServer.Conns = agentConns
 
-		err := hubServer.StartMirrorSegments(mirrorSegs)
+		err := hubServer.StartMirrorSegments(context.Background(), mirrorSegs)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -371,7 +375,7 @@ func TestStartMirrorSegments(t *testing.T) {
 		}
 		hubServer.Conns = agentConns
 
-		err := hubServer.StartMirrorSegments(mirrorSegs)
+		err := hubServer.StartMirrorSegments(context.Background(), mirrorSegs)
 		if !errors.Is(err, expectedErr) {
 			t.Fatalf("got%#v, want %#v", err, expectedErr)
 		}
@@ -438,7 +442,7 @@ func TestAddMirrors(t *testing.T) {
 		defer utils.ResetSystemFunctions()
 
 		var called bool
-		greenplum.SetNewDBConnFromEnvironment(func(dbname string) *dbconn.DBConn {
+		utils.SetNewDBConnFromEnvironment(func(dbname string) *dbconn.DBConn {
 			var conn *dbconn.DBConn
 			var mock sqlmock.Sqlmock
 
@@ -463,7 +467,7 @@ func TestAddMirrors(t *testing.T) {
 
 			return conn
 		})
-		defer greenplum.ResetNewDBConnFromEnvironment()
+		defer utils.ResetNewDBConnFromEnvironment()
 
 		hubServer.Conns = createMockClients(t, ctrl, ErrorType{})
 
@@ -496,7 +500,7 @@ func TestAddMirrors(t *testing.T) {
 		}
 		defer utils.ResetSystemFunctions()
 
-		greenplum.SetNewDBConnFromEnvironment(func(dbname string) *dbconn.DBConn {
+		utils.SetNewDBConnFromEnvironment(func(dbname string) *dbconn.DBConn {
 			conn, mock := testutils.CreateMockDBConnForUtilityMode(t)
 			testhelper.ExpectVersionQuery(mock, "7.0.0")
 
@@ -505,7 +509,7 @@ func TestAddMirrors(t *testing.T) {
 			mock.ExpectQuery("SELECT").WillReturnRows(rows)
 			return conn
 		})
-		defer greenplum.ResetNewDBConnFromEnvironment()
+		defer utils.ResetNewDBConnFromEnvironment()
 
 		hubServer.Conns = createMockClients(t, ctrl, ErrorType{})
 
@@ -539,7 +543,7 @@ func TestAddMirrors(t *testing.T) {
 		}
 		defer utils.ResetSystemFunctions()
 
-		greenplum.SetNewDBConnFromEnvironment(func(dbname string) *dbconn.DBConn {
+		utils.SetNewDBConnFromEnvironment(func(dbname string) *dbconn.DBConn {
 			conn, mock := testutils.CreateMockDBConnForUtilityMode(t)
 			testhelper.ExpectVersionQuery(mock, "7.0.0")
 
@@ -548,7 +552,7 @@ func TestAddMirrors(t *testing.T) {
 			mock.ExpectQuery("SELECT").WillReturnRows(rows)
 			return conn
 		})
-		defer greenplum.ResetNewDBConnFromEnvironment()
+		defer utils.ResetNewDBConnFromEnvironment()
 
 		hubServer.Conns = createMockClients(t, ctrl, ErrorType{})
 
@@ -608,7 +612,7 @@ func TestAddMirrors(t *testing.T) {
 			defer utils.ResetSystemFunctions()
 
 			var called bool
-			greenplum.SetNewDBConnFromEnvironment(func(dbname string) *dbconn.DBConn {
+			utils.SetNewDBConnFromEnvironment(func(dbname string) *dbconn.DBConn {
 				var conn *dbconn.DBConn
 				var mock sqlmock.Sqlmock
 
@@ -633,7 +637,7 @@ func TestAddMirrors(t *testing.T) {
 
 				return conn
 			})
-			defer greenplum.ResetNewDBConnFromEnvironment()
+			defer utils.ResetNewDBConnFromEnvironment()
 
 			hubServer.Conns = createMockClients(t, ctrl, tc)
 

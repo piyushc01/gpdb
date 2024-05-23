@@ -114,7 +114,7 @@ host	all	gpadmin	2001:db8::/32	trust
 			var initdbCalled bool
 			var initdbArgs []string
 
-			utils.System.ExecCommand = exectest.NewCommandWithVerifier(exectest.Success, func(utility string, args ...string) {
+			utils.System.ExecCommandContext = exectest.NewCommandContextWithVerifier(exectest.Success, func(utility string, args ...string) {
 				initdbCalled = true
 				expectedUtility := "gpHome/bin/initdb"
 				if utility != expectedUtility {
@@ -174,7 +174,7 @@ host	all	gpadmin	2001:db8::/32	trust
 	}
 
 	t.Run("errors out when initdb fails to run", func(t *testing.T) {
-		utils.System.ExecCommand = exectest.NewCommand(exectest.Failure)
+		utils.System.ExecCommandContext = exectest.NewCommandContext(exectest.Failure)
 		defer utils.ResetSystemFunctions()
 
 		expectedErrPrefix := "executing initdb:"
@@ -190,7 +190,7 @@ host	all	gpadmin	2001:db8::/32	trust
 	})
 
 	t.Run("errors out when it fails to update the postgresql.conf", func(t *testing.T) {
-		utils.System.ExecCommand = exectest.NewCommand(exectest.Success)
+		utils.System.ExecCommandContext = exectest.NewCommandContext(exectest.Success)
 		defer utils.ResetSystemFunctions()
 
 		dname, err := os.MkdirTemp("", "gpseg")
@@ -216,7 +216,7 @@ host	all	gpadmin	2001:db8::/32	trust
 	})
 
 	t.Run("errors out when it fails to create internal.auto.conf", func(t *testing.T) {
-		utils.System.ExecCommand = exectest.NewCommand(exectest.Success)
+		utils.System.ExecCommandContext = exectest.NewCommandContext(exectest.Success)
 		defer utils.ResetSystemFunctions()
 
 		dname, err := os.MkdirTemp("", "gpseg")
@@ -244,7 +244,7 @@ host	all	gpadmin	2001:db8::/32	trust
 
 	t.Run("errors out when it fails to get host address", func(t *testing.T) {
 		expectedErr := errors.New("error")
-		utils.System.ExecCommand = exectest.NewCommand(exectest.Success)
+		utils.System.ExecCommandContext = exectest.NewCommandContext(exectest.Success)
 		utils.System.InterfaceAddrs = func() ([]net.Addr, error) {
 			return nil, expectedErr
 		}
@@ -268,7 +268,7 @@ host	all	gpadmin	2001:db8::/32	trust
 	})
 
 	t.Run("errors out when it fails to update pg_hba.conf", func(t *testing.T) {
-		utils.System.ExecCommand = exectest.NewCommand(exectest.Success)
+		utils.System.ExecCommandContext = exectest.NewCommandContext(exectest.Success)
 		defer utils.ResetSystemFunctions()
 
 		dname, err := os.MkdirTemp("", "gpseg")

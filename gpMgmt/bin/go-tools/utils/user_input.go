@@ -6,40 +6,42 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/greenplum-db/gpdb/gp/constants"
 )
 
-func AskUserYesNo(waittime time.Duration) bool {
-	// Create a channel to receive user input
-	userInput := make(chan string)
+func AskUserYesOrNo(prompt string) bool {
+	fmt.Println()
+	input := make(chan string, 1)
+	reader := bufio.NewReader(os.Stdin)
 
-	// Create a timer channel that sends a signal after the timeout duration
-	timer := time.After(waittime * time.Second)
+	for {
+		fmt.Printf("%s  Yy|Nn: ", prompt)
+		go func() {
+			result, err := reader.ReadString('\n')
+			if err != nil {
+				fmt.Printf("Failed to read input: %v, defaulting to no\n", err)
+				result = "n"
+			}
 
-	// Create a goroutine to read user input
-	go func() {
-		reader := bufio.NewReader(os.Stdin)
-		input, err := reader.ReadString('\n')
-		if err != nil {
-			fmt.Println("ReadString error")
-		}
-		userInput <- strings.ToLower(strings.TrimSpace(input))
-	}()
+			input <- strings.ToLower(strings.TrimSpace(result))
+		}()
 
-	// Wait for either user input or timeout
-	select {
-	case input := <-userInput:
-		if input == "yes" || input == "y" {
-			fmt.Println("You entered 'yes'.")
-			return true
-		} else if input == "no" || input == "n" {
-			fmt.Println("You entered 'no'.")
+		select {
+		case in := <-input:
+			switch in {
+			case "y":
+				return true
+			case "n":
+				return false
+			default:
+				fmt.Printf("invalid input %q\n", in)
+				continue
+			}
+		case <-time.After(constants.UserInputWaitDurtion * time.Second):
+			fmt.Println("\ntimed out, defaulting to no")
 			return false
-		} else {
-			fmt.Println("Invalid input. Please enter 'yes' or 'no'.")
 		}
-	case <-timer:
-		fmt.Println("no user input received. Default input is 'no'.")
-		return false
+
 	}
-	return false
 }

@@ -13,7 +13,11 @@ import (
 // UpdatePgHbaConfWithMirrorEntries updates the pg_hba.conf file on the primary segments
 // with the details of its corresponding mirror segment pair. The hbaHostname parameter
 // determines whether to use hostnames or IP addresses in the pg_hba.conf file.
-func (s *Server) UpdatePgHbaConfWithMirrorEntries(gparray *greenplum.GpArray, mirrorSegs []*idl.Segment, hbaHostname bool) error {
+func (s *Server) UpdatePgHbaConfWithMirrorEntries(ctx context.Context, gparray *greenplum.GpArray, mirrorSegs []*idl.Segment, hbaHostname bool) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
 	primaryHostToSegPairMap := make(map[string][]*greenplum.SegmentPair)
 	for _, seg := range mirrorSegs {
 		pair, err := gparray.GetSegmentPairForContent(int(seg.Contentid))
@@ -41,13 +45,13 @@ func (s *Server) UpdatePgHbaConfWithMirrorEntries(gparray *greenplum.GpArray, mi
 				if hbaHostname {
 					addrs = []string{pair.Primary.Address, pair.Mirror.Address}
 				} else {
-					primaryAddrs, err := s.GetInterfaceAddrs(pair.Primary.Hostname)
+					primaryAddrs, err := s.GetInterfaceAddrs(ctx, pair.Primary.Hostname)
 					if err != nil {
 						errs <- err
 						return
 					}
 
-					mirrorAddrs, err := s.GetInterfaceAddrs(pair.Mirror.Hostname)
+					mirrorAddrs, err := s.GetInterfaceAddrs(ctx, pair.Mirror.Hostname)
 					if err != nil {
 						errs <- err
 						return
@@ -56,7 +60,7 @@ func (s *Server) UpdatePgHbaConfWithMirrorEntries(gparray *greenplum.GpArray, mi
 					addrs = append(primaryAddrs, mirrorAddrs...)
 				}
 
-				_, err = conn.AgentClient.UpdatePgHbaConfAndReload(context.Background(), &idl.UpdatePgHbaConfRequest{
+				_, err = conn.AgentClient.UpdatePgHbaConfAndReload(ctx, &idl.UpdatePgHbaConfRequest{
 					Pgdata:      pair.Primary.DataDir,
 					Addrs:       addrs,
 					Replication: true,
@@ -83,12 +87,16 @@ func (s *Server) UpdatePgHbaConfWithMirrorEntries(gparray *greenplum.GpArray, mi
 
 // GetInterfaceAddrs returns the interface addresses for a given host.
 // It retrieves the interface addresses by executing an RPC call to the agent client.
-func (s *Server) GetInterfaceAddrs(host string) ([]string, error) {
+func (s *Server) GetInterfaceAddrs(ctx context.Context, host string) ([]string, error) {
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
 	conns := getConnForHosts(s.Conns, []string{host})
 
 	var addrs []string
 	request := func(conn *Connection) error {
-		resp, err := conn.AgentClient.GetInterfaceAddrs(context.Background(), &idl.GetInterfaceAddrsRequest{})
+		resp, err := conn.AgentClient.GetInterfaceAddrs(ctx, &idl.GetInterfaceAddrsRequest{})
 		if err != nil {
 			return fmt.Errorf("failed to get interface addresses for host %s: %w", conn.Hostname, err)
 		}

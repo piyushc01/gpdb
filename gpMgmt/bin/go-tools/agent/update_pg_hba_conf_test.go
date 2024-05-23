@@ -60,7 +60,7 @@ host	all	gpadmin	sdw2	trust`,
 			}
 
 			var pgCtlCalled bool
-			utils.System.ExecCommand = exectest.NewCommandWithVerifier(exectest.Success, func(utililty string, args ...string) {
+			utils.System.ExecCommandContext = exectest.NewCommandContextWithVerifier(exectest.Success, func(utililty string, args ...string) {
 				pgCtlCalled = true
 
 				expectedUtility := "pg_ctl"
@@ -129,7 +129,7 @@ host	all	gpadmin	sdw2	trust`,
 	})
 
 	t.Run("returns error when not able to pg_ctl reload", func(t *testing.T) {
-		utils.System.ExecCommand = exectest.NewCommand(exectest.Failure)
+		utils.System.ExecCommandContext = exectest.NewCommandContext(exectest.Failure)
 		utils.System.ReadFile = func(name string) ([]byte, error) {
 			return []byte{}, nil
 		}

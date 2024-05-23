@@ -9,6 +9,7 @@ import (
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gpdb/gp/constants"
 	"github.com/greenplum-db/gpdb/gp/idl"
+	"github.com/greenplum-db/gpdb/gp/utils"
 )
 
 type Segment struct {
@@ -155,9 +156,9 @@ func (g *GpArray) GetSegmentsByHost() map[string][]Segment {
 	return result
 }
 
-func RegisterCoordinator(seg *idl.Segment, conn *dbconn.DBConn) error {
+func RegisterCoordinator(seg *idl.Segment, conn *utils.DBConnWithContext) error {
 	addCoordinatorQuery := "SELECT pg_catalog.gp_add_segment(1::int2, -1::int2, 'p', 'p', 's', 'u', '%d', '%s', '%s', '%s')"
-	_, err := conn.Exec(fmt.Sprintf(addCoordinatorQuery, seg.Port, seg.HostName, seg.HostAddress, seg.DataDirectory))
+	_, err := conn.DB.ExecContext(conn.Ctx, fmt.Sprintf(addCoordinatorQuery, seg.Port, seg.HostName, seg.HostAddress, seg.DataDirectory))
 	if err != nil {
 		return err
 	}
@@ -165,12 +166,12 @@ func RegisterCoordinator(seg *idl.Segment, conn *dbconn.DBConn) error {
 	return nil
 }
 
-func RegisterPrimarySegments(segs []*idl.Segment, conn *dbconn.DBConn) error {
+func RegisterPrimarySegments(segs []*idl.Segment, conn *utils.DBConnWithContext) error {
 	addPrimaryQuery := "SELECT pg_catalog.gp_add_segment_primary( '%s', '%s', %d, '%s')"
 	for _, seg := range segs {
 		query := fmt.Sprintf(addPrimaryQuery, seg.HostName, seg.HostAddress, seg.Port, seg.DataDirectory)
 
-		_, err := conn.Exec(query)
+		_, err := conn.DB.ExecContext(conn.Ctx, query)
 		if err != nil {
 			return err
 		}
@@ -179,7 +180,7 @@ func RegisterPrimarySegments(segs []*idl.Segment, conn *dbconn.DBConn) error {
 	// FIXME: gp_add_segment_primary() starts the content ID from 1,
 	// so manually update the correct values for now.
 	updateContentIdQuery := "SET allow_system_table_mods=true; UPDATE gp_segment_configuration SET content = content - 1 where content > 0"
-	_, err := conn.Exec(updateContentIdQuery)
+	_, err := conn.DB.ExecContext(conn.Ctx, updateContentIdQuery)
 	if err != nil {
 		return err
 	}
@@ -187,12 +188,12 @@ func RegisterPrimarySegments(segs []*idl.Segment, conn *dbconn.DBConn) error {
 	return nil
 }
 
-func RegisterMirrorSegments(segs []*idl.Segment, conn *dbconn.DBConn) error {
+func RegisterMirrorSegments(segs []*idl.Segment, conn *utils.DBConnWithContext) error {
 	addMirrorQuery := "SELECT pg_catalog.gp_add_segment_mirror(%d::int2, '%s', '%s', %d, '%s');"
 	for _, seg := range segs {
 		query := fmt.Sprintf(addMirrorQuery, seg.Contentid, seg.HostName, seg.HostAddress, seg.Port, seg.DataDirectory)
 
-		_, err := conn.Exec(query)
+		_, err := conn.DB.ExecContext(conn.Ctx, query)
 		if err != nil {
 			return err
 		}

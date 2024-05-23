@@ -20,7 +20,7 @@ func (s *Server) UpdatePgHbaConfAndReload(ctx context.Context, req *idl.UpdatePg
 	pgCtlReloadCmd := &postgres.PgCtlReload{
 		PgData: req.Pgdata,
 	}
-	out, err := utils.RunGpCommand(pgCtlReloadCmd, s.GpHome)
+	out, err := utils.RunGpCommandContext(ctx, pgCtlReloadCmd, s.GpHome)
 	if err != nil {
 		return &idl.UpdatePgHbaConfResponse{}, fmt.Errorf("executing pg_ctl reload: %s, %w", out, err)
 	}

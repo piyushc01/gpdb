@@ -25,13 +25,13 @@ func (s *Server) AddMirrors(req *idl.AddMirrorsRequest, stream idl.Hub_AddMirror
 		return utils.LogAndReturnError(err)
 	}
 
-	conn, err := greenplum.GetCoordinatorConn(req.CoordinatorDataDir, "", true)
+	conn, err := greenplum.GetCoordinatorConn(stream.Context(), req.CoordinatorDataDir, "", true)
 	if err != nil {
 		return utils.LogAndReturnError(err)
 	}
-	defer conn.Close()
+	defer conn.DB.Close()
 
-	gparray, err := greenplum.NewGpArrayFromCatalog(conn)
+	gparray, err := greenplum.NewGpArrayFromCatalog(conn.DB)
 	if err != nil {
 		return utils.LogAndReturnError(err)
 	}
@@ -57,14 +57,14 @@ func (s *Server) AddMirrors(req *idl.AddMirrorsRequest, stream idl.Hub_AddMirror
 	hubStream.StreamLogMsg("Successfully registered the mirror segments with the coordinator")
 
 	// Build the new gparray and validate it
-	gparray, err = greenplum.NewGpArrayFromCatalog(conn)
+	gparray, err = greenplum.NewGpArrayFromCatalog(conn.DB)
 	if err != nil {
 		return utils.LogAndReturnError(err)
 	}
 
 	// Update the pg_hba.conf on the primary segments - Agent RPC
 	hubStream.StreamLogMsg("Starting to modify the pg_hba.conf on the primary segments to add mirror entries")
-	err = s.UpdatePgHbaConfWithMirrorEntries(gparray, req.Mirrors, req.HbaHostnames)
+	err = s.UpdatePgHbaConfWithMirrorEntries(stream.Context(), gparray, req.Mirrors, req.HbaHostnames)
 	if err != nil {
 		return utils.LogAndReturnError(err)
 	}
@@ -79,7 +79,7 @@ func (s *Server) AddMirrors(req *idl.AddMirrorsRequest, stream idl.Hub_AddMirror
 
 	// Run pg_basebackup aon the mirror hosts - Agent RPC
 	hubStream.StreamLogMsg("Creating mirror segments")
-	err = s.CreateMirrorSegments(&hubStream, gparray, req.Mirrors)
+	err = s.CreateMirrorSegments(&hubStream, stream.Context(), gparray, req.Mirrors)
 	if err != nil {
 		return utils.LogAndReturnError(err)
 	}
@@ -87,7 +87,7 @@ func (s *Server) AddMirrors(req *idl.AddMirrorsRequest, stream idl.Hub_AddMirror
 
 	// Start the segment - Agent RPC
 	hubStream.StreamLogMsg("Starting up the mirror segments")
-	err = s.StartMirrorSegments(req.Mirrors)
+	err = s.StartMirrorSegments(stream.Context(), req.Mirrors)
 	if err != nil {
 		return utils.LogAndReturnError(err)
 	}
@@ -107,7 +107,11 @@ func (s *Server) AddMirrors(req *idl.AddMirrorsRequest, stream idl.Hub_AddMirror
 	return nil
 }
 
-func (s *Server) CreateMirrorSegments(stream hubStreamer, gparray *greenplum.GpArray, mirrorSegs []*idl.Segment) error {
+func (s *Server) CreateMirrorSegments(stream hubStreamer, ctx context.Context, gparray *greenplum.GpArray, mirrorSegs []*idl.Segment) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
 	mirrorHostToSegPairMap := make(map[string][]*greenplum.SegmentPair)
 	for _, seg := range mirrorSegs {
 		pair, err := gparray.GetSegmentPairForContent(int(seg.Contentid))
@@ -120,7 +124,8 @@ func (s *Server) CreateMirrorSegments(stream hubStreamer, gparray *greenplum.GpA
 
 	progressLabel := "Initializing mirror segments:"
 	progressTotal := len(mirrorSegs)
-	stream.StreamProgressMsg(progressLabel, progressTotal)
+	current := 0
+	stream.StreamProgressMsg(progressLabel, current, progressTotal)
 
 	request := func(conn *Connection) error {
 		var wg sync.WaitGroup
@@ -144,7 +149,7 @@ func (s *Server) CreateMirrorSegments(stream hubStreamer, gparray *greenplum.GpA
 					WriteRecoveryConf:   true,
 					ReplicationSlotName: constants.ReplicationSlotName,
 				}
-				_, err := conn.AgentClient.PgBasebackup(context.Background(), req)
+				_, err := conn.AgentClient.PgBasebackup(ctx, req)
 				if err != nil {
 					errs <- utils.FormatGrpcError(err)
 					return
@@ -152,7 +157,7 @@ func (s *Server) CreateMirrorSegments(stream hubStreamer, gparray *greenplum.GpA
 				gplog.Debug("Successfully ran pg_basebackup on segment with data directory %s on host %s", pair.Primary.DataDir, pair.Primary.Hostname)
 
 				gplog.Debug("Starting to modify the postgresql.conf for segment with data directory %s on host %s with port value %d", pair.Mirror.DataDir, pair.Mirror.Hostname, pair.Mirror.Port)
-				_, err = conn.AgentClient.UpdatePgConf(context.Background(), &idl.UpdatePgConfRequest{
+				_, err = conn.AgentClient.UpdatePgConf(ctx, &idl.UpdatePgConfRequest{
 					Pgdata: pair.Mirror.DataDir,
 					Params: map[string]string{
 						"port": strconv.Itoa(pair.Mirror.Port),
@@ -162,8 +167,12 @@ func (s *Server) CreateMirrorSegments(stream hubStreamer, gparray *greenplum.GpA
 				if err != nil {
 					errs <- err
 				} else {
+					s.mutex.Lock()
+					current++
+					s.mutex.Unlock()
+
 					gplog.Debug("Successfully modified the postgresql.conf for segment with data directory %s on host %s with port value %d", pair.Mirror.DataDir, pair.Mirror.Hostname, pair.Mirror.Port)
-					stream.StreamProgressMsg(progressLabel, progressTotal)
+					stream.StreamProgressMsg(progressLabel, current, progressTotal)
 					gplog.Debug(fmt.Sprintf("Successfully created mirror segment: %v", *pair.Mirror))
 				}
 			}(pair)
@@ -183,7 +192,11 @@ func (s *Server) CreateMirrorSegments(stream hubStreamer, gparray *greenplum.GpA
 	return ExecuteRPC(s.Conns, request)
 }
 
-func (s *Server) StartMirrorSegments(mirrorSegs []*idl.Segment) error {
+func (s *Server) StartMirrorSegments(ctx context.Context, mirrorSegs []*idl.Segment) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
 	hostToSegMap := make(map[string][]*idl.Segment)
 	for _, seg := range mirrorSegs {
 		hostToSegMap[seg.HostName] = append(hostToSegMap[seg.HostName], seg)
@@ -206,7 +219,7 @@ func (s *Server) StartMirrorSegments(mirrorSegs []*idl.Segment) error {
 					Wait:    true,
 					Options: "-c gp_role=execute",
 				}
-				_, err := conn.AgentClient.StartSegment(context.Background(), req)
+				_, err := conn.AgentClient.StartSegment(ctx, req)
 				if err != nil {
 					errs <- utils.FormatGrpcError(err)
 				}

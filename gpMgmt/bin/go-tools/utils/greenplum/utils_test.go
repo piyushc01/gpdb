@@ -1,6 +1,7 @@
 package greenplum_test
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -95,7 +96,7 @@ func TestGetCoordinatorConn(t *testing.T) {
 		}
 		defer utils.ResetSystemFunctions()
 
-		greenplum.SetNewDBConnFromEnvironment(func(dbname string) *dbconn.DBConn {
+		utils.SetNewDBConnFromEnvironment(func(dbname string) *dbconn.DBConn {
 			if dbname != constants.DefaultDatabase {
 				t.Fatalf("got %s, want %s", dbname, constants.DefaultDatabase)
 			}
@@ -105,15 +106,15 @@ func TestGetCoordinatorConn(t *testing.T) {
 
 			return conn
 		})
-		defer greenplum.ResetNewDBConnFromEnvironment()
+		defer utils.ResetNewDBConnFromEnvironment()
 
-		conn, err := greenplum.GetCoordinatorConn(expectedDatadir, "")
+		conn, err := greenplum.GetCoordinatorConn(context.Background(), expectedDatadir, "")
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
 		}
 
-		if conn.Port != 1234 {
-			t.Fatalf("got %d, want %d", conn.Port, expectedPort)
+		if conn.DB.Port != 1234 {
+			t.Fatalf("got %d, want %d", conn.DB.Port, expectedPort)
 		}
 	})
 
@@ -136,7 +137,7 @@ func TestGetCoordinatorConn(t *testing.T) {
 		}
 		defer utils.ResetSystemFunctions()
 
-		greenplum.SetNewDBConnFromEnvironment(func(dbname string) *dbconn.DBConn {
+		utils.SetNewDBConnFromEnvironment(func(dbname string) *dbconn.DBConn {
 			if dbname != constants.DefaultDatabase {
 				t.Fatalf("got %s, want %s", dbname, constants.DefaultDatabase)
 			}
@@ -146,15 +147,15 @@ func TestGetCoordinatorConn(t *testing.T) {
 
 			return conn
 		})
-		defer greenplum.ResetNewDBConnFromEnvironment()
+		defer utils.ResetNewDBConnFromEnvironment()
 
-		conn, err := greenplum.GetCoordinatorConn(expectedDatadir, "", true)
+		conn, err := greenplum.GetCoordinatorConn(context.Background(), expectedDatadir, "", true)
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
 		}
 
-		if conn.Port != 1234 {
-			t.Fatalf("got %d, want %d", conn.Port, expectedPort)
+		if conn.DB.Port != 1234 {
+			t.Fatalf("got %d, want %d", conn.DB.Port, expectedPort)
 		}
 	})
 
@@ -164,7 +165,7 @@ func TestGetCoordinatorConn(t *testing.T) {
 			return nil, expectedErr
 		}
 
-		_, err := greenplum.GetCoordinatorConn("gpseg1", "")
+		_, err := greenplum.GetCoordinatorConn(context.Background(), "gpseg1", "")
 		if !errors.Is(err, expectedErr) {
 			t.Fatalf("got %#v, want %#v", err, expectedErr)
 		}
@@ -181,7 +182,7 @@ func TestGetCoordinatorConn(t *testing.T) {
 		}
 		defer utils.ResetSystemFunctions()
 
-		_, err = greenplum.GetCoordinatorConn("gpseg1", "")
+		_, err = greenplum.GetCoordinatorConn(context.Background(), "gpseg1", "")
 		expectedErr = strconv.ErrSyntax
 		if !errors.Is(err, expectedErr) {
 			t.Fatalf("got %#v, want %#v", err, expectedErr)
@@ -201,13 +202,13 @@ func TestGetCoordinatorConn(t *testing.T) {
 			return reader, nil
 		}
 
-		greenplum.SetNewDBConnFromEnvironment(func(dbname string) *dbconn.DBConn {
+		utils.SetNewDBConnFromEnvironment(func(dbname string) *dbconn.DBConn {
 			conn, _ := testutils.CreateMockDBConn(t, expectedErr)
 			return conn
 		})
-		defer greenplum.ResetNewDBConnFromEnvironment()
+		defer utils.ResetNewDBConnFromEnvironment()
 
-		_, err := greenplum.GetCoordinatorConn("gpseg1", "")
+		_, err := greenplum.GetCoordinatorConn(context.Background(), "gpseg1", "")
 		if !strings.HasPrefix(err.Error(), expectedErr.Error()) {
 			t.Fatalf("got %v, want prefix %s", err, expectedErr)
 		}

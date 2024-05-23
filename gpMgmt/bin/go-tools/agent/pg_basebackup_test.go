@@ -55,7 +55,7 @@ func TestPgBasebackup(t *testing.T) {
 		defer postgres.ResetNewDBConnFromEnvironment()
 
 		var pgBasebackupCalled bool
-		utils.System.ExecCommand = exectest.NewCommandWithVerifier(exectest.Success, func(utility string, args ...string) {
+		utils.System.ExecCommandContext = exectest.NewCommandContextWithVerifier(exectest.Success, func(utility string, args ...string) {
 			pgBasebackupCalled = true
 			expectedUtility := "gpHome/bin/pg_basebackup"
 			if utility != expectedUtility {
@@ -104,7 +104,7 @@ func TestPgBasebackup(t *testing.T) {
 		defer postgres.ResetNewDBConnFromEnvironment()
 
 		var pgBasebackupCalled bool
-		utils.System.ExecCommand = exectest.NewCommandWithVerifier(exectest.Success, func(utility string, args ...string) {
+		utils.System.ExecCommandContext = exectest.NewCommandContextWithVerifier(exectest.Success, func(utility string, args ...string) {
 			pgBasebackupCalled = true
 		})
 		defer utils.ResetSystemFunctions()
@@ -134,7 +134,7 @@ func TestPgBasebackup(t *testing.T) {
 		})
 		defer postgres.ResetNewDBConnFromEnvironment()
 
-		utils.System.ExecCommand = exectest.NewCommand(exectest.Failure)
+		utils.System.ExecCommandContext = exectest.NewCommandContext(exectest.Failure)
 		defer utils.ResetSystemFunctions()
 
 		_, err := agentServer.PgBasebackup(context.Background(), request)

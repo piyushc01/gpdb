@@ -10,7 +10,6 @@ import (
 
 	"golang.org/x/exp/maps"
 
-	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpdb/gp/constants"
 	"github.com/greenplum-db/gpdb/gp/idl"
@@ -18,8 +17,6 @@ import (
 	"github.com/greenplum-db/gpdb/gp/utils/greenplum"
 	"github.com/greenplum-db/gpdb/gp/utils/postgres"
 )
-
-var execOnDatabaseFunc = ExecOnDatabase
 
 func (s *Server) MakeCluster(request *idl.MakeClusterRequest, stream idl.Hub_MakeClusterServer) error {
 	var err error
@@ -52,7 +49,7 @@ func (s *Server) MakeCluster(request *idl.MakeClusterRequest, stream idl.Hub_Mak
 	}
 
 	hubStream.StreamLogMsg("Starting to create the cluster")
-	err = s.ValidateEnvironment(&hubStream, request)
+	err = s.ValidateEnvironment(stream.Context(), &hubStream, request)
 	if err != nil {
 		return utils.LogAndReturnError(fmt.Errorf("validating hosts: %w", err))
 	}
@@ -70,7 +67,7 @@ func (s *Server) MakeCluster(request *idl.MakeClusterRequest, stream idl.Hub_Mak
 	}
 
 	hubStream.StreamLogMsg("Creating coordinator segment")
-	err = s.CreateAndStartCoordinator(request.GpArray.Coordinator, request.ClusterParams)
+	err = s.CreateAndStartCoordinator(stream.Context(), request.GpArray.Coordinator, request.ClusterParams)
 	if err != nil {
 		return utils.LogAndReturnError(err)
 	}
@@ -80,7 +77,7 @@ func (s *Server) MakeCluster(request *idl.MakeClusterRequest, stream idl.Hub_Mak
 
 	hubStream.StreamLogMsg("Starting to register primary segments with the coordinator")
 
-	conn, err := greenplum.GetCoordinatorConn(request.GpArray.Coordinator.DataDirectory, "template1", true)
+	conn, err := greenplum.GetCoordinatorConn(stream.Context(), request.GpArray.Coordinator.DataDirectory, "template1", true)
 	if err != nil {
 		return utils.LogAndReturnError(err)
 	}
@@ -96,11 +93,11 @@ func (s *Server) MakeCluster(request *idl.MakeClusterRequest, stream idl.Hub_Mak
 	}
 	hubStream.StreamLogMsg("Successfully registered primary segments with the coordinator")
 
-	gparray, err := greenplum.NewGpArrayFromCatalog(conn)
+	gparray, err := greenplum.NewGpArrayFromCatalog(conn.DB)
 	if err != nil {
 		return utils.LogAndReturnError(err)
 	}
-	conn.Close()
+	conn.DB.Close()
 
 	primarySegs := gparray.GetPrimarySegments()
 
@@ -121,7 +118,7 @@ func (s *Server) MakeCluster(request *idl.MakeClusterRequest, stream idl.Hub_Mak
 		return utils.LogAndReturnError(err)
 	}
 	hubStream.StreamLogMsg("Creating primary segments")
-	err = s.CreateSegments(&hubStream, primarySegs, request.ClusterParams, coordinatorAddrs)
+	err = s.CreateSegments(stream.Context(), &hubStream, primarySegs, request.ClusterParams, coordinatorAddrs)
 	if err != nil {
 		return utils.LogAndReturnError(err)
 	}
@@ -140,7 +137,7 @@ func (s *Server) MakeCluster(request *idl.MakeClusterRequest, stream idl.Hub_Mak
 		DataDirectory: request.GpArray.Coordinator.DataDirectory,
 		Verbose:       request.Verbose,
 	}
-	cmd := utils.NewGpSourcedCommand(gpstartOptions, s.GpHome)
+	cmd := utils.NewGpSourcedCommandContext(stream.Context(), gpstartOptions, s.GpHome)
 	err = hubStream.StreamExecCommand(cmd, s.GpHome)
 	if err != nil {
 		return utils.LogAndReturnError(fmt.Errorf("executing gpstart: %w", err))
@@ -196,7 +193,11 @@ func (s *Server) MakeCluster(request *idl.MakeClusterRequest, stream idl.Hub_Mak
 	return nil
 }
 
-func (s *Server) ValidateEnvironment(stream hubStreamer, request *idl.MakeClusterRequest) error {
+func (s *Server) ValidateEnvironment(ctx context.Context, stream hubStreamer, request *idl.MakeClusterRequest) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
 	var replies []*idl.LogMessage
 
 	gparray := request.GpArray
@@ -232,7 +233,8 @@ func (s *Server) ValidateEnvironment(stream hubStreamer, request *idl.MakeCluste
 
 	progressLabel := "Validating Hosts:"
 	progressTotal := len(hostDirMap)
-	stream.StreamProgressMsg(progressLabel, progressTotal)
+	current := 0
+	stream.StreamProgressMsg(progressLabel, current, progressTotal)
 	validateFn := func(conn *Connection) error {
 		gplog.Debug(fmt.Sprintf("Starting to validate host: %s", conn.Hostname))
 
@@ -252,12 +254,16 @@ func (s *Server) ValidateEnvironment(stream hubStreamer, request *idl.MakeCluste
 			HostAddressList: addressList,
 			GpVersion:       localPgVersion,
 		}
-		reply, err := conn.AgentClient.ValidateHostEnv(context.Background(), &validateReq)
+		reply, err := conn.AgentClient.ValidateHostEnv(ctx, &validateReq)
 		if err != nil {
 			return utils.FormatGrpcError(err)
 		}
 
-		stream.StreamProgressMsg(progressLabel, progressTotal)
+		s.mutex.Lock()
+		current++
+		s.mutex.Unlock()
+
+		stream.StreamProgressMsg(progressLabel, current, progressTotal)
 		gplog.Debug(fmt.Sprintf("Successfully completed validation for host: %s", conn.Hostname))
 
 		// Add host-name to each reply message
@@ -281,7 +287,7 @@ func (s *Server) ValidateEnvironment(stream hubStreamer, request *idl.MakeCluste
 	return nil
 }
 
-func CreateSingleSegment(conn *Connection, seg *idl.Segment, clusterParams *idl.ClusterParams, coordinatorAddrs []string) error {
+func CreateSingleSegment(ctx context.Context, conn *Connection, seg *idl.Segment, clusterParams *idl.ClusterParams, coordinatorAddrs []string) error {
 	pgConfig := make(map[string]string)
 	maps.Copy(pgConfig, clusterParams.CommonConfig)
 	if seg.Contentid == -1 {
@@ -300,7 +306,7 @@ func CreateSingleSegment(conn *Connection, seg *idl.Segment, clusterParams *idl.
 		DataChecksums:    clusterParams.DataChecksums,
 	}
 
-	_, err := conn.AgentClient.MakeSegment(context.Background(), makeSegmentReq)
+	_, err := conn.AgentClient.MakeSegment(ctx, makeSegmentReq)
 	if err != nil {
 		return utils.FormatGrpcError(err)
 	}
@@ -308,13 +314,17 @@ func CreateSingleSegment(conn *Connection, seg *idl.Segment, clusterParams *idl.
 	return nil
 }
 
-func (s *Server) CreateAndStartCoordinator(seg *idl.Segment, clusterParams *idl.ClusterParams) error {
+func (s *Server) CreateAndStartCoordinator(ctx context.Context, seg *idl.Segment, clusterParams *idl.ClusterParams) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
 	coordinatorConn := getConnForHosts(s.Conns, []string{seg.HostName})
 
 	seg.Contentid = -1
 	seg.Dbid = 1
 	request := func(conn *Connection) error {
-		err := CreateSingleSegment(conn, seg, clusterParams, []string{})
+		err := CreateSingleSegment(ctx, conn, seg, clusterParams, []string{})
 		if err != nil {
 			return err
 		}
@@ -324,7 +334,7 @@ func (s *Server) CreateAndStartCoordinator(seg *idl.Segment, clusterParams *idl.
 			Wait:    true,
 			Options: "-c gp_role=utility",
 		}
-		_, err = conn.AgentClient.StartSegment(context.Background(), startSegReq)
+		_, err = conn.AgentClient.StartSegment(ctx, startSegReq)
 
 		return utils.FormatGrpcError(err)
 	}
@@ -347,7 +357,11 @@ func (s *Server) StopCoordinator(stream hubStreamer, pgdata string) error {
 	return nil
 }
 
-func (s *Server) CreateSegments(stream hubStreamer, segs []greenplum.Segment, clusterParams *idl.ClusterParams, coordinatorAddrs []string) error {
+func (s *Server) CreateSegments(ctx context.Context, stream hubStreamer, segs []greenplum.Segment, clusterParams *idl.ClusterParams, coordinatorAddrs []string) error {
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
 	hostSegmentMap := map[string][]*idl.Segment{}
 	for _, seg := range segs {
 		segReq := &idl.Segment{
@@ -368,7 +382,8 @@ func (s *Server) CreateSegments(stream hubStreamer, segs []greenplum.Segment, cl
 
 	progressLabel := "Initializing primary segments:"
 	progressTotal := len(segs)
-	stream.StreamProgressMsg(progressLabel, progressTotal)
+	current := 0
+	stream.StreamProgressMsg(progressLabel, current, progressTotal)
 
 	request := func(conn *Connection) error {
 		var wg sync.WaitGroup
@@ -382,11 +397,15 @@ func (s *Server) CreateSegments(stream hubStreamer, segs []greenplum.Segment, cl
 				defer wg.Done()
 
 				gplog.Debug(fmt.Sprintf("Starting to create primary segment: %s", seg))
-				err := CreateSingleSegment(conn, seg, clusterParams, coordinatorAddrs)
+				err := CreateSingleSegment(ctx, conn, seg, clusterParams, coordinatorAddrs)
 				if err != nil {
 					errs <- err
 				} else {
-					stream.StreamProgressMsg(progressLabel, progressTotal)
+					s.mutex.Lock()
+					current++
+					s.mutex.Unlock()
+
+					stream.StreamProgressMsg(progressLabel, current, progressTotal)
 					gplog.Debug(fmt.Sprintf("Successfully created primary segment: %s", seg))
 				}
 			}(seg)
@@ -405,25 +424,11 @@ func (s *Server) CreateSegments(stream hubStreamer, segs []greenplum.Segment, cl
 	return ExecuteRPC(s.Conns, request)
 }
 
-func ExecOnDatabase(conn *dbconn.DBConn, dbname string, query string) error {
-	conn.DBName = dbname
-	if err := conn.Connect(1); err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	if _, err := conn.Exec(query); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func CreateGpToolkitExt(conn *dbconn.DBConn) error {
+func CreateGpToolkitExt(conn *utils.DBConnWithContext) error {
 	createExtensionQuery := "CREATE EXTENSION gp_toolkit"
 
 	for _, dbname := range []string{constants.DefaultDatabase, "postgres"} {
-		if err := execOnDatabaseFunc(conn, dbname, createExtensionQuery); err != nil {
+		if err := utils.ExecOnDatabaseFunc(conn, dbname, createExtensionQuery); err != nil {
 			return err
 		}
 	}
@@ -431,30 +436,30 @@ func CreateGpToolkitExt(conn *dbconn.DBConn) error {
 	return nil
 }
 
-func ImportCollation(conn *dbconn.DBConn) error {
+func ImportCollation(conn *utils.DBConnWithContext) error {
 	importCollationQuery := "SELECT pg_import_system_collations('pg_catalog'); ANALYZE;"
 
-	if err := execOnDatabaseFunc(conn, "postgres", "ALTER DATABASE template0 ALLOW_CONNECTIONS on"); err != nil {
+	if err := utils.ExecOnDatabaseFunc(conn, "postgres", "ALTER DATABASE template0 ALLOW_CONNECTIONS on"); err != nil {
 		return err
 	}
 
-	if err := execOnDatabaseFunc(conn, "template0", importCollationQuery); err != nil {
+	if err := utils.ExecOnDatabaseFunc(conn, "template0", importCollationQuery); err != nil {
 		return err
 	}
-	if err := execOnDatabaseFunc(conn, "template0", "VACUUM FREEZE"); err != nil {
+	if err := utils.ExecOnDatabaseFunc(conn, "template0", "VACUUM FREEZE"); err != nil {
 		return err
 	}
 
-	if err := execOnDatabaseFunc(conn, "postgres", "ALTER DATABASE template0 ALLOW_CONNECTIONS off"); err != nil {
+	if err := utils.ExecOnDatabaseFunc(conn, "postgres", "ALTER DATABASE template0 ALLOW_CONNECTIONS off"); err != nil {
 		return err
 	}
 
 	for _, dbname := range []string{constants.DefaultDatabase, "postgres"} {
-		if err := execOnDatabaseFunc(conn, dbname, importCollationQuery); err != nil {
+		if err := utils.ExecOnDatabaseFunc(conn, dbname, importCollationQuery); err != nil {
 			return err
 		}
 
-		if err := execOnDatabaseFunc(conn, dbname, "VACUUM FREEZE"); err != nil {
+		if err := utils.ExecOnDatabaseFunc(conn, dbname, "VACUUM FREEZE"); err != nil {
 			return err
 		}
 	}
@@ -462,35 +467,27 @@ func ImportCollation(conn *dbconn.DBConn) error {
 	return nil
 }
 
-func CreateDatabase(conn *dbconn.DBConn, dbname string) error {
+func CreateDatabase(conn *utils.DBConnWithContext, dbname string) error {
 	createDbQuery := fmt.Sprintf("CREATE DATABASE %q", dbname)
-	if err := execOnDatabaseFunc(conn, constants.DefaultDatabase, createDbQuery); err != nil {
+	if err := utils.ExecOnDatabaseFunc(conn, constants.DefaultDatabase, createDbQuery); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func SetGpUserPasswd(conn *dbconn.DBConn, passwd string) error {
+func SetGpUserPasswd(conn *utils.DBConnWithContext, passwd string) error {
 	user, err := utils.System.CurrentUser()
 	if err != nil {
 		return err
 	}
 
 	alterPasswdQuery := fmt.Sprintf("ALTER USER %q WITH PASSWORD '%s'", user.Username, passwd)
-	if err := execOnDatabaseFunc(conn, constants.DefaultDatabase, alterPasswdQuery); err != nil {
+	if err := utils.ExecOnDatabaseFunc(conn, constants.DefaultDatabase, alterPasswdQuery); err != nil {
 		return err
 	}
 
 	return nil
-}
-
-func SetExecOnDatabase(customFunc func(*dbconn.DBConn, string, string) error) {
-	execOnDatabaseFunc = customFunc
-}
-
-func ResetExecOnDatabase() {
-	execOnDatabaseFunc = ExecOnDatabase
 }
 
 // Content ID is generated only when the primaries are

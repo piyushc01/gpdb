@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -21,11 +22,23 @@ func NewGpCommand(cmdBuilder CommandBuilder, gpHome string) *exec.Cmd {
 	return cmdBuilder.BuildExecCommand(gpHome)
 }
 
+func NewGpCommandContext(ctx context.Context, cmdBuilder CommandBuilder, gpHome string) *exec.Cmd {
+	cmd := cmdBuilder.BuildExecCommand(gpHome)
+
+	return System.ExecCommandContext(ctx, cmd.Path, cmd.Args[1:]...)
+}
+
 func NewGpSourcedCommand(cmdBuilder CommandBuilder, gpHome string) *exec.Cmd {
 	cmd := cmdBuilder.BuildExecCommand(gpHome)
 	gpSourceFilePath := filepath.Join(gpHome, "greenplum_path.sh")
 
 	return System.ExecCommand("bash", "-c", fmt.Sprintf("source %s && %s", gpSourceFilePath, cmd.String()))
+}
+
+func NewGpSourcedCommandContext(ctx context.Context, cmdBuilder CommandBuilder, gpHome string) *exec.Cmd {
+	cmd := NewGpSourcedCommand(cmdBuilder, gpHome)
+
+	return System.ExecCommandContext(ctx, cmd.Path, cmd.Args[1:]...)
 }
 
 func runCommand(cmd *exec.Cmd, filename ...string) (*bytes.Buffer, error) {
@@ -66,13 +79,19 @@ func runCommand(cmd *exec.Cmd, filename ...string) (*bytes.Buffer, error) {
 }
 
 // RunGpCommandAndRedirectOutput executes the command and redirects the stdout and stderr to the given filename
-func RunGpCommandAndRedirectOutput(cmdBuilder CommandBuilder, gpHome string, filename string) (*bytes.Buffer, error) {
-	return runCommand(NewGpCommand(cmdBuilder, gpHome), filename)
+func RunGpCommandAndRedirectOutput(ctx context.Context, cmdBuilder CommandBuilder, gpHome string, filename string) (*bytes.Buffer, error) {
+	return runCommand(NewGpCommandContext(ctx, cmdBuilder, gpHome), filename)
 }
 
 // RunGpCommand executes the given command
 func RunGpCommand(cmdBuilder CommandBuilder, gpHome string) (*bytes.Buffer, error) {
 	out, err := runCommand(NewGpCommand(cmdBuilder, gpHome))
+	return out, err
+}
+
+// RunGpCommand executes the given command with a context
+func RunGpCommandContext(ctx context.Context, cmdBuilder CommandBuilder, gpHome string) (*bytes.Buffer, error) {
+	out, err := runCommand(NewGpCommandContext(ctx, cmdBuilder, gpHome))
 	return out, err
 }
 

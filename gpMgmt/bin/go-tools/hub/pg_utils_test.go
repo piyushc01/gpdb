@@ -1,6 +1,7 @@
 package hub_test
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -80,7 +81,7 @@ func TestUpdatePgHbaConf(t *testing.T) {
 		}
 		hubServer.Conns = agentConns
 
-		err := hubServer.UpdatePgHbaConfWithMirrorEntries(gparray, mirrorSegs, false)
+		err := hubServer.UpdatePgHbaConfWithMirrorEntries(context.Background(), gparray, mirrorSegs, false)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -116,7 +117,7 @@ func TestUpdatePgHbaConf(t *testing.T) {
 		}
 		hubServer.Conns = agentConns
 
-		err := hubServer.UpdatePgHbaConfWithMirrorEntries(gparray, mirrorSegs, true)
+		err := hubServer.UpdatePgHbaConfWithMirrorEntries(context.Background(), gparray, mirrorSegs, true)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -124,7 +125,7 @@ func TestUpdatePgHbaConf(t *testing.T) {
 
 	t.Run("errors out when not able to find the mirror content in gparray", func(t *testing.T) {
 		segs := []*idl.Segment{{Contentid: 1234}}
-		err := hubServer.UpdatePgHbaConfWithMirrorEntries(gparray, segs, true)
+		err := hubServer.UpdatePgHbaConfWithMirrorEntries(context.Background(), gparray, segs, true)
 
 		expectedErrString := "could not find any segments with content 1234"
 		if err.Error() != expectedErrString {
@@ -172,7 +173,7 @@ func TestUpdatePgHbaConf(t *testing.T) {
 		}
 		hubServer.Conns = agentConns
 
-		err := hubServer.UpdatePgHbaConfWithMirrorEntries(gparray, mirrorSegs, false)
+		err := hubServer.UpdatePgHbaConfWithMirrorEntries(context.Background(), gparray, mirrorSegs, false)
 		if !errors.Is(err, expectedErr) {
 			t.Fatalf("got %#v, want %#v", err, expectedErr)
 		}
@@ -207,7 +208,7 @@ func TestUpdatePgHbaConf(t *testing.T) {
 		}
 		hubServer.Conns = agentConns
 
-		err := hubServer.UpdatePgHbaConfWithMirrorEntries(gparray, mirrorSegs, true)
+		err := hubServer.UpdatePgHbaConfWithMirrorEntries(context.Background(), gparray, mirrorSegs, true)
 		if !errors.Is(err, expectedErr) {
 			t.Fatalf("got %#v, want %#v", err, expectedErr)
 		}

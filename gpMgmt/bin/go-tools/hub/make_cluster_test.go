@@ -1,6 +1,7 @@
 package hub_test
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"maps"
@@ -12,10 +13,8 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/jmoiron/sqlx"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
 	"github.com/greenplum-db/gpdb/gp/hub"
 	"github.com/greenplum-db/gpdb/gp/idl"
@@ -126,7 +125,7 @@ func TestCreateSegments(t *testing.T) {
 		}
 
 		mock, stream := testutils.NewMockStream()
-		err := hubServer.CreateSegments(mock, segs, clusterParams, []string{})
+		err := hubServer.CreateSegments(context.Background(), mock, segs, clusterParams, []string{})
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
 		}
@@ -136,8 +135,9 @@ func TestCreateSegments(t *testing.T) {
 			expectedStreamResponse[i] = &idl.HubReply{
 				Message: &idl.HubReply_ProgressMsg{
 					ProgressMsg: &idl.ProgressMessage{
-						Label: "Initializing primary segments:",
-						Total: 3,
+						Label:   "Initializing primary segments:",
+						Current: int32(i),
+						Total:   3,
 					},
 				},
 			}
@@ -184,7 +184,7 @@ func TestCreateSegments(t *testing.T) {
 		}
 
 		mock, stream := testutils.NewMockStream()
-		err := hubServer.CreateSegments(mock, segs, clusterParams, []string{})
+		err := hubServer.CreateSegments(context.Background(), mock, segs, clusterParams, []string{})
 		if !errors.Is(err, expectedErr) {
 			t.Fatalf("got %#v, want %#V", err, expectedErr)
 		}
@@ -194,8 +194,9 @@ func TestCreateSegments(t *testing.T) {
 			expectedStreamResponse[i] = &idl.HubReply{
 				Message: &idl.HubReply_ProgressMsg{
 					ProgressMsg: &idl.ProgressMessage{
-						Label: "Initializing primary segments:",
-						Total: 3,
+						Label:   "Initializing primary segments:",
+						Current: int32(i),
+						Total:   3,
 					},
 				},
 			}
@@ -253,7 +254,7 @@ func TestCreateSegments(t *testing.T) {
 			SegmentConfig:     segConfig,
 		}
 
-		err := hubServer.CreateAndStartCoordinator(seg, clusterParams)
+		err := hubServer.CreateAndStartCoordinator(context.Background(), seg, clusterParams)
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
 		}
@@ -298,7 +299,7 @@ func TestCreateSegments(t *testing.T) {
 			SegmentConfig:     segConfig,
 		}
 
-		err := hubServer.CreateAndStartCoordinator(seg, clusterParams)
+		err := hubServer.CreateAndStartCoordinator(context.Background(), seg, clusterParams)
 		if !errors.Is(err, expectedErr) {
 			t.Fatalf("got %#v, want %#v", err, expectedErr)
 		}
@@ -539,7 +540,7 @@ func TestValidateEnvironment(t *testing.T) {
 		defer utils.ResetSystemFunctions()
 
 		mock, stream := testutils.NewMockStream()
-		err := hubServer.ValidateEnvironment(mock, req)
+		err := hubServer.ValidateEnvironment(context.Background(), mock, req)
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
 		}
@@ -553,8 +554,9 @@ func TestValidateEnvironment(t *testing.T) {
 			expectedStreamResponse[i] = &idl.HubReply{
 				Message: &idl.HubReply_ProgressMsg{
 					ProgressMsg: &idl.ProgressMessage{
-						Label: "Validating Hosts:",
-						Total: 3,
+						Label:   "Validating Hosts:",
+						Current: int32(i),
+						Total:   3,
 					},
 				},
 			}
@@ -579,7 +581,7 @@ func TestValidateEnvironment(t *testing.T) {
 		defer utils.ResetSystemFunctions()
 
 		mock, stream := testutils.NewMockStream()
-		err := hubServer.ValidateEnvironment(mock, req)
+		err := hubServer.ValidateEnvironment(context.Background(), mock, req)
 
 		expectedErrPrefix := "fetching postgres gp-version:"
 		if !strings.HasPrefix(err.Error(), expectedErrPrefix) {
@@ -631,7 +633,7 @@ func TestValidateEnvironment(t *testing.T) {
 		defer utils.ResetSystemFunctions()
 
 		mock, stream := testutils.NewMockStream()
-		err := hubServer.ValidateEnvironment(mock, req)
+		err := hubServer.ValidateEnvironment(context.Background(), mock, req)
 
 		expectedErrPrefix := "host: sdw1"
 		if !strings.HasPrefix(err.Error(), expectedErrPrefix) {
@@ -647,8 +649,9 @@ func TestValidateEnvironment(t *testing.T) {
 			expectedStreamResponse[i] = &idl.HubReply{
 				Message: &idl.HubReply_ProgressMsg{
 					ProgressMsg: &idl.ProgressMessage{
-						Label: "Validating Hosts:",
-						Total: 3,
+						Label:   "Validating Hosts:",
+						Current: int32(i),
+						Total:   3,
 					},
 				},
 			}
@@ -660,59 +663,16 @@ func TestValidateEnvironment(t *testing.T) {
 	})
 }
 
-func TestExecOnDatabase(t *testing.T) {
-	testhelper.SetupTestLogger()
-
-	t.Run("succesfully executes the query on a given database", func(t *testing.T) {
-		conn, mock := testutils.CreateMockDBConn(t)
-		testhelper.ExpectVersionQuery(mock, "7.0.0")
-
-		mock.ExpectExec("SOME QUERY").WillReturnResult(testhelper.TestResult{Rows: 0})
-		err := hub.ExecOnDatabase(conn, "postgres", "SOME QUERY")
-		if err != nil {
-			t.Fatalf("unexpected error: %#v", err)
-		}
-	})
-
-	t.Run("errors out when fails to connect to the database", func(t *testing.T) {
-		var mockdb *sqlx.DB
-
-		conn, mock := testutils.CreateMockDBConn(t)
-		testhelper.ExpectVersionQuery(mock, "7.0.0")
-
-		expectedErr := errors.New("connection error")
-		conn.Driver = &testhelper.TestDriver{ErrToReturn: expectedErr, DB: mockdb, User: "testrole"}
-
-		err := hub.ExecOnDatabase(conn, "postgres", "SOME QUERY")
-		if !strings.Contains(err.Error(), expectedErr.Error()) {
-			t.Fatalf("got %#v, want %#v", err, expectedErr)
-		}
-	})
-
-	t.Run("errors out when fails to execute the query", func(t *testing.T) {
-		conn, mock := testutils.CreateMockDBConn(t)
-		testhelper.ExpectVersionQuery(mock, "7.0.0")
-
-		expectedErr := errors.New("execution error")
-		mock.ExpectExec("SOME QUERY").WillReturnError(expectedErr)
-
-		err := hub.ExecOnDatabase(conn, "postgres", "SOME QUERY")
-		if !strings.Contains(err.Error(), expectedErr.Error()) {
-			t.Fatalf("got %#v, want %#v", err, expectedErr)
-		}
-	})
-}
-
 func TestCreateGpToolkitExt(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	t.Run("succesfully creates the database extensions", func(t *testing.T) {
-		hub.SetExecOnDatabase(func(conn *dbconn.DBConn, dbname, query string) error {
+		utils.SetExecOnDatabase(func(conn *utils.DBConnWithContext, dbname, query string) error {
 			return nil
 		})
-		defer hub.ResetExecOnDatabase()
+		defer utils.ResetExecOnDatabase()
 
-		conn := &dbconn.DBConn{}
+		conn := &utils.DBConnWithContext{}
 		err := hub.CreateGpToolkitExt(conn)
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
@@ -721,12 +681,12 @@ func TestCreateGpToolkitExt(t *testing.T) {
 
 	t.Run("fails to create the database extensions", func(t *testing.T) {
 		expectedErr := errors.New("error")
-		hub.SetExecOnDatabase(func(conn *dbconn.DBConn, dbname, query string) error {
+		utils.SetExecOnDatabase(func(conn *utils.DBConnWithContext, dbname, query string) error {
 			return expectedErr
 		})
-		defer hub.ResetExecOnDatabase()
+		defer utils.ResetExecOnDatabase()
 
-		conn := &dbconn.DBConn{}
+		conn := &utils.DBConnWithContext{}
 		err := hub.CreateGpToolkitExt(conn)
 		if !errors.Is(err, expectedErr) {
 			t.Fatalf("got %#v, want %#v", err, expectedErr)
@@ -738,12 +698,12 @@ func TestImportCollation(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	t.Run("succesfully imports collations", func(t *testing.T) {
-		hub.SetExecOnDatabase(func(conn *dbconn.DBConn, dbname, query string) error {
+		utils.SetExecOnDatabase(func(conn *utils.DBConnWithContext, dbname, query string) error {
 			return nil
 		})
-		defer hub.ResetExecOnDatabase()
+		defer utils.ResetExecOnDatabase()
 
-		conn := &dbconn.DBConn{}
+		conn := &utils.DBConnWithContext{}
 		err := hub.ImportCollation(conn)
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
@@ -783,16 +743,16 @@ func TestImportCollation(t *testing.T) {
 	for _, tc := range cases {
 		t.Run("fails to import collations", func(t *testing.T) {
 			expectedErr := errors.New("error")
-			hub.SetExecOnDatabase(func(conn *dbconn.DBConn, dbname, query string) error {
+			utils.SetExecOnDatabase(func(conn *utils.DBConnWithContext, dbname, query string) error {
 				if tc.dbname == dbname && tc.query == query {
 					return expectedErr
 				}
 
 				return nil
 			})
-			defer hub.ResetExecOnDatabase()
+			defer utils.ResetExecOnDatabase()
 
-			conn := &dbconn.DBConn{}
+			conn := &utils.DBConnWithContext{}
 			err := hub.ImportCollation(conn)
 			if !errors.Is(err, expectedErr) {
 				t.Fatalf("got %#v, want %#v", err, expectedErr)
@@ -805,7 +765,7 @@ func TestCreateDatabase(t *testing.T) {
 	testhelper.SetupTestLogger()
 
 	t.Run("succesfully creates the database", func(t *testing.T) {
-		hub.SetExecOnDatabase(func(conn *dbconn.DBConn, dbname, query string) error {
+		utils.SetExecOnDatabase(func(conn *utils.DBConnWithContext, dbname, query string) error {
 			expectedQuery := `CREATE DATABASE "testdb"`
 			if query != expectedQuery {
 				t.Fatalf("got %v, want %v", query, expectedQuery)
@@ -813,9 +773,9 @@ func TestCreateDatabase(t *testing.T) {
 
 			return nil
 		})
-		defer hub.ResetExecOnDatabase()
+		defer utils.ResetExecOnDatabase()
 
-		conn := &dbconn.DBConn{}
+		conn := &utils.DBConnWithContext{}
 		err := hub.CreateDatabase(conn, "testdb")
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
@@ -824,12 +784,12 @@ func TestCreateDatabase(t *testing.T) {
 
 	t.Run("fails to create the database", func(t *testing.T) {
 		expectedErr := errors.New("error")
-		hub.SetExecOnDatabase(func(conn *dbconn.DBConn, dbname, query string) error {
+		utils.SetExecOnDatabase(func(conn *utils.DBConnWithContext, dbname, query string) error {
 			return expectedErr
 		})
-		defer hub.ResetExecOnDatabase()
+		defer utils.ResetExecOnDatabase()
 
-		conn := &dbconn.DBConn{}
+		conn := &utils.DBConnWithContext{}
 		err := hub.CreateDatabase(conn, "testdb")
 		if !errors.Is(err, expectedErr) {
 			t.Fatalf("got %#v, want %#v", err, expectedErr)
@@ -846,7 +806,7 @@ func TestSetGpUserPasswd(t *testing.T) {
 		}
 		defer utils.ResetSystemFunctions()
 
-		hub.SetExecOnDatabase(func(conn *dbconn.DBConn, dbname, query string) error {
+		utils.SetExecOnDatabase(func(conn *utils.DBConnWithContext, dbname, query string) error {
 			expectedQuery := `ALTER USER "gpadmin" WITH PASSWORD 'abc'`
 			if query != expectedQuery {
 				t.Fatalf("got %v, want %v", query, expectedQuery)
@@ -854,9 +814,9 @@ func TestSetGpUserPasswd(t *testing.T) {
 
 			return nil
 		})
-		defer hub.ResetExecOnDatabase()
+		defer utils.ResetExecOnDatabase()
 
-		conn := &dbconn.DBConn{}
+		conn := &utils.DBConnWithContext{}
 		err := hub.SetGpUserPasswd(conn, "abc")
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
@@ -870,7 +830,7 @@ func TestSetGpUserPasswd(t *testing.T) {
 		}
 		defer utils.ResetSystemFunctions()
 
-		conn := &dbconn.DBConn{}
+		conn := &utils.DBConnWithContext{}
 		err := hub.SetGpUserPasswd(conn, "abc")
 		if !errors.Is(err, expectedErr) {
 			t.Fatalf("got %#v, want %#v", err, expectedErr)
@@ -884,12 +844,12 @@ func TestSetGpUserPasswd(t *testing.T) {
 		}
 		defer utils.ResetSystemFunctions()
 
-		hub.SetExecOnDatabase(func(conn *dbconn.DBConn, dbname, query string) error {
+		utils.SetExecOnDatabase(func(conn *utils.DBConnWithContext, dbname, query string) error {
 			return expectedErr
 		})
-		defer hub.ResetExecOnDatabase()
+		defer utils.ResetExecOnDatabase()
 
-		conn := &dbconn.DBConn{}
+		conn := &utils.DBConnWithContext{}
 		err := hub.SetGpUserPasswd(conn, "abc")
 		if !errors.Is(err, expectedErr) {
 			t.Fatalf("got %#v, want %#v", err, expectedErr)

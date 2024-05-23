@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"io/fs"
@@ -14,40 +15,44 @@ import (
 	"strings"
 )
 
-var System = InitializeSystemFunctions()
-var ExecuteAndGetUlimit = ExecuteAndGetUlimitFn
+var (
+	System              = InitializeSystemFunctions()
+	ExecuteAndGetUlimit = ExecuteAndGetUlimitFn
+)
 
 type SystemFunctions struct {
-	CurrentUser    func() (*user.User, error)
-	InterfaceAddrs func() ([]net.Addr, error)
-	Open           func(name string) (*os.File, error)
-	OpenFile       func(name string, flag int, perm os.FileMode) (*os.File, error)
-	Create         func(name string) (*os.File, error)
-	WriteFile      func(name string, data []byte, perm fs.FileMode) error
-	ExecCommand    func(name string, arg ...string) *exec.Cmd
-	Getuid         func() int
-	Stat           func(name string) (os.FileInfo, error)
-	Getgid         func() int
-	RemoveAll      func(path string) error
-	ReadFile       func(name string) ([]byte, error)
-	GetHostName    func() (name string, err error)
+	CurrentUser        func() (*user.User, error)
+	InterfaceAddrs     func() ([]net.Addr, error)
+	Open               func(name string) (*os.File, error)
+	OpenFile           func(name string, flag int, perm os.FileMode) (*os.File, error)
+	Create             func(name string) (*os.File, error)
+	WriteFile          func(name string, data []byte, perm fs.FileMode) error
+	ExecCommand        func(name string, arg ...string) *exec.Cmd
+	ExecCommandContext func(ctx context.Context, name string, arg ...string) *exec.Cmd
+	Getuid             func() int
+	Stat               func(name string) (os.FileInfo, error)
+	Getgid             func() int
+	RemoveAll          func(path string) error
+	ReadFile           func(name string) ([]byte, error)
+	GetHostName        func() (name string, err error)
 }
 
 func InitializeSystemFunctions() *SystemFunctions {
 	return &SystemFunctions{
-		CurrentUser:    user.Current,
-		InterfaceAddrs: net.InterfaceAddrs,
-		Open:           os.Open,
-		OpenFile:       os.OpenFile,
-		Create:         os.Create,
-		WriteFile:      os.WriteFile,
-		ExecCommand:    exec.Command,
-		Getuid:         os.Geteuid,
-		Stat:           os.Stat,
-		Getgid:         os.Getgid,
-		RemoveAll:      os.RemoveAll,
-		ReadFile:       os.ReadFile,
-		GetHostName:    os.Hostname,
+		CurrentUser:        user.Current,
+		InterfaceAddrs:     net.InterfaceAddrs,
+		Open:               os.Open,
+		OpenFile:           os.OpenFile,
+		Create:             os.Create,
+		WriteFile:          os.WriteFile,
+		ExecCommand:        exec.Command,
+		ExecCommandContext: exec.CommandContext,
+		Getuid:             os.Geteuid,
+		Stat:               os.Stat,
+		Getgid:             os.Getgid,
+		RemoveAll:          os.RemoveAll,
+		ReadFile:           os.ReadFile,
+		GetHostName:        os.Hostname,
 	}
 }
 

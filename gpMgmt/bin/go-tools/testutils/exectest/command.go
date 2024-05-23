@@ -8,6 +8,7 @@
 package exectest
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -23,6 +24,10 @@ type Main func()
 // Command is a function that has an identical signature to exec.Command(). It
 // is created with a call to NewCommand().
 type Command func(string, ...string) *exec.Cmd
+
+// CommandContext is a function that has an identical signature to exec.CommandContext(). It
+// is created with a call to NewCommandContext().
+type CommandContext func(context.Context, string, ...string) *exec.Cmd
 
 // mains is populated by RegisterMains and used as a lookup table by Run and
 // NewCommand.
@@ -98,6 +103,30 @@ func NewCommand(m Main) Command {
 	}
 }
 
+func NewCommandContext(m Main) CommandContext {
+	// Sanity check. Ensure that our two boilerplate conditions have been met.
+	index := indexOf(m, mains)
+	if index < 0 {
+		// m is not in mains.
+		panic("Main functions must be registered using RegisterMains() in init()")
+	}
+	if !runCalled {
+		panic("test packages using NewCommand must invoke Run from TestMain()")
+	}
+
+	return func(ctx context.Context, executable string, args ...string) *exec.Cmd {
+		// Pass the original arguments to the process.
+		cmd := exec.Command(os.Args[0], args...)
+
+		// Hijack argv[0] to communicate to Run() that the invoked test process
+		// should execute a Main function and then exit. The original executable
+		// name is also passed here so that the added magic can be stripped back
+		// off on the other side.
+		cmd.Args[0] = fmt.Sprintf("%s=%d=%s", magicString, index, executable)
+		return cmd
+	}
+}
+
 // NewCommandWithVerifier works like NewCommand, with an additional verifier
 // callback that is run against the supplied arguments. This allows unit tests
 // to explicitly check the arguments that are passed to exec.Command():
@@ -116,6 +145,16 @@ func NewCommandWithVerifier(m Main, verifier func(string, ...string)) Command {
 	cmdf := NewCommand(m)
 
 	return func(executable string, args ...string) *exec.Cmd {
+		// Run the verifier, then invoke the underlying Command.
+		verifier(executable, args...)
+		return cmdf(executable, args...)
+	}
+}
+
+func NewCommandContextWithVerifier(m Main, verifier func(string, ...string)) CommandContext {
+	cmdf := NewCommand(m)
+
+	return func(ctx context.Context, executable string, args ...string) *exec.Cmd {
 		// Run the verifier, then invoke the underlying Command.
 		verifier(executable, args...)
 		return cmdf(executable, args...)

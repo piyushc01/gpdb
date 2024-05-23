@@ -1,6 +1,8 @@
 package testutils
 
 import (
+	"context"
+
 	"github.com/greenplum-db/gpdb/gp/hub"
 	"github.com/greenplum-db/gpdb/gp/idl"
 	"google.golang.org/grpc"
@@ -36,6 +38,10 @@ func (m *MockStream) Send(reply *idl.HubReply) error {
 	} else {
 		return m.err
 	}
+}
+
+func (m *MockStream) Context() context.Context {
+	return context.Background()
 }
 
 func (m *MockStream) GetBuffer() []*idl.HubReply {

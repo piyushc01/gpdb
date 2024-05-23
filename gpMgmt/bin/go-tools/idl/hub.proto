@@ -85,8 +85,9 @@ enum logLevel {
     DEBUG = 4;
 }
 message ProgressMessage {
-    string label = 2;
-    int32 total = 4;
+    string label = 1;
+    int32 current = 2;
+    int32 total = 3;
 }
 
 message gpArray {

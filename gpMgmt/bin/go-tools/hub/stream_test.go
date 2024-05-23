@@ -86,23 +86,25 @@ func TestHubStream(t *testing.T) {
 
 		label := "label"
 		total := 2
-		stream.StreamProgressMsg(label, total)
-		stream.StreamProgressMsg(label, total)
+		stream.StreamProgressMsg(label, 1, total)
+		stream.StreamProgressMsg(label, 2, total)
 
 		expected := []*idl.HubReply{
 			{
 				Message: &idl.HubReply_ProgressMsg{
 					ProgressMsg: &idl.ProgressMessage{
-						Label: label,
-						Total: int32(total),
+						Label:   label,
+						Current: 1,
+						Total:   int32(total),
 					},
 				},
 			},
 			{
 				Message: &idl.HubReply_ProgressMsg{
 					ProgressMsg: &idl.ProgressMessage{
-						Label: label,
-						Total: int32(total),
+						Label:   label,
+						Current: 2,
+						Total:   int32(total),
 					},
 				},
 			},
@@ -176,15 +178,16 @@ func TestHubStream(t *testing.T) {
 		progressMsg := &idl.HubReply{
 			Message: &idl.HubReply_ProgressMsg{
 				ProgressMsg: &idl.ProgressMessage{
-					Label: "progress message",
-					Total: 0,
+					Label:   "progress message",
+					Current: 1,
+					Total:   1,
 				},
 			},
 		}
 
 		stream.StreamLogMsg(logMsg.GetLogMsg().Message)
 		stream.StreamStdoutMsg(stdoutMsg.GetStdoutMsg())
-		stream.StreamProgressMsg(progressMsg.GetProgressMsg().Label, int(progressMsg.GetProgressMsg().Total))
+		stream.StreamProgressMsg(progressMsg.GetProgressMsg().Label, int(progressMsg.GetProgressMsg().Current), int(progressMsg.GetProgressMsg().Total))
 
 		if len(res.GetBuffer()) != 0 {
 			t.Fatalf("got %d, want the buffer to be empty", len(res.GetBuffer()))

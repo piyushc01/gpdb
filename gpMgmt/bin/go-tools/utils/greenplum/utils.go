@@ -1,19 +1,17 @@
 package greenplum
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"strconv"
 	"strings"
 
-	"github.com/greenplum-db/gp-common-go-libs/dbconn"
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpdb/gp/constants"
 	"github.com/greenplum-db/gpdb/gp/utils"
 	"github.com/greenplum-db/gpdb/gp/utils/postgres"
 )
-
-var newDBConnFromEnvironment = dbconn.NewDBConnFromEnvironment
 
 func GetPostgresGpVersion(gpHome string) (string, error) {
 	pgGpVersionCmd := &postgres.Postgres{GpVersion: true}
@@ -35,7 +33,7 @@ func GetDefaultHubLogDir() string {
 // given only its data directory. This function is expected to be called on the
 // coordinator host only. By default it creates a non utility mode connection
 // and uses the 'template1' database if no database is provided
-func GetCoordinatorConn(datadir, dbname string, utility ...bool) (*dbconn.DBConn, error) {
+func GetCoordinatorConn(ctx context.Context, datadir, dbname string, utility ...bool) (*utils.DBConnWithContext, error) {
 	value, err := postgres.GetConfigValue(datadir, "port")
 	if err != nil {
 		return nil, err
@@ -49,39 +47,30 @@ func GetCoordinatorConn(datadir, dbname string, utility ...bool) (*dbconn.DBConn
 	if dbname == "" {
 		dbname = constants.DefaultDatabase
 	}
-	conn := newDBConnFromEnvironment(dbname)
-	conn.Port = port
+	conn := utils.NewDBConnWithContext(ctx, dbname)
+	conn.DB.Port = port
 
-	err = conn.Connect(1, utility...)
+	err = conn.DB.Connect(1, utility...)
 	if err != nil {
 		return nil, err
 	}
 
-	return conn, nil
+	return &conn, nil
 }
 
 func TriggerFtsProbe(coordinatorDataDir string) error {
-	conn, err := GetCoordinatorConn(coordinatorDataDir, "")
+	conn, err := GetCoordinatorConn(context.Background(), coordinatorDataDir, "")
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+	defer conn.DB.Close()
 
 	query := "SELECT gp_request_fts_probe_scan()"
-	_, err = conn.Exec(query)
+	_, err = conn.DB.Exec(query)
 	gplog.Debug("Executing query %q", query)
 	if err != nil {
 		return fmt.Errorf("triggering FTS probe: %w", err)
 	}
 
 	return nil
-}
-
-// used only for testing
-func SetNewDBConnFromEnvironment(customFunc func(dbname string) *dbconn.DBConn) {
-	newDBConnFromEnvironment = customFunc
-}
-
-func ResetNewDBConnFromEnvironment() {
-	newDBConnFromEnvironment = dbconn.NewDBConnFromEnvironment
 }

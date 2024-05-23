@@ -1,6 +1,7 @@
 package greenplum_test
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -286,7 +287,7 @@ func TestNewGpArrayFromCatalog(t *testing.T) {
 
 func TestRegisterSegments(t *testing.T) {
 	t.Run("succesfully registers the coordinator segment", func(t *testing.T) {
-		conn, mock := testutils.CreateAndConnectMockDB(t, 1)
+		conn, mock := testutils.CreateAndConnectMockDBWithContext(t, context.Background(), 1)
 
 		seg := &idl.Segment{
 			Port:          1234,
@@ -304,7 +305,7 @@ func TestRegisterSegments(t *testing.T) {
 	})
 
 	t.Run("succesfully registers the primary segments", func(t *testing.T) {
-		conn, mock := testutils.CreateAndConnectMockDB(t, 1)
+		conn, mock := testutils.CreateAndConnectMockDBWithContext(t, context.Background(), 1)
 
 		segs := []*idl.Segment{
 			{
@@ -334,7 +335,7 @@ func TestRegisterSegments(t *testing.T) {
 	})
 
 	t.Run("succesfully registers the mirror segments", func(t *testing.T) {
-		conn, mock := testutils.CreateAndConnectMockDB(t, 1)
+		conn, mock := testutils.CreateAndConnectMockDBWithContext(t, context.Background(), 1)
 
 		segs := []*idl.Segment{
 			{
@@ -365,7 +366,7 @@ func TestRegisterSegments(t *testing.T) {
 	})
 
 	t.Run("returns appropriate error when fails to register the segment", func(t *testing.T) {
-		conn, mock := testutils.CreateAndConnectMockDB(t, 1)
+		conn, mock := testutils.CreateAndConnectMockDBWithContext(t, context.Background(), 1)
 
 		expectedErr := errors.New("error")
 		mock.ExpectExec("SELECT").WillReturnError(expectedErr)

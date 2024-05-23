@@ -33,7 +33,7 @@ func TestStartSegment(t *testing.T) {
 
 	t.Run("succesfully starts the segment", func(t *testing.T) {
 		var pgCtlCalled bool
-		utils.System.ExecCommand = exectest.NewCommandWithVerifier(exectest.Success, func(utility string, args ...string) {
+		utils.System.ExecCommandContext = exectest.NewCommandContextWithVerifier(exectest.Success, func(utility string, args ...string) {
 			pgCtlCalled = true
 			expectedUtility := "gpHome/bin/pg_ctl"
 			if utility != expectedUtility {
@@ -58,7 +58,7 @@ func TestStartSegment(t *testing.T) {
 	})
 
 	t.Run("returns appropriate error when it fails", func(t *testing.T) {
-		utils.System.ExecCommand = exectest.NewCommand(exectest.Failure)
+		utils.System.ExecCommandContext = exectest.NewCommandContext(exectest.Failure)
 		defer utils.ResetSystemFunctions()
 
 		expectedErrPrefix := "executing pg_ctl start:"
