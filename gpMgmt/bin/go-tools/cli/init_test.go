@@ -405,7 +405,7 @@ func TestIsMultiHome(t *testing.T) {
 		cli.HubClient = cdw
 		defer func() { cli.HubClient = oldHubClient }()
 
-		_, _, _, err := cli.IsMultiHome(hostList)
+		_, _, _, err := cli.IsMultiHome(context.Background(), hostList)
 		if err == nil || !strings.Contains(err.Error(), testStr) {
 			t.Fatalf("Got:%v, Expected:%s", err, testStr)
 		}
@@ -423,7 +423,7 @@ func TestIsMultiHome(t *testing.T) {
 		cli.HubClient = cdw
 		defer func() { cli.HubClient = oldHubClient }()
 
-		isMultiHome, nameAddressMap, addressNameMap, err := cli.IsMultiHome(hostList)
+		isMultiHome, nameAddressMap, addressNameMap, err := cli.IsMultiHome(context.Background(), hostList)
 		if err != nil {
 			t.Fatalf("Got:%v, Expected:no error", err)
 		}
@@ -450,7 +450,7 @@ func TestIsMultiHome(t *testing.T) {
 		cli.HubClient = cdw
 		defer func() { cli.HubClient = oldHubClient }()
 
-		isMultiHome, nameAddressMap, addressNameMap, err := cli.IsMultiHome(hostList)
+		isMultiHome, nameAddressMap, addressNameMap, err := cli.IsMultiHome(context.Background(), hostList)
 		if err != nil {
 			t.Fatalf("Got:%v, Expected:no error", err)
 		}
@@ -1328,7 +1328,7 @@ func TestInitClusterService(t *testing.T) {
 		utils.System.Stat = func(name string) (os.FileInfo, error) {
 			return nil, nil
 		}
-		cli.LoadInputConfigToIdl = func(inputConfigFile string, cliHandler *viper.Viper, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
+		cli.LoadInputConfigToIdl = func(ctx context.Context, inputConfigFile string, cliHandler *viper.Viper, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
 			return nil, fmt.Errorf(testStr)
 		}
 		cli.ConnectToHub = func(conf *hub.Config) (idl.HubClient, error) {
@@ -1346,7 +1346,7 @@ func TestInitClusterService(t *testing.T) {
 		utils.System.Stat = func(name string) (os.FileInfo, error) {
 			return nil, nil
 		}
-		cli.LoadInputConfigToIdl = func(inputConfigFile string, cliHandler *viper.Viper, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
+		cli.LoadInputConfigToIdl = func(ctx context.Context, inputConfigFile string, cliHandler *viper.Viper, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
 			return nil, nil
 		}
 		cli.ValidateInputConfigAndSetDefaults = func(request *idl.MakeClusterRequest, cliHandler *viper.Viper) error {
@@ -1367,7 +1367,7 @@ func TestInitClusterService(t *testing.T) {
 		utils.System.Stat = func(name string) (os.FileInfo, error) {
 			return nil, nil
 		}
-		cli.LoadInputConfigToIdl = func(inputConfigFile string, cliHandler *viper.Viper, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
+		cli.LoadInputConfigToIdl = func(ctx context.Context, inputConfigFile string, cliHandler *viper.Viper, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
 			return nil, nil
 		}
 		cli.ValidateInputConfigAndSetDefaults = func(request *idl.MakeClusterRequest, cliHandler *viper.Viper) error {
@@ -1388,7 +1388,7 @@ func TestInitClusterService(t *testing.T) {
 		utils.System.Stat = func(name string) (os.FileInfo, error) {
 			return nil, nil
 		}
-		cli.LoadInputConfigToIdl = func(inputConfigFile string, cliHandler *viper.Viper, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
+		cli.LoadInputConfigToIdl = func(ctx context.Context, inputConfigFile string, cliHandler *viper.Viper, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
 			return nil, nil
 		}
 		cli.ValidateInputConfigAndSetDefaults = func(request *idl.MakeClusterRequest, cliHandler *viper.Viper) error {
@@ -1410,7 +1410,7 @@ func TestInitClusterService(t *testing.T) {
 		utils.System.Stat = func(name string) (os.FileInfo, error) {
 			return nil, nil
 		}
-		cli.LoadInputConfigToIdl = func(inputConfigFile string, cliHandler *viper.Viper, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
+		cli.LoadInputConfigToIdl = func(ctx context.Context, inputConfigFile string, cliHandler *viper.Viper, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
 			return nil, nil
 		}
 		cli.ValidateInputConfigAndSetDefaults = func(request *idl.MakeClusterRequest, cliHandler *viper.Viper) error {
@@ -1436,7 +1436,7 @@ func TestInitClusterService(t *testing.T) {
 		utils.System.Stat = func(name string) (os.FileInfo, error) {
 			return nil, nil
 		}
-		cli.LoadInputConfigToIdl = func(inputConfigFile string, cliHandler *viper.Viper, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
+		cli.LoadInputConfigToIdl = func(ctx context.Context, inputConfigFile string, cliHandler *viper.Viper, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
 			return nil, nil
 		}
 		cli.ValidateInputConfigAndSetDefaults = func(request *idl.MakeClusterRequest, cliHandler *viper.Viper) error {

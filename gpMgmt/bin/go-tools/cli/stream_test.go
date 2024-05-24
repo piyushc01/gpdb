@@ -15,7 +15,8 @@ import (
 )
 
 const (
-	streamRunning = iota
+	streamNotStarted = iota
+	streamRunning
 	streamPaused
 	streamDiscard
 )

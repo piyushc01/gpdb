@@ -45,7 +45,7 @@ func HandleSignal(sig os.Signal, ctrl *StreamController) {
 		logMessage := "received an interrupt signal"
 		promptText := "Do you want to continue terminating the current execution?"
 
-		if ctrl != nil {
+		if ctrl != nil && ctrl.State() != streamNotStarted {
 			// pause the hub stream parsing so we could display a prompt
 			ctrl.SetState(streamPaused)
 			// wait until the stream is paused

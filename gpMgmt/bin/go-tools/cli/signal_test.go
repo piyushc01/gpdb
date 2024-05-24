@@ -19,7 +19,8 @@ func TestHandleSignal(t *testing.T) {
 
 	// initialize the states based on the stream controller implementation
 	const (
-		streamRunning = iota
+		streamNotStarted = iota
+		streamRunning
 		streamPaused
 		streamDiscard
 	)

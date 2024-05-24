@@ -184,27 +184,47 @@ func InitClean(prompt bool) error {
 /*
 InitClusterServiceFn does input config file validation followed by actual cluster creation
 */
-func InitClusterServiceFn(inputConfigFile string, ctx context.Context, ctrl *StreamController, force, verbose bool) error {
-	_, err := utils.System.Stat(inputConfigFile)
+func InitClusterServiceFn(inputConfigFile string, ctx context.Context, ctrl *StreamController, force, verbose bool) (err error) {
+	defer func() {
+		if err != nil {
+			if TerminationRequested {
+				err = &ErrorUserTermination{}
+			}
+
+			// Call the cleanup routine only if the cleanup file exists
+			fileName := filepath.Join(Conf.LogDir, constants.CleanFileName)
+			_, statErr := utils.System.Stat(fileName)
+
+			// do not display the prompt in case of SIGTERM
+			displayPrompt := !(TerminationRequested && SigtermReceived)
+
+			if statErr == nil {
+				gplog.Error("failed to initialize the cluster: %v", err)
+				err = InitClean(displayPrompt)
+			}
+		}
+	}()
+
+	_, err = utils.System.Stat(inputConfigFile)
 	if err != nil {
 		return err
 	}
+
 	// Viper instance to read the input config
 	cliHandler := viper.New()
 
-	// Make call to MakeCluster RPC and wait for results
 	HubClient, err = ConnectToHub(Conf)
 	if err != nil {
 		return err
 	}
 
-	// Load cluster-request from the config file
-	clusterReq, err := LoadInputConfigToIdl(inputConfigFile, cliHandler, force, verbose)
+	// Create the request based on the input configuration file
+	clusterReq, err := LoadInputConfigToIdl(ctx, inputConfigFile, cliHandler, force, verbose)
 	if err != nil {
 		return err
 	}
 
-	// Validate give input configuration
+	// Validate the input configuration
 	if err := ValidateInputConfigAndSetDefaults(clusterReq, cliHandler); err != nil {
 		return err
 	}
@@ -216,24 +236,7 @@ func InitClusterServiceFn(inputConfigFile string, ctx context.Context, ctrl *Str
 	}
 
 	err = ParseStreamResponse(stream, ctrl)
-
 	if err != nil {
-		if TerminationRequested {
-			err = &ErrorUserTermination{}
-		}
-
-		// Call the cleanup routine only if the cleanup file exists
-		fileName := filepath.Join(Conf.LogDir, constants.CleanFileName)
-		_, statErr := utils.System.Stat(fileName)
-
-		// do not display the prompt in case of SIGTERM
-		displayPrompt := !(TerminationRequested && SigtermReceived)
-
-		if statErr == nil {
-			gplog.Error("failed to initialize the cluster: %v", err)
-			return InitClean(displayPrompt)
-		}
-
 		return err
 	}
 
@@ -248,7 +251,7 @@ func InitClusterServiceFn(inputConfigFile string, ctx context.Context, ctrl *Str
 /*
 LoadInputConfigToIdlFn reads config file and populates RPC IDL request structure
 */
-func LoadInputConfigToIdlFn(inputConfigFile string, cliHandler *viper.Viper, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
+func LoadInputConfigToIdlFn(ctx context.Context, inputConfigFile string, cliHandler *viper.Viper, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
 	cliHandler.SetConfigFile(inputConfigFile)
 
 	cliHandler.SetDefault("common-config", make(map[string]string))
@@ -273,7 +276,7 @@ func LoadInputConfigToIdlFn(inputConfigFile string, cliHandler *viper.Viper, for
 		}
 
 		// Check for multi-home
-		isMultiHome, NameAddressMap, AddressNameMap, err := IsMultiHome(config.HostList)
+		isMultiHome, NameAddressMap, AddressNameMap, err := IsMultiHome(ctx, config.HostList)
 		if err != nil {
 			gplog.Error("multihome detection failed, error: %v", err)
 			return &idl.MakeClusterRequest{}, err
@@ -329,10 +332,10 @@ func ValidateMultiHomeConfig(config InitConfig, addressMap map[string][]string) 
 // IsMultiHome checks if it is a multi-home environment
 // Makes a call to resolve all addresses to hostname and returns a map of address vs hostnames
 // In case of error, map will be empty, and returns false
-func IsMultiHome(hostlist []string) (isMultiHome bool, NameAddress map[string][]string, AddressNameMap map[string]string, err error) {
+func IsMultiHome(ctx context.Context, hostlist []string) (isMultiHome bool, NameAddress map[string][]string, AddressNameMap map[string]string, err error) {
 	// get a list of hostnames against each address
 	request := idl.GetAllHostNamesRequest{HostList: hostlist}
-	reply, err := HubClient.GetAllHostNames(context.Background(), &request)
+	reply, err := HubClient.GetAllHostNames(ctx, &request)
 	if err != nil {
 
 		return false, nil, nil, utils.LogAndReturnError(fmt.Errorf("failed names of the host against address: %v", err))

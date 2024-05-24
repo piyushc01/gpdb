@@ -12,13 +12,15 @@ import (
 )
 
 const (
-	streamRunning = iota
+	streamNotStarted = iota
+	streamRunning
 	streamPaused
 	streamDiscard
 )
 
 // StreamController represents a controller for managing a stream.
-// The stream can be controlled with the help of 3 states:
+// The stream can be controlled with the help of 4 states:
+//   - streamNotStarted: indicates that the stream has not been started yet
 //   - streamRunning: indicates that the stream is currently running
 //   - streamPaused: indicates that the stream is currently paused
 //   - streamDiscard: discard any responses we have got except any errors
@@ -30,10 +32,10 @@ type StreamController struct {
 }
 
 // NewStreamController creates a new instance of StreamController.
-// It initializes the state to streamRunning and creates channels for pausing and resuming the stream.
+// It initializes the state to streamNotStarted and creates channels for pausing and resuming the stream.
 func NewStreamController() *StreamController {
 	return &StreamController{
-		state:  streamRunning,
+		state:  streamNotStarted,
 		paused: make(chan struct{}, 1),
 		resume: make(chan struct{}, 1),
 	}
@@ -72,6 +74,11 @@ func (s *StreamController) WaitUntilPaused() {
 	<-s.paused
 }
 
+// WaitUntilResumed waits till the stream is resumed
+func (s *StreamController) WaitUntilResumed() {
+	<-s.resume
+}
+
 type StreamReceiver interface {
 	Recv() (*idl.HubReply, error)
 }
@@ -80,6 +87,8 @@ func ParseStreamResponseFn(stream StreamReceiver, ctrl *StreamController) error 
 	progressContainer := utils.NewProgressContainer(os.Stdout)
 	respCh := make(chan *idl.HubReply)
 	errCh := make(chan error)
+
+	ctrl.SetState(streamRunning)
 
 	go func() {
 		for {
@@ -99,7 +108,7 @@ loop:
 		case streamPaused:
 			progressContainer.Abort()
 			ctrl.Paused()
-			<-ctrl.resume
+			ctrl.WaitUntilResumed()
 
 		default:
 			select {
@@ -107,6 +116,7 @@ loop:
 				if state == streamDiscard {
 					continue
 				}
+
 				msg := resp.Message
 				switch msg.(type) {
 				case *idl.HubReply_LogMsg:
