@@ -11,7 +11,7 @@ import (
 
 func TestAskUserYesOrNo(t *testing.T) {
 	t.Run("correctly displays the prompt text", func(t *testing.T) {
-		input := "y\n"
+		input := fmt.Sprintln("y")
 		resetStdin := testutils.MockStdin(t, input)
 		defer resetStdin()
 
@@ -30,7 +30,7 @@ func TestAskUserYesOrNo(t *testing.T) {
 	})
 
 	t.Run("returns true when the user wants to proceed", func(t *testing.T) {
-		for _, input := range []string{"y\n", "Y\n"} {
+		for _, input := range []string{fmt.Sprintln("y"), fmt.Sprintln("Y")} {
 			resetStdin := testutils.MockStdin(t, input)
 			defer resetStdin()
 
@@ -42,7 +42,7 @@ func TestAskUserYesOrNo(t *testing.T) {
 	})
 
 	t.Run("returns false when the user wants to cancel", func(t *testing.T) {
-		for _, input := range []string{"n\n", "N\n"} {
+		for _, input := range []string{fmt.Sprintln("n"), fmt.Sprintln("N")} {
 			resetStdin := testutils.MockStdin(t, input)
 			defer resetStdin()
 

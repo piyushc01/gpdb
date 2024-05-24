@@ -1326,6 +1326,10 @@ func TestInitClusterService(t *testing.T) {
 		defer resetCLIVars()
 		defer utils.ResetSystemFunctions()
 		utils.System.Stat = func(name string) (os.FileInfo, error) {
+			if strings.HasSuffix(name, constants.CleanFileName) {
+				return nil, os.ErrNotExist
+			}
+
 			return nil, nil
 		}
 		cli.LoadInputConfigToIdl = func(ctx context.Context, inputConfigFile string, cliHandler *viper.Viper, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
@@ -1344,6 +1348,10 @@ func TestInitClusterService(t *testing.T) {
 		defer resetCLIVars()
 		defer utils.ResetSystemFunctions()
 		utils.System.Stat = func(name string) (os.FileInfo, error) {
+			if strings.HasSuffix(name, constants.CleanFileName) {
+				return nil, os.ErrNotExist
+			}
+
 			return nil, nil
 		}
 		cli.LoadInputConfigToIdl = func(ctx context.Context, inputConfigFile string, cliHandler *viper.Viper, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
@@ -1365,6 +1373,10 @@ func TestInitClusterService(t *testing.T) {
 		defer resetCLIVars()
 		defer utils.ResetSystemFunctions()
 		utils.System.Stat = func(name string) (os.FileInfo, error) {
+			if strings.HasSuffix(name, constants.CleanFileName) {
+				return nil, os.ErrNotExist
+			}
+
 			return nil, nil
 		}
 		cli.LoadInputConfigToIdl = func(ctx context.Context, inputConfigFile string, cliHandler *viper.Viper, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
@@ -1386,6 +1398,10 @@ func TestInitClusterService(t *testing.T) {
 		defer resetCLIVars()
 		defer utils.ResetSystemFunctions()
 		utils.System.Stat = func(name string) (os.FileInfo, error) {
+			if strings.HasSuffix(name, constants.CleanFileName) {
+				return nil, os.ErrNotExist
+			}
+
 			return nil, nil
 		}
 		cli.LoadInputConfigToIdl = func(ctx context.Context, inputConfigFile string, cliHandler *viper.Viper, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
@@ -1408,6 +1424,10 @@ func TestInitClusterService(t *testing.T) {
 		defer resetCLIVars()
 		defer utils.ResetSystemFunctions()
 		utils.System.Stat = func(name string) (os.FileInfo, error) {
+			if strings.HasSuffix(name, constants.CleanFileName) {
+				return nil, os.ErrNotExist
+			}
+
 			return nil, nil
 		}
 		cli.LoadInputConfigToIdl = func(ctx context.Context, inputConfigFile string, cliHandler *viper.Viper, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
@@ -1428,12 +1448,15 @@ func TestInitClusterService(t *testing.T) {
 		}
 	})
 	t.Run("returns error if stream receiver returns error", func(t *testing.T) {
-		_, _, logfile := testhelper.SetupTestLogger()
 		testStr := "Cluster creation failed"
 		defer resetCLIVars()
 		defer utils.ResetSystemFunctions()
 
 		utils.System.Stat = func(name string) (os.FileInfo, error) {
+			if strings.HasSuffix(name, constants.CleanFileName) {
+				return nil, os.ErrNotExist
+			}
+
 			return nil, nil
 		}
 		cli.LoadInputConfigToIdl = func(ctx context.Context, inputConfigFile string, cliHandler *viper.Viper, force bool, verbose bool) (*idl.MakeClusterRequest, error) {
@@ -1451,15 +1474,10 @@ func TestInitClusterService(t *testing.T) {
 			return fmt.Errorf(testStr)
 		}
 
-		resetStdin := testutils.MockStdin(t, "n\n")
-		defer resetStdin()
-
 		err := cli.InitClusterService("/tmp/invalid_file", context.Background(), nil, false, false)
-		if err != nil {
-			t.Fatalf("unexpected error")
+		if err == nil || !strings.Contains(err.Error(), testStr) {
+			t.Fatalf("got %v, want %v", err, testStr)
 		}
-		testutils.AssertLogMessage(t, logfile, testStr)
-
 	})
 
 }

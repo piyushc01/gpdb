@@ -46,11 +46,12 @@ func NewStreamController() *StreamController {
 func (s *StreamController) SetState(state int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.state = state
 
-	if state == streamRunning || state == streamDiscard {
+	if (s.state != streamNotStarted && state == streamRunning) || state == streamDiscard {
 		s.resume <- struct{}{}
 	}
+
+	s.state = state
 }
 
 // State returns the current state of the StreamController.

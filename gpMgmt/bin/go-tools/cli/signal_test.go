@@ -34,7 +34,7 @@ func TestHandleSignal(t *testing.T) {
 		defer resetStdout()
 
 		// when user selects yes
-		resetStdin := testutils.MockStdin(t, "y\n")
+		resetStdin := testutils.MockStdin(t, fmt.Sprintln("y"))
 		defer resetStdin()
 
 		cli.HandleSignal(syscall.SIGINT, nil)
@@ -53,7 +53,7 @@ func TestHandleSignal(t *testing.T) {
 		}
 
 		// when user selects no
-		resetStdin = testutils.MockStdin(t, "n\n")
+		resetStdin = testutils.MockStdin(t, fmt.Sprintln("n"))
 		defer resetStdin()
 
 		cli.HandleSignal(syscall.SIGINT, nil)
@@ -71,7 +71,8 @@ func TestHandleSignal(t *testing.T) {
 		defer resetStdin()
 
 		ctrl := cli.NewStreamController()
-		go cli.HandleSignal(syscall.SIGINT, ctrl) // the code will be blocked until we indicate that the stream is paused using ctrl.SetPaused()
+		ctrl.SetState(streamRunning)
+		go cli.HandleSignal(syscall.SIGINT, ctrl) // the code will be blocked until we indicate that the stream is paused using ctrl.Paused()
 
 		// the stream should be paused initially to display the prompt
 		time.Sleep(100 * time.Millisecond)
@@ -110,12 +111,13 @@ func TestHandleSignal(t *testing.T) {
 		defer resetStdin()
 
 		ctrl := cli.NewStreamController()
+		ctrl.SetState(streamRunning)
 
 		var wg sync.WaitGroup
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			// the code will be blocked until we indicate that the stream is paused using ctrl.SetPaused()
+			// the code will be blocked until we indicate that the stream is paused using ctrl.Paused()
 			cli.HandleSignal(syscall.SIGINT, ctrl)
 		}()
 
