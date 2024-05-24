@@ -211,7 +211,7 @@ func TestParseStreamResponse(t *testing.T) {
 		for {
 			if streamer.Sent() == 3 {
 				ctrl.SetState(streamPaused)
-				ctrl.Paused()
+				ctrl.WaitUntilPaused()
 				break
 			}
 		}
@@ -267,7 +267,7 @@ func TestParseStreamResponse(t *testing.T) {
 		for {
 			if streamer.Sent() == 3 {
 				ctrl.SetState(streamPaused)
-				ctrl.Paused()
+				ctrl.WaitUntilPaused()
 				break
 			}
 		}

@@ -60,9 +60,9 @@ func NewProgressContainer(output io.Writer) *progressContainer {
 	}
 }
 
-// refresh resets the progress container.
+// reset resets the progress container.
 // This should be called once the progress container is completed or aborted
-func (p *progressContainer) refresh() {
+func (p *progressContainer) reset() {
 	p.instance = NewProgressInstance(p.output)
 	p.barMap = make(map[string]*mpb.Bar)
 }
@@ -94,7 +94,7 @@ func (p *progressContainer) Update(label string, current, total int) {
 	}
 
 	p.instance.Wait()
-	p.refresh()
+	p.reset()
 }
 
 // Abort cancels all the progress bars and waits for them to finish.
@@ -109,7 +109,7 @@ func (p *progressContainer) Abort() {
 		bar.Wait()
 	}
 	p.instance.Wait()
-	p.refresh()
+	p.reset()
 }
 
 // IsRunning checks if any progress bar in the progress container is currently running.

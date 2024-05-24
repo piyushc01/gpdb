@@ -137,7 +137,7 @@ func RunInitClusterCmd(cmd *cobra.Command, args []string) error {
 	SetSignalHandler(ctrl)
 
 	go func() {
-		ticker := time.NewTicker(CheckInterruptFrequency)
+		ticker := time.NewTicker(constants.CheckInterruptFrequency)
 		defer ticker.Stop()
 
 		for ; true; <-ticker.C {

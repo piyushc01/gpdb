@@ -58,17 +58,17 @@ func (s *StreamController) State() int {
 	return s.state
 }
 
-// SetPaused indicates that the stream has been paused.
+// Paused indicates that the stream has been paused.
 // This is different from the SetState(streamPaused) method as
 // this will tell the stream controller to pause the stream
-// (the stream may take some time to pause), but SetPaused()
+// (the stream may take some time to pause), but Paused()
 // will indicate the actual time when the stream is paused.
-func (s *StreamController) SetPaused() {
+func (s *StreamController) Paused() {
 	s.paused <- struct{}{}
 }
 
-// Paused waits unitl the stream is paused
-func (s *StreamController) Paused() {
+// WaitUntilPaused waits till the stream is paused
+func (s *StreamController) WaitUntilPaused() {
 	<-s.paused
 }
 
@@ -98,7 +98,7 @@ loop:
 		switch state := ctrl.State(); state {
 		case streamPaused:
 			progressContainer.Abort()
-			ctrl.SetPaused()
+			ctrl.Paused()
 			<-ctrl.resume
 
 		default:

@@ -4,14 +4,9 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/greenplum-db/gp-common-go-libs/gplog"
 	"github.com/greenplum-db/gpdb/gp/utils"
-)
-
-const (
-	CheckInterruptFrequency = 500 * time.Millisecond
 )
 
 var (
@@ -54,7 +49,7 @@ func HandleSignal(sig os.Signal, ctrl *StreamController) {
 			// pause the hub stream parsing so we could display a prompt
 			ctrl.SetState(streamPaused)
 			// wait until the stream is paused
-			ctrl.Paused()
+			ctrl.WaitUntilPaused()
 			gplog.Warn(logMessage)
 			terminate := utils.AskUserYesOrNo(promptText)
 			if !terminate {

@@ -78,10 +78,10 @@ func TestHandleSignal(t *testing.T) {
 			t.Fatalf("expected stream to be paused")
 		}
 
-		ctrl.SetPaused() // indicate that the stream has been paused so we can display the user prompt
+		ctrl.Paused() // indicate that the stream has been paused so we can display the user prompt
 
 		// enter yes in the prompt
-		_, err := writer.WriteString("y\n")
+		_, err := writer.WriteString(fmt.Sprintln("y"))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -124,10 +124,10 @@ func TestHandleSignal(t *testing.T) {
 			t.Fatalf("expected stream to be paused")
 		}
 
-		ctrl.SetPaused() // indicate that the stream has been paused so we can display the user prompt
+		ctrl.Paused() // indicate that the stream has been paused so we can display the user prompt
 
 		// enter no in the prompt
-		_, err := writer.WriteString("n\n")
+		_, err := writer.WriteString(fmt.Sprintln("n"))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
