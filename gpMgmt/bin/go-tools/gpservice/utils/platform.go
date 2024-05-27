@@ -145,7 +145,7 @@ func GenerateDarwinServiceFileContents(process string, gpHome string, serviceNam
     <string>%[3]s_%[1]s</string>
     <key>ProgramArguments</key>
     <array>
-        <string>%[2]s/bin/gp</string>
+        <string>%[2]s/bin/gpservice</string>
         <string>%[1]s</string>
     </array>
     <key>StandardOutPath</key>
@@ -172,7 +172,7 @@ Description=Greenplum Database management utility %[1]s
 [Service]
 Type=simple
 Environment=GPHOME=%[2]s
-ExecStart=%[2]s/bin/gp %[1]s
+ExecStart=%[2]s/bin/gpservice %[1]s
 Restart=on-failure
 StandardOutput=file:/tmp/grpc_%[1]s.log
 StandardError=file:/tmp/grpc_%[1]s.log
@@ -334,9 +334,9 @@ Darwin:
 
 	{
 		"PID" = 19909;
-		"Program" = "/usr/local/gpdb/bin/gp";
+		"Program" = "/usr/local/gpdb/bin/gpservice";
 		"ProgramArguments" = (
-			"/usr/local/gpdb/bin/gp";
+			"/usr/local/gpdb/bin/gpservice";
 			"hub";
 		);
 	};

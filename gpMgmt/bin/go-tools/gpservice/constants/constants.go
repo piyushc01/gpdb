@@ -5,8 +5,8 @@ import "time"
 const (
 	DefaultHubPort          = 4242
 	DefaultAgentPort        = 8000
-	DefaultServiceName      = "gp"
-	ConfigFileName          = "gp.conf"
+	DefaultServiceName      = "gpservice"
+	ConfigFileName          = "gpservice.conf"
 	ShellPath               = "/bin/bash"
 	GpSSH                   = "gpssh"
 	MaxRetries              = 10

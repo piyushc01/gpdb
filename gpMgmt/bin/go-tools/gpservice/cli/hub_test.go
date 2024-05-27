@@ -27,13 +27,18 @@ func ValidGpsshOpt() {
 func InValidGpsshOpt() {
 	os.Stdout.WriteString("test output")
 }
+
 func InValidGpsshOpt2() {
 	os.Stdout.WriteString("test output\nTEST")
 }
+
 func InValidGpsshOpt3() {
 	os.Stdout.WriteString("test output\nTEST TEST")
 }
 
+func TestMain(m *testing.M) {
+	os.Exit(exectest.Run(m))
+}
 func TestGetUlimitSshFn(t *testing.T) {
 	_, _, logile := testhelper.SetupTestLogger()
 	t.Run("logs error when gpssh command execution fails", func(t *testing.T) {

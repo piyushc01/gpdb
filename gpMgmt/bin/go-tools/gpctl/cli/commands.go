@@ -24,7 +24,7 @@ var (
 	ConnectToHub    = ConnectToHubFunc
 
 	ConfigFilePath string
-	hubLogDir		string
+	hubLogDir      string
 	Conf           *hub.Config
 
 	Verbose bool
@@ -35,16 +35,11 @@ func RootCommand() *cobra.Command {
 		Use: "gpctl",
 	}
 
+	root.CompletionOptions.DisableDefaultCmd = true
 	root.PersistentFlags().StringVar(&ConfigFilePath, "config-file", filepath.Join(os.Getenv("GPHOME"), constants.ConfigFileName), `Path to gp configuration file`)
 	root.PersistentFlags().BoolVar(&Verbose, "verbose", false, `Provide verbose output`)
 
 	root.AddCommand(
-		// agentCmd(),
-		// configureCmd(),
-		// hubCmd(),
-		// startCmd(),
-		// statusCmd(),
-		// stopCmd(),
 		initCmd(),
 	)
 

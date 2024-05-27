@@ -8,8 +8,8 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/greenplum-db/gp-common-go-libs/testhelper"
+	"github.com/greenplum-db/gpdb/gpctl/cli"
 	"github.com/greenplum-db/gpdb/gpservice/agent"
-	"github.com/greenplum-db/gpdb/gpservice/cli"
 	"github.com/greenplum-db/gpdb/gpservice/constants"
 	"github.com/greenplum-db/gpdb/gpservice/hub"
 	"github.com/greenplum-db/gpdb/gpservice/idl"
@@ -34,22 +34,14 @@ func teardownTest() {
 func resetCLIVars() {
 	cli.DialContextFunc = grpc.DialContext
 	cli.ConnectToHub = cli.ConnectToHubFunc
-	cli.StartHubService = cli.StartHubServiceFunc
-	cli.WaitAndRetryHubConnect = cli.WaitAndRetryHubConnectFunc
-	cli.ShowHubStatus = cli.ShowHubStatusFunc
-	cli.StartAgentsAll = cli.StartAgentsAllFunc
-	cli.ShowAgentsStatus = cli.ShowAgentsStatusFunc
-	cli.PrintServicesStatus = cli.PrintServicesStatusFunc
-	cli.StopAgentService = cli.StopAgentServiceFunc
-	cli.StopHubService = cli.StopHubServiceFunc
-	// cli.InitClusterService = cli.InitClusterServiceFn
-	// cli.LoadInputConfigToIdl = cli.LoadInputConfigToIdlFn
-	// cli.ValidateInputConfigAndSetDefaults = cli.ValidateInputConfigAndSetDefaultsFn
-	// cli.CheckForDuplicatPortAndDataDirectory = cli.CheckForDuplicatePortAndDataDirectoryFn
-	// cli.GetSystemLocale = cli.GetSystemLocaleFn
-	// cli.SetDefaultLocale = cli.SetDefaultLocaleFn
-	// cli.ParseStreamResponse = cli.ParseStreamResponseFn
-	// cli.IsGpServicesEnabled = cli.IsGpServicesEnabledFn
+	cli.InitClusterService = cli.InitClusterServiceFn
+	cli.LoadInputConfigToIdl = cli.LoadInputConfigToIdlFn
+	cli.ValidateInputConfigAndSetDefaults = cli.ValidateInputConfigAndSetDefaultsFn
+	cli.CheckForDuplicatPortAndDataDirectory = cli.CheckForDuplicatePortAndDataDirectoryFn
+	cli.GetSystemLocale = cli.GetSystemLocaleFn
+	cli.SetDefaultLocale = cli.SetDefaultLocaleFn
+	cli.ParseStreamResponse = cli.ParseStreamResponseFn
+	cli.IsGpServicesEnabled = cli.IsGpServicesEnabledFn
 }
 
 func funcNilError() func() error {
