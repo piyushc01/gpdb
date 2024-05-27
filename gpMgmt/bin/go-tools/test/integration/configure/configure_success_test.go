@@ -2,6 +2,7 @@ package configure
 
 import (
 	"fmt"
+	"github.com/greenplum-db/gpdb/gpservice/utils"
 	"os"
 	"reflect"
 	"strings"
@@ -9,7 +10,6 @@ import (
 
 	"github.com/greenplum-db/gpdb/gp/constants"
 	"github.com/greenplum-db/gpdb/gp/test/integration/testutils"
-	"github.com/greenplum-db/gpdb/gp/utils"
 )
 
 func TestConfigureHelp(t *testing.T) {

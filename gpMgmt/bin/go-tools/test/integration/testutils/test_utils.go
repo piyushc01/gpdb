@@ -3,6 +3,8 @@ package testutils
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/greenplum-db/gpdb/gpservice/hub"
+	utils2 "github.com/greenplum-db/gpdb/gpservice/utils"
 	"io"
 	"os"
 	"os/exec"
@@ -14,8 +16,6 @@ import (
 	"time"
 
 	"github.com/greenplum-db/gpdb/gp/constants"
-	"github.com/greenplum-db/gpdb/gp/hub"
-	"github.com/greenplum-db/gpdb/gp/utils"
 )
 
 type Command struct {
@@ -188,7 +188,7 @@ func DeleteCluster() (CmdResult, error) {
 
 func ParseConfig(configFile string) hub.Config {
 	gpConfig := hub.Config{}
-	gpConfig.Credentials = &utils.GpCredentials{}
+	gpConfig.Credentials = &utils2.GpCredentials{}
 	config, _ := os.Open(configFile)
 	defer config.Close()
 	byteValue, _ := io.ReadAll(config)
@@ -214,7 +214,7 @@ func CleanupFilesOnAgents(file string, hosts []string) {
 
 func CpCfgWithoutCertificates(name string) error {
 	cfg := ParseConfig(DefaultConfigurationFile)
-	cfg.Credentials = &utils.GpCredentials{}
+	cfg.Credentials = &utils2.GpCredentials{}
 	content, _ := json.Marshal(cfg)
 	return os.WriteFile(name, content, 0777)
 }
@@ -259,10 +259,10 @@ func runCmd(cmd Command) (CmdResult, error) {
 	return result, err
 }
 
-func GetServiceDetails(p utils.Platform) (string, string, string) {
+func GetServiceDetails(p utils2.Platform) (string, string, string) {
 	serviceDir := fmt.Sprintf(p.GetDefaultServiceDir(), os.Getenv("USER"))
-	serviceExt := p.(utils.GpPlatform).ServiceExt
-	serviceCmd := p.(utils.GpPlatform).ServiceCmd
+	serviceExt := p.(utils2.GpPlatform).ServiceExt
+	serviceCmd := p.(utils2.GpPlatform).ServiceCmd
 
 	return serviceDir, serviceExt, serviceCmd
 }
@@ -280,7 +280,7 @@ func UnloadSvcFile(cmd string, file string) {
 	_, _ = runCmd(genCmd)
 }
 
-func DisableandDeleteServiceFiles(p utils.Platform) {
+func DisableandDeleteServiceFiles(p utils2.Platform) {
 	serviceDir, serviceExt, serviceCmd := GetServiceDetails(p)
 	filesToUnload := GetSvcFiles(serviceDir, serviceExt)
 	for _, filePath := range filesToUnload {
@@ -317,7 +317,7 @@ func CopyFile(src, dest string) error {
 	return nil
 }
 
-func GetSvcStatusOnHost(p utils.GpPlatform, serviceName string, host string) (CmdResult, error) {
+func GetSvcStatusOnHost(p utils2.GpPlatform, serviceName string, host string) (CmdResult, error) {
 	args := []string{p.UserArg, p.StatusArg, serviceName}
 
 	if p.OS == "darwin" {

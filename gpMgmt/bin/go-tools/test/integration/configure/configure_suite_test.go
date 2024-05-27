@@ -3,15 +3,15 @@ package configure
 import (
 	"flag"
 	"fmt"
+	"github.com/greenplum-db/gpdb/gpservice/hub"
+	utils2 "github.com/greenplum-db/gpdb/gpservice/utils"
+	"github.com/greenplum-db/gpdb/gpservice/utils/greenplum"
 	"log"
 	"os"
 	"testing"
 
 	"github.com/greenplum-db/gpdb/gp/constants"
-	"github.com/greenplum-db/gpdb/gp/hub"
 	"github.com/greenplum-db/gpdb/gp/test/integration/testutils"
-	"github.com/greenplum-db/gpdb/gp/utils"
-	"github.com/greenplum-db/gpdb/gp/utils/greenplum"
 )
 
 const (
@@ -42,9 +42,9 @@ var (
 
 func init() {
 	certPath := "/tmp/certificates"
-	p := utils.GetPlatform()
+	p := utils2.GetPlatform()
 	defaultServiceDir, serviceExt, _ = testutils.GetServiceDetails(p)
-	cred := &utils.GpCredentials{
+	cred := &utils2.GpCredentials{
 		CACertPath:     fmt.Sprintf("%s/%s", certPath, "ca-cert.pem"),
 		CAKeyPath:      fmt.Sprintf("%s/%s", certPath, "ca-key.pem"),
 		ServerCertPath: fmt.Sprintf("%s/%s", certPath, "server-cert.pem"),

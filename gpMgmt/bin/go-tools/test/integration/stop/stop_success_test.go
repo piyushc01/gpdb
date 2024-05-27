@@ -2,7 +2,7 @@ package stop
 
 import (
 	"github.com/greenplum-db/gpdb/gp/test/integration/testutils"
-	"github.com/greenplum-db/gpdb/gp/utils"
+	"github.com/greenplum-db/gpdb/gpservice/utils"
 	"strings"
 	"testing"
 )
@@ -178,7 +178,7 @@ func TestStopSuccess(t *testing.T) {
 			"agents", "--verbose",
 		}
 		expectedOut := "Agents stopped successfully"
-		
+
 		result, err := testutils.RunStop(cliParams...)
 		// check for command result
 		if err != nil {

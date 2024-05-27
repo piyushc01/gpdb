@@ -3,7 +3,7 @@ package stop
 import (
 	"flag"
 	"github.com/greenplum-db/gpdb/gp/test/integration/testutils"
-	"github.com/greenplum-db/gpdb/gp/utils"
+	"github.com/greenplum-db/gpdb/gpservice/utils"
 	"os"
 	"testing"
 )

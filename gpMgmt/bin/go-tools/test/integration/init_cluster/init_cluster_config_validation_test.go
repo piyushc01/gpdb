@@ -3,6 +3,7 @@ package init_cluster
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/greenplum-db/gpdb/gp/gpctl/cli"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -10,7 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/greenplum-db/gpdb/gp/cli"
 	"github.com/greenplum-db/gpdb/gp/test/integration/testutils"
 	"github.com/spf13/viper"
 )
@@ -656,13 +656,13 @@ func TestInputFileValidation(t *testing.T) {
 	// 	config := GetDefaultConfig(t)
 
 	// 	primarySegs := config.Get("segment-array")
-	// 	valueSegPair, ok := primarySegs.([]cli.SegmentPair)
+	// 	valueSegPair, ok := primarySegs.([]gpservice-cli.SegmentPair)
 	// 	if !ok {
 	// 		t.Fatalf("unexpected data type for segment-array %T", primarySegs)
 	// 	}
 
 	// 	// Add duplicate mirror key to the segment pair
-	// 	valueSegPair[0].Mirror = &cli.Segment{
+	// 	valueSegPair[0].Mirror = &gpservice-cli.Segment{
 	// 		Hostname:      "testhost",
 	// 		Address:       "testhost",
 	// 		Port:          70010,

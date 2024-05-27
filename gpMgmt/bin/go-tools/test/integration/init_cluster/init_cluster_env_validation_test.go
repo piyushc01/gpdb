@@ -2,6 +2,7 @@ package init_cluster
 
 import (
 	"fmt"
+	"github.com/greenplum-db/gpdb/gp/gpctl/cli"
 	"net"
 	"os"
 	"os/exec"
@@ -11,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/greenplum-db/gpdb/gp/cli"
 	"github.com/greenplum-db/gpdb/gp/test/integration/testutils"
 )
 
@@ -332,7 +332,7 @@ func TestEnvValidation(t *testing.T) {
 	// 	}
 
 	// 	primarySegs := config.Get("segment-array")
-	// 	valueSegPair, ok := primarySegs.([]cli.SegmentPair)
+	// 	valueSegPair, ok := primarySegs.([]gpservice-cli.SegmentPair)
 
 	// 	if !ok {
 	// 		t.Fatalf("unexpected data type for segment-array %T", primarySegs)

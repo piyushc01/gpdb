@@ -2,13 +2,12 @@ package testutils
 
 import (
 	"fmt"
+	"github.com/greenplum-db/gpdb/gpservice/utils/greenplum"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"testing"
-
-	"github.com/greenplum-db/gpdb/gp/utils/greenplum"
 )
 
 func FilesExistsOnAgents(t *testing.T, file string, hosts []string) bool {

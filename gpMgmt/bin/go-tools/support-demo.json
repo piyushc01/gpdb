@@ -1,0 +1,49 @@
+{
+   "db-name": "gpdb",
+    "encoding": "Unicode",
+    "hba-hostnames": true,
+    "su-password": "gparray",
+    "locale": {
+      "lc-all": "en_US.UTF-8", "lc-collate": "en_US.UTF-8",
+      "lc-ctype": "en_US.UTF-8", "lc-messages": "en_US.UTF-8",
+      "lc-monetary": "en_US.UTF-8", "lc-numeric": "en_US.UTF-8",
+      "lc-time": "en_US.UTF-8"
+    },
+
+  "common-config": { "shared_buffers": "128000kB" },
+
+  "coordinator-config": { "max_connections": 50 },
+
+  "segment-config": {
+    "max_connections": 150, "debug_pretty_print": "off",
+    "log_min_messages": "warning"},
+
+    "coordinator": {"hostname": "cdw","address": "cdw",
+      "data-directory": "/tmp/demo/-1", "port": 9000 },
+
+    "segment-array": [
+    {
+      "primary": { "hostname": "sdw0", "address": "sdw0",
+        "data-directory": "/tmp/demo/1", "port": 9002 },
+      "mirror": { "hostname": "sdw1", "address": "sdw1",
+        "data-directory": "/tmp/demo/mirror/1", "port": 9002 },
+    },
+    {
+       "mirror": {
+         "hostname": "sdw0", "address": "sdw0",
+         "data-directory": "/tmp/demo/mirror/2", "port": 9003 },
+      "primary": {
+         "hostname": "sdw1", "address": "sdw1",
+         "data-directory": "/tmp/demo/2", "port": 9003
+            }
+    }
+    ],
+
+  "primary-base-port": 7002,
+  "primary-data-directories": ["/demo/", "/demo", "/demo", "/demo"],
+  "mirror-base-port": 8002,
+  "mirror-data-directories": ["/mirror", "/mirror", "/mirror", "/mirror"],
+  "mirroring-type": "group",
+  "hostlist" : ["sdw0", "sdw1", "sdw2"],
+
+}

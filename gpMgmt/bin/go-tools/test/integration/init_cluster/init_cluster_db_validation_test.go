@@ -3,6 +3,7 @@ package init_cluster
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/greenplum-db/gpdb/gp/gpctl/cli"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/greenplum-db/gp-common-go-libs/cluster"
 	"github.com/greenplum-db/gp-common-go-libs/dbconn"
-	"github.com/greenplum-db/gpdb/gp/cli"
 	"github.com/greenplum-db/gpdb/gp/constants"
 	"github.com/greenplum-db/gpdb/gp/test/integration/testutils"
 )
