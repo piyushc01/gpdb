@@ -1,7 +1,7 @@
 all: build
 
 .DEFAULT_GOAL := all
-MODULE_NAME=gp
+MODULE_NAME=gpctl
 
 
 LINUX_ENV := env GOOS=linux GOARCH=amd64
@@ -69,42 +69,32 @@ build_linux: OS := LINUX
 build_mac: OS := MAC
 build_linux build_mac: build
 
-proto:
-	go generate ./idl
-
-cert:
-	./generate_test_tls_certificates.sh `hostname`
 
 BUILD_FLAGS = -gcflags="all=-N -l"
 
-install:
+install: check-gphome-set
 	GOBIN=$(GPHOME)/bin go install $(BUILD_FLAGS) github.com/greenplum-db/gpdb/gpctl
 
 # goimports supports a superset of the formatting rules gofmt supports, but
 # gofmt allows custom formatting rules so we include both for now
 format:
-	goimports -l -w agent/ cli/ hub/ testutils/ utils/
-	gofmt -l -w agent/ cli/ hub/ testutils/ utils/
+	goimports -l -w cli/
+	gofmt -l -w cli/
 
 # You can override these from the command line.
 GIT_BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD)
 GIT_REMOTE ?= $(shell git ls-remote --get-url)
 PIPELINE_NAME ?= gpdb-dev-$(shell git rev-parse --abbrev-ref HEAD | tr '/' '-')
-pipeline:
-	fly -t dev set-pipeline -p $(PIPELINE_NAME) \
-		-c ci/pipelines/pipeline.yml \
-		-l ../../../concourse/vars/common_prod.yml \
-		-l ../../../concourse/vars/common_dev.yml \
-		-v gpdb-git-remote=$(GIT_REMOTE) \
-		-v gpdb-git-branch=$(GIT_BRANCH) \
-		-v pipeline-name=$(PIPELINE_NAME)
 
 clean:
-	rm -f gp
-	rm -f ./idl/*.pb.go
-	rm -rf ./certificates
+	rm -f gpctl
 	rm -rf /tmp/go-build*
 	rm -rf /tmp/gexec_artifacts*
 
-uninstall:
-	rm -rf $(GPHOME)/bin/gp
+uninstall: check-gphome-set
+	rm -rf $(GPHOME)/bin/gpctl
+
+check-gphome-set:
+ifndef GPHOME
+	$(error Environment variable GPHOME is not set, please set GPHOME or source greenplum_path.sh)
+endif

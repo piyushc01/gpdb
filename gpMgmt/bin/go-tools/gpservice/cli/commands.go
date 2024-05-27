@@ -33,7 +33,7 @@ func RootCommand() *cobra.Command {
 	root := &cobra.Command{
 		Use: "gpservice",
 	}
-	
+
 	root.CompletionOptions.DisableDefaultCmd = true
 	root.PersistentFlags().StringVar(&ConfigFilePath, "config-file", filepath.Join(os.Getenv("GPHOME"), constants.ConfigFileName), `Path to gp configuration file`)
 	root.PersistentFlags().BoolVar(&Verbose, "verbose", false, `Provide verbose output`)

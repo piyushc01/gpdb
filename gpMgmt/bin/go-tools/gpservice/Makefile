@@ -1,7 +1,7 @@
 all: build
 
 .DEFAULT_GOAL := all
-MODULE_NAME=gp
+MODULE_NAME=gpservice
 
 
 LINUX_ENV := env GOOS=linux GOARCH=amd64
@@ -73,11 +73,11 @@ proto:
 	go generate ./idl
 
 cert:
-	./generate_test_tls_certificates.sh `hostname`
+	../generate_test_tls_certificates.sh `hostname`
 
 BUILD_FLAGS = -gcflags="all=-N -l"
 
-install:
+install: check-gphome-set
 	GOBIN=$(GPHOME)/bin go install $(BUILD_FLAGS) github.com/greenplum-db/gpdb/gpservice
 
 # goimports supports a superset of the formatting rules gofmt supports, but
@@ -100,11 +100,16 @@ pipeline:
 		-v pipeline-name=$(PIPELINE_NAME)
 
 clean:
-	rm -f gp
+	rm -f gpservice
 	rm -f ./idl/*.pb.go
 	rm -rf ./certificates
 	rm -rf /tmp/go-build*
 	rm -rf /tmp/gexec_artifacts*
 
-uninstall:
-	rm -rf $(GPHOME)/bin/gp
+uninstall: check-gphome-set
+	rm -rf $(GPHOME)/bin/gpservice
+
+check-gphome-set:
+ifndef GPHOME
+	$(error Environment variable GPHOME is not set, please set GPHOME or source greenplum_path.sh)
+endif

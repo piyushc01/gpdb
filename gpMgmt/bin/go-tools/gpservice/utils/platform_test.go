@@ -127,10 +127,10 @@ func TestGenerateServiceFileContents(t *testing.T) {
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>gp_hub</string>
+    <string>gpservice_hub</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/test/bin/gp</string>
+        <string>/test/bin/gpservice</string>
         <string>hub</string>
     </array>
     <key>StandardOutPath</key>
@@ -147,7 +147,7 @@ func TestGenerateServiceFileContents(t *testing.T) {
 </dict>
 </plist>
 `, os.Getenv("PATH"))
-		contents := platform.GenerateServiceFileContents("hub", "/test", "gp")
+		contents := platform.GenerateServiceFileContents("hub", "/test", "gpservice")
 		if contents != expected {
 			t.Fatalf("got %q, want %q", contents, expected)
 		}
@@ -162,16 +162,16 @@ Description=Greenplum Database management utility hub
 [Service]
 Type=simple
 Environment=GPHOME=/test
-ExecStart=/test/bin/gp hub
+ExecStart=/test/bin/gpservice hub
 Restart=on-failure
 StandardOutput=file:/tmp/grpc_hub.log
 StandardError=file:/tmp/grpc_hub.log
 
 [Install]
-Alias=gp_hub.service
+Alias=gpservice_hub.service
 WantedBy=default.target
 `
-		contents := platform.GenerateServiceFileContents("hub", "/test", "gp")
+		contents := platform.GenerateServiceFileContents("hub", "/test", "gpservice")
 		if contents != expected {
 			t.Fatalf("got %q, want %q", contents, expected)
 		}
